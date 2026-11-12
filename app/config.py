@@ -39,6 +39,8 @@ class Settings:
     secret_key: str = field(default_factory=lambda: os.getenv("SECRET_KEY", ""))
     timezone: str = field(default_factory=lambda: os.getenv("TIMEZONE", "Europe/Copenhagen"))
     seed_demo: bool = field(default_factory=lambda: _bool("SEED_DEMO", True))
+    # Hvor længe skærmens opsætning må genbruges uden at spørge databasen. Ændringer i admin slår igennem med det samme.
+    kiosk_cache_seconds: int = field(default_factory=lambda: int(os.getenv("KIOSK_CACHE_SECONDS", "86400")))
 
     # Notifications. "test" = log only, never send. "live" = send for real.
     notify_mode: str = field(default_factory=lambda: os.getenv("NOTIFY_MODE", "test").lower())

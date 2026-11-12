@@ -1,11 +1,13 @@
 """Public API used by the kiosk screen. Identified only by the tenant's secret kiosk token."""
 import re
+import time
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .db import get_db
+from .config import settings
+from .db import SessionLocal, get_db
 from .models import Host, Notification, Tenant, Visit, utcnow
 from .notify import notify_visit
 from .schemas import CheckinIn, tenant_public
@@ -24,13 +26,13 @@ def tenant_by_token(token: str, db: Session) -> Tenant:
 def purge_old(db: Session, tenant: Tenant) -> int:
     """Delete visits (and their messages) older than the tenant's retention period."""
     cutoff = days_ago_utc(tenant.retention_days)
-    old_ids = list(db.scalars(select(Visit.id).where(Visit.tenant_id == tenant.id, Visit.checked_in_at < cutoff)))
-    if old_ids:
-        db.execute(delete(Notification).where(Notification.visit_id.in_(old_ids)))
-        db.execute(delete(Visit).where(Visit.id.in_(old_ids)))
+    old = (Visit.tenant_id == tenant.id, Visit.checked_in_at < cutoff)
+    # Subquery i stedet for en liste af id'er: SQL Server tillader højst 2100 parametre pr. forespørgsel.
+    db.execute(delete(Notification).where(Notification.visit_id.in_(select(Visit.id).where(*old))))
+    n = db.execute(delete(Visit).where(*old)).rowcount
     db.execute(delete(Notification).where(Notification.tenant_id == tenant.id, Notification.created_at < cutoff))
     db.commit()
-    return len(old_ids)
+    return n
 
 
 def short_name(full: str) -> str:
@@ -40,9 +42,26 @@ def short_name(full: str) -> str:
     return f"{parts[0]} {parts[-1][0]}."
 
 
+# Skærmen henter sin opsætning hvert minut. Svaret gemmes i hukommelsen, så databasen ikke
+# vækkes hele tiden (Azure SQL's gratis-database går på pause, når den ikke bruges, og
+# gratis-forbruget er begrænset). Cachen tømmes, når admin ændrer noget (se main.py).
+# Én worker (startup.sh), så alle forespørgsler ser den samme cache.
+_config_cache: dict[str, tuple[float, dict]] = {}
+
+
+def clear_config_cache() -> None:
+    _config_cache.clear()
+
+
 @router.get("/{token}/config")
-def config(token: str, db: Session = Depends(get_db)):
-    return tenant_public(tenant_by_token(token, db))
+def config(token: str):
+    hit = _config_cache.get(token)
+    if hit and time.monotonic() - hit[0] < settings.kiosk_cache_seconds:
+        return hit[1]
+    with SessionLocal() as db:
+        data = tenant_public(tenant_by_token(token, db))
+    _config_cache[token] = (time.monotonic(), data)
+    return data
 
 
 @router.post("/{token}/checkin")
