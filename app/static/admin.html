@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gæsteregistrering · Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%231f3a5a%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2218%22 font-family=%22Arial%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22%3EG%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginView" class="login" hidden>
+  <form class="login-card" id="loginForm">
+    <div class="brandmark">G</div>
+    <h1>Gæsteregistrering</h1>
+    <p class="muted">Log ind for at sætte kunder og skærme op.</p>
+    <label class="fld"><span>Adgangskode</span><input type="password" id="pw" autocomplete="current-password" required></label>
+    <button class="btn pri wide" type="submit">Log ind</button>
+    <p class="err" id="loginErr" hidden></p>
+  </form>
+</div>
+
+<!-- APP -->
+<div id="appView" class="shell" hidden>
+  <header class="top">
+    <div class="top-l"><div class="brandmark sm">G</div><b>Gæsteregistrering</b><span class="envpill" id="envPill"></span></div>
+    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+
+  <div class="cols">
+    <aside class="side">
+      <div class="side-h"><span class="lbl">Kunder</span><button class="btn pri sm" type="button" id="newTenant">+ Ny kunde</button></div>
+      <form class="newform" id="newForm" hidden><input id="newName" placeholder="Kundens navn, fx Junckers" maxlength="120" aria-label="Kundens navn"><button class="btn pri sm" type="submit">Opret</button></form>
+      <nav class="tlist" id="tList"></nav>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="empty-state" id="noTenant">
+        <h2>Vælg en kunde</h2>
+        <p class="muted">Eller opret en ny. Hver kunde får sit eget skærmlink, logo, personer og beskeder.</p>
+      </div>
+
+      <div id="editor" hidden>
+        <div class="ed-head">
+          <div class="ed-logo" id="edLogo"></div>
+          <div class="ed-title"><h1 id="edName"></h1>
+            <div class="link-row"><span class="lbl">Skærmlink</span><code id="kioskUrl"></code>
+              <button class="btn ghost sm" type="button" id="copyLink">Kopiér</button>
+              <a class="btn ghost sm" id="openKiosk" target="_blank" rel="noopener">Åbn skærm</a></div>
+          </div>
+        </div>
+
+        <div class="tabs" role="tablist" id="tabs">
+          <button role="tab" type="button" data-tab="people" aria-selected="true">Personer</button>
+          <button role="tab" type="button" data-tab="look" aria-selected="false">Udseende</button>
+          <button role="tab" type="button" data-tab="flow" aria-selected="false">Gæsteflow</button>
+          <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
+          <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
+        </div>
+
+        <!-- PEOPLE -->
+        <section class="tab" id="tab-people">
+          <p class="muted">Dem gæsterne kan vælge på skærmen. E-mail og mobil vises aldrig på skærmen. De bruges kun til beskeden.</p>
+          <div class="hostlist" id="hostList"></div>
+          <form class="card addhost" id="addHost">
+            <h3>Tilføj person</h3>
+            <div class="g4">
+              <label class="fld"><span>Navn</span><input name="name" required maxlength="120"></label>
+              <label class="fld"><span>Titel</span><input name="title" maxlength="120" placeholder="Fx Salgschef"></label>
+              <label class="fld"><span>E-mail</span><input name="email" type="email" maxlength="200"></label>
+              <label class="fld"><span>Mobil</span><input name="phone" type="tel" maxlength="40" placeholder="+45"></label>
+            </div>
+            <div class="row">
+              <span class="lbl">Besked via</span>
+              <label class="check"><input type="checkbox" name="notify_sms" checked> SMS</label>
+              <label class="check"><input type="checkbox" name="notify_email" checked> E-mail</label>
+              <span class="grow"></span>
+              <button class="btn pri" type="submit">Tilføj person</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- LOOK -->
+        <section class="tab" id="tab-look" hidden>
+          <div class="card">
+            <h3>Kunde</h3>
+            <div class="g2">
+              <label class="fld"><span>Navn</span><input data-f="name" maxlength="120"></label>
+              <label class="fld"><span>Velkomsttekst</span><input data-f="welcome_text" maxlength="200" placeholder="Velkommen til …"></label>
+            </div>
+            <div class="g2">
+              <div class="fld"><span>Brandfarve</span><div class="colorrow"><input type="color" data-f="color" id="colorPick" aria-label="Brandfarve"><input id="colorHex" maxlength="7" class="mono" aria-label="Farvekode"></div></div>
+              <div class="fld"><span>Skærmen er</span><label class="switch"><input type="checkbox" data-f="active"><i></i><em>Aktiv</em></label></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Logo</h3>
+            <div class="imgrow">
+              <div class="imgprev logo" id="logoPrev"></div>
+              <div class="imgactions"><p class="muted">Vises stort på skærmen og på gæstekortet, altid på hvid baggrund. Brug SVG eller PNG med gennemsigtig baggrund.</p>
+                <div class="row"><label class="btn ghost file">Upload logo<input type="file" accept="image/*,.svg" data-upload="logo"></label><button class="btn ghost" type="button" data-remove="logo">Fjern</button></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Baggrund</h3>
+            <div class="imgrow">
+              <div class="imgprev bg" id="bgPrev"></div>
+              <div class="imgactions"><p class="muted">Fx et foto af domicilet. Billedet tones mørkt, så teksten kan læses.</p>
+                <div class="row"><label class="btn ghost file">Upload billede<input type="file" accept="image/*" data-upload="background"></label><button class="btn ghost" type="button" data-remove="background">Fjern</button></div></div>
+            </div>
+            <div class="g2">
+              <div class="fld"><span>Placering</span><div class="seg" data-seg="background_scope"><button type="button" data-v="wall">Venstre panel</button><button type="button" data-v="full">Hele skærmen</button></div></div>
+              <label class="fld"><span>Toning <b id="dimVal" class="mono"></b></span><input type="range" min="0" max="90" step="5" data-f="background_dim"></label>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Personer på skærmen</h3>
+            <label class="switch"><input type="checkbox" data-f="show_photos"><i></i><em>Vis billeder af personerne</em></label>
+          </div>
+          <div class="card danger">
+            <h3>Farezone</h3>
+            <div class="row"><div class="grow"><b>Nyt skærmlink</b><p class="muted">Det gamle link holder op med at virke med det samme.</p></div><button class="btn ghost" type="button" id="rotate">Lav nyt link</button></div>
+            <div class="row"><div class="grow"><b>Slet kunde</b><p class="muted">Sletter kunden, personer, billeder og alle besøg.</p></div><button class="btn bad" type="button" id="delTenant">Slet kunde</button></div>
+          </div>
+        </section>
+
+        <!-- FLOW -->
+        <section class="tab" id="tab-flow" hidden>
+          <div class="card">
+            <h3>Det skal gæsten udfylde</h3>
+            <div class="opts">
+              <label class="switch"><input type="checkbox" data-f="name_required"><i></i><em>Navn er påkrævet</em></label>
+              <label class="switch"><input type="checkbox" data-f="ask_phone"><i></i><em>Spørg om mobilnummer</em></label>
+              <label class="switch sub"><input type="checkbox" data-f="phone_required"><i></i><em>Mobilnummer er påkrævet</em></label>
+              <label class="switch"><input type="checkbox" data-f="ask_company"><i></i><em>Spørg om firma</em></label>
+            </div>
+          </div>
+          <div class="card">
+            <h3>"Ved ikke hvem"</h3>
+            <label class="switch"><input type="checkbox" data-f="allow_unknown_host"><i></i><em>Vis knappen "Ved ikke hvem" på skærmen</em></label>
+            <p class="muted">Gæster, der trykker på den, sendes til receptionen. Beskeden går til både e-mail og mobil, hvis de er udfyldt.</p>
+            <div class="g2">
+              <label class="fld"><span>Receptionens e-mail</span><input data-f="reception_email" type="email" maxlength="200"></label>
+              <label class="fld"><span>Receptionens mobil</span><input data-f="reception_phone" type="tel" maxlength="40"></label>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Gæstekort</h3>
+            <label class="switch"><input type="checkbox" data-f="print_badge"><i></i><em>Print gæstekort ved tjek ind</em></label>
+            <div class="fld"><span>Format</span><div class="seg" data-seg="badge_size"><button type="button" data-v="62x100">Label 62 mm</button><button type="button" data-v="54x86">Kreditkort</button><button type="button" data-v="a6">A6</button></div></div>
+            <p class="muted">Printfri drift: start Chrome med <code>--kiosk --kiosk-printing</code> på skærmens pc.</p>
+          </div>
+          <div class="card">
+            <h3>Drift</h3>
+            <div class="g2">
+              <label class="fld"><span>Tilbage til start efter (sekunder)</span><input type="number" min="15" max="600" data-f="idle_seconds"></label>
+              <label class="fld"><span>Slet besøg efter (dage)</span><input type="number" min="1" max="365" data-f="retention_days"></label>
+            </div>
+          </div>
+        </section>
+
+        <!-- MESSAGES -->
+        <section class="tab" id="tab-msg" hidden>
+          <div class="statusbox" id="msgStatus"></div>
+          <div class="card">
+            <h3>SMS</h3>
+            <label class="fld"><span>Afsendernavn (maks 11 tegn, bogstaver og tal)</span><input data-f="sms_sender" maxlength="11"></label>
+            <label class="fld"><span>Tekst <b class="mono" id="smsCount"></b></span><textarea data-f="sms_template" rows="3" maxlength="640"></textarea></label>
+          </div>
+          <div class="card">
+            <h3>E-mail</h3>
+            <label class="fld"><span>Emne</span><input data-f="email_subject" maxlength="200"></label>
+            <label class="fld"><span>Tekst</span><textarea data-f="email_template" rows="8" maxlength="4000"></textarea></label>
+          </div>
+          <div class="card">
+            <h3>Flettefelter</h3>
+            <p class="muted">Tryk for at indsætte i det felt, du sidst skrev i.</p>
+            <div class="chips" id="chips"></div>
+            <h3 style="margin-top:18px">Eksempel på SMS</h3>
+            <pre class="sample" id="sample"></pre>
+          </div>
+        </section>
+
+        <!-- LOG -->
+        <section class="tab" id="tab-log" hidden>
+          <div class="card">
+            <div class="row"><h3 class="grow">Besøg de sidste 14 dage</h3><button class="btn ghost sm" type="button" id="refreshLog">Opdatér</button></div>
+            <div class="tablewrap"><table><thead><tr><th>Tid</th><th>Gæst</th><th>Mobil</th><th>Firma</th><th>Besøger</th><th>Ud</th></tr></thead><tbody id="visitRows"></tbody></table></div>
+          </div>
+          <div class="card">
+            <h3>Sendte beskeder</h3>
+            <div class="tablewrap"><table><thead><tr><th>Tid</th><th>Kanal</th><th>Modtager</th><th>Status</th><th>Besked</th></tr></thead><tbody id="noteRows"></tbody></table></div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <aside class="pv" id="pv" hidden>
+      <div class="pv-h"><span class="lbl">Forhåndsvisning</span><button class="btn ghost sm" type="button" id="pvReload">Genstart</button></div>
+      <div class="pv-frame" id="pvFrame"><iframe id="pvIframe" title="Forhåndsvisning af skærmen"></iframe></div>
+      <p class="muted small">Du kan trykke dig igennem her. Intet bliver gemt eller sendt.</p>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script src="/static/admin.js"></script>
+</body>
+</html>

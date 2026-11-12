@@ -1,0 +1,75 @@
+import logging
+import re
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
+
+from . import routes_admin, routes_kiosk
+from .config import settings
+from .db import SessionLocal, init_db
+from .models import Tenant
+from .routes_kiosk import purge_old
+from .seed import seed_if_empty
+
+logging.basicConfig(level=logging.INFO)
+STATIC = Path(__file__).parent / "static"
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_db()
+    with SessionLocal() as db:
+        seed_if_empty(db)
+        for t in db.scalars(select(Tenant)).all():
+            purge_old(db, t)
+    if not settings.admin_password_effective:
+        logging.warning("ADMIN_PASSWORD er ikke sat. Admin er lukket indtil den sættes.")
+    yield
+
+
+app = FastAPI(title="Gæsteregistrering", lifespan=lifespan, docs_url="/api/docs" if settings.env != "prod" else None,
+              redoc_url=None)
+app.include_router(routes_kiosk.router)
+app.include_router(routes_admin.public)
+app.include_router(routes_admin.router)
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+_MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")
+
+
+@app.get("/media/{name}", include_in_schema=False)
+def media(name: str):
+    if not _MEDIA_NAME.match(name):
+        raise HTTPException(404)
+    p = settings.media_dir / name
+    if not p.exists():
+        raise HTTPException(404)
+    return FileResponse(p, headers={
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/admin")
+
+
+@app.get("/admin", include_in_schema=False)
+def admin_page():
+    return FileResponse(STATIC / "admin.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/k/{token}", include_in_schema=False)
+def kiosk_page(token: str):
+    return FileResponse(STATIC / "kiosk.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/healthz", include_in_schema=False)
+def health():
+    return {"ok": True, "env": settings.env}

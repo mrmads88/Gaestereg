@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reception</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%231f3a5a%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2218%22 font-family=%22Arial%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22%3EG%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/static/kiosk.css">
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="wall gut">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="wall-top"><div class="logo-plate" id="logoPlate"></div><span class="nclock mono" id="nClock"></span></div>
+    <div class="wall-mid">
+      <div id="wallIdle">
+        <span class="eyebrow-w" id="wDate"></span>
+        <span class="bigclock" id="wClock"></span>
+        <h1 class="wwelcome" id="wWelcome"></h1>
+        <p class="wsub" data-t="wallSub"></p>
+      </div>
+      <div id="wallFlow" hidden>
+        <div class="prog"><div class="segs" id="segs"></div><span class="prog-l" id="progL"></span></div>
+        <div class="hang" id="hang"><div class="strap"></div><div class="clip"></div><div id="liveBadge" class="badge-slot"></div></div>
+      </div>
+    </div>
+    <div class="wall-bot">
+      <div class="lang" role="group" aria-label="Sprog">
+        <button type="button" data-lang="da" aria-pressed="true">DA</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <span class="wall-hint" id="wallHint" data-t="wallHint"></span>
+    </div>
+  </aside>
+
+  <section class="desk">
+    <main>
+      <section class="screen center gut" id="s-loading"><p class="lead" style="text-align:center">…</p></section>
+
+      <section class="screen center gut narrowc" id="s-error" hidden>
+        <div class="done"><h2 data-t="errTitle"></h2><p data-t="errBody"></p></div>
+      </section>
+
+      <section class="screen gut" id="s-start" hidden>
+        <div class="head">
+          <div><h2 class="q" data-t="qHost"></h2><p class="lead" data-t="leadHost"></p></div>
+          <button class="outbtn" type="button" data-go="out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg><span data-t="checkOut"></span></button>
+        </div>
+        <label class="search" id="searchWrap" hidden><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input class="osk-in" id="search" autocomplete="off" aria-label="Søg"></label>
+        <div class="hosts" id="hosts"></div>
+      </section>
+
+      <section class="screen gut narrowc" id="s-name" hidden>
+        <button class="back" type="button" data-back><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span data-t="back"></span></button>
+        <div class="chosen" id="chosen"></div>
+        <div><h2 class="q" data-t="qName"></h2><p class="lead" data-t="nameLead"></p></div>
+        <form id="nameForm" autocomplete="off" class="stack">
+          <div class="group">
+            <div class="fl" id="flName"><label for="fName"><span data-t="lName"></span> <small id="nameOpt" data-t="optional"></small></label><input class="osk-in" id="fName" maxlength="120"></div>
+            <div class="fl" id="flPhone"><label for="fPhone"><span data-t="lPhone"></span> <small id="phoneOpt" data-t="optional"></small></label><input class="osk-in mono" id="fPhone" data-num maxlength="20"></div>
+            <div class="fl" id="flCompany"><label for="fCompany"><span data-t="lCompany"></span> <small data-t="optional"></small></label><input class="osk-in" id="fCompany" maxlength="120"></div>
+          </div>
+          <div class="actions">
+            <p class="consent"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></svg><span id="consent"></span></p>
+            <button class="cta" type="submit" id="checkinBtn"><span data-t="checkIn"></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></button>
+          </div>
+        </form>
+      </section>
+
+      <section class="screen center gut narrowc" id="s-done" hidden>
+        <div class="done">
+          <div class="seal"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M13 27l9 9 17-19"/></svg></div>
+          <h2 id="doneTitle"></h2>
+          <p id="doneSub"></p>
+          <span class="chip" id="printNote" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg><span data-t="printing"></span></span>
+          <div class="inline-badge" id="inlineBadge"></div>
+          <button class="ghost" type="button" data-home data-t="finish"></button>
+          <div class="timer" id="doneTimer"><i></i></div>
+        </div>
+      </section>
+
+      <section class="screen gut narrowc" id="s-out" hidden>
+        <button class="back" type="button" data-back><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span data-t="back"></span></button>
+        <div><span class="eyebrow" data-t="checkOut"></span><h2 class="q" data-t="qOut"></h2></div>
+        <div class="rows" id="outRows"></div>
+      </section>
+
+      <section class="screen center gut narrowc" id="s-bye" hidden>
+        <div class="done">
+          <div class="seal"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M13 27l9 9 17-19"/></svg></div>
+          <h2 id="byeTitle"></h2>
+          <p data-t="byeSub"></p>
+          <div class="timer" id="byeTimer" style="--d:5s"><i></i></div>
+        </div>
+      </section>
+    </main>
+    <div class="osk gut" id="osk" hidden aria-label="Skærmtastatur"></div>
+  </section>
+</div>
+<div id="previewTag" class="preview-tag" hidden>Forhåndsvisning · intet gemmes eller sendes</div>
+<div id="printArea"></div>
+<div class="toast" id="toast" hidden></div>
+<style id="pageSize"></style>
+<script src="/static/kiosk.js"></script>
+</body>
+</html>
