@@ -22,6 +22,14 @@ Skærmtastaturet vises automatisk på touch-skærme. På en pc med mus kan du tv
 
 Tests: `python -m pytest -q`
 
+Testene bruger SQLite. I Azure kører appen på Azure SQL, og CI tester begge. Mod SQL Server lokalt (kræver Docker og [ODBC Driver 18](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)):
+
+```bash
+docker run -d --name mssql -e ACCEPT_EULA=Y -e 'MSSQL_SA_PASSWORD=Test_Passw0rd!' -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
+# opret databasen gaestereg_test (fx i VS Code's SQL-udvidelse), og kør så:
+DATABASE_URL='mssql+pyodbc://sa:Test_Passw0rd%21@localhost:1433/gaestereg_test?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes' python -m pytest -q
+```
+
 ## Sådan virker beskederne
 
 Når en gæst tjekker ind, sendes beskeder til værten efter fluebenene:
@@ -53,13 +61,15 @@ app/
   notify.py         SMS og e-mail
   media.py          upload og skalering af billeder
   static/           kiosk.html/.css/.js og admin.html/.css/.js
+  db.py             databaseforbindelse (SQLite lokalt, Azure SQL i Azure)
 tests/              pytest
+infra/              Bicep og script, der opretter et miljø i Azure
 docs/azure.md       opsætning af dev og prod i Azure
 ```
 
 ## Branches og udrulning
 
-- `main` → udrulles automatisk til **dev**
-- `production` → udrulles automatisk til **prod**
+- `main` → udrulles automatisk til **dev** (Sweden Central, gratis App Service F1 + gratis Azure SQL)
+- `production` → udrulles automatisk til **prod** (sættes op senere)
 
 Se [docs/azure.md](docs/azure.md) for opsætning af Azure og GitHub.

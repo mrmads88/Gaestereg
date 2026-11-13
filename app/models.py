@@ -1,7 +1,8 @@
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+# Unicode/UnicodeText bliver NVARCHAR på SQL Server (æøå og emoji) og VARCHAR/TEXT på SQLite.
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Unicode, UnicodeText
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -31,18 +32,18 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(120))
-    kiosk_token: Mapped[str] = mapped_column(String(40), unique=True, index=True, default=new_token)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    kiosk_token: Mapped[str] = mapped_column(Unicode(40), unique=True, index=True, default=new_token)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     # look
-    logo_path: Mapped[str] = mapped_column(String(200), default="")
-    color: Mapped[str] = mapped_column(String(7), default="#1f3a5a")
-    background_path: Mapped[str] = mapped_column(String(200), default="")
-    background_scope: Mapped[str] = mapped_column(String(10), default="wall")  # wall | full
+    logo_path: Mapped[str] = mapped_column(Unicode(200), default="")
+    color: Mapped[str] = mapped_column(Unicode(7), default="#1f3a5a")
+    background_path: Mapped[str] = mapped_column(Unicode(200), default="")
+    background_scope: Mapped[str] = mapped_column(Unicode(10), default="wall")  # wall | full
     background_dim: Mapped[int] = mapped_column(Integer, default=55)
-    welcome_text: Mapped[str] = mapped_column(String(200), default="")
+    welcome_text: Mapped[str] = mapped_column(Unicode(200), default="")
     show_photos: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # guest flow
@@ -51,18 +52,18 @@ class Tenant(Base):
     phone_required: Mapped[bool] = mapped_column(Boolean, default=True)
     ask_company: Mapped[bool] = mapped_column(Boolean, default=False)
     allow_unknown_host: Mapped[bool] = mapped_column(Boolean, default=True)
-    reception_email: Mapped[str] = mapped_column(String(200), default="")
-    reception_phone: Mapped[str] = mapped_column(String(40), default="")
+    reception_email: Mapped[str] = mapped_column(Unicode(200), default="")
+    reception_phone: Mapped[str] = mapped_column(Unicode(40), default="")
     print_badge: Mapped[bool] = mapped_column(Boolean, default=False)
-    badge_size: Mapped[str] = mapped_column(String(10), default="62x100")
+    badge_size: Mapped[str] = mapped_column(Unicode(10), default="62x100")
     idle_seconds: Mapped[int] = mapped_column(Integer, default=60)
     retention_days: Mapped[int] = mapped_column(Integer, default=30)
 
     # messages
-    sms_sender: Mapped[str] = mapped_column(String(15), default="Reception")
-    sms_template: Mapped[str] = mapped_column(Text, default=DEFAULT_SMS)
-    email_subject: Mapped[str] = mapped_column(String(200), default=DEFAULT_MAIL_SUBJECT)
-    email_template: Mapped[str] = mapped_column(Text, default=DEFAULT_MAIL_BODY)
+    sms_sender: Mapped[str] = mapped_column(Unicode(15), default="Reception")
+    sms_template: Mapped[str] = mapped_column(UnicodeText, default=DEFAULT_SMS)
+    email_subject: Mapped[str] = mapped_column(Unicode(200), default=DEFAULT_MAIL_SUBJECT)
+    email_template: Mapped[str] = mapped_column(UnicodeText, default=DEFAULT_MAIL_BODY)
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Host.sort_order"
@@ -75,11 +76,11 @@ class Host(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(120))
-    title: Mapped[str] = mapped_column(String(120), default="")
-    email: Mapped[str] = mapped_column(String(200), default="")
-    phone: Mapped[str] = mapped_column(String(40), default="")
-    photo_path: Mapped[str] = mapped_column(String(200), default="")
+    name: Mapped[str] = mapped_column(Unicode(120))
+    title: Mapped[str] = mapped_column(Unicode(120), default="")
+    email: Mapped[str] = mapped_column(Unicode(200), default="")
+    phone: Mapped[str] = mapped_column(Unicode(40), default="")
+    photo_path: Mapped[str] = mapped_column(Unicode(200), default="")
     notify_sms: Mapped[bool] = mapped_column(Boolean, default=True)
     notify_email: Mapped[bool] = mapped_column(Boolean, default=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -93,11 +94,13 @@ class Visit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
-    host_id: Mapped[int | None] = mapped_column(ForeignKey("hosts.id", ondelete="SET NULL"), nullable=True)
-    host_name: Mapped[str] = mapped_column(String(120), default="")  # snapshot, survives host deletion
-    guest_name: Mapped[str] = mapped_column(String(120), default="")
-    guest_phone: Mapped[str] = mapped_column(String(40), default="")
-    guest_company: Mapped[str] = mapped_column(String(120), default="")
+    # Ingen ondelete her og på Notification.visit_id: SQL Server tillader kun én kaskadevej pr. tabel
+    # (tenants -> visits). delete_host og purge_old rydder selv op.
+    host_id: Mapped[int | None] = mapped_column(ForeignKey("hosts.id"), nullable=True)
+    host_name: Mapped[str] = mapped_column(Unicode(120), default="")  # snapshot, survives host deletion
+    guest_name: Mapped[str] = mapped_column(Unicode(120), default="")
+    guest_phone: Mapped[str] = mapped_column(Unicode(40), default="")
+    guest_company: Mapped[str] = mapped_column(Unicode(120), default="")
     checked_in_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     checked_out_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -108,11 +111,11 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
-    visit_id: Mapped[int | None] = mapped_column(ForeignKey("visits.id", ondelete="CASCADE"), nullable=True)
-    channel: Mapped[str] = mapped_column(String(10))  # sms | email
-    recipient: Mapped[str] = mapped_column(String(200))
-    subject: Mapped[str] = mapped_column(String(200), default="")
-    body: Mapped[str] = mapped_column(Text, default="")
-    status: Mapped[str] = mapped_column(String(10), default="venter")  # venter | sendt | test | fejl
-    error: Mapped[str] = mapped_column(Text, default="")
+    visit_id: Mapped[int | None] = mapped_column(ForeignKey("visits.id"), nullable=True)
+    channel: Mapped[str] = mapped_column(Unicode(10))  # sms | email
+    recipient: Mapped[str] = mapped_column(Unicode(200))
+    subject: Mapped[str] = mapped_column(Unicode(200), default="")
+    body: Mapped[str] = mapped_column(UnicodeText, default="")
+    status: Mapped[str] = mapped_column(Unicode(10), default="venter")  # venter | sendt | test | fejl
+    error: Mapped[str] = mapped_column(UnicodeText, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
