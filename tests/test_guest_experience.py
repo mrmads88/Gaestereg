@@ -72,8 +72,10 @@ def test_group_checkin_and_terms(plat, firm):
     inside = plat.get(f"/api/kiosk/{tok}/inside").json()
     assert {"Anna", "Bo", "Carl"} <= {g["name"] for g in inside}
     # Værten får én besked med alle tre navne.
-    sms = [n for n in notes(plat, t["id"]) if n["channel"] == "sms" and "Bo" in n["body"]]
-    assert len(sms) == 1 and "Anna, Bo og Carl" in sms[0]["body"]
+    # Søg på hele navnelisten: svarlinket indeholder tilfældige tegn, så et enkelt navn som "Bo" kan optræde i det.
+    to_host = [n for n in notes(plat, t["id"]) if n["channel"] == "sms" and n["recipient"] == "20304050"]
+    assert len(to_host) == 2  # én for Anna alene (første check-ind) og én samlet for gruppen
+    assert sum("Anna, Bo og Carl" in n["body"] for n in to_host) == 1
 
 
 def test_host_reply_link_and_kiosk_polling(plat, firm):
