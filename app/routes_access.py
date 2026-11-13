@@ -12,7 +12,8 @@ from .auth import (COOKIE, MAX_AGE, Principal, access_problem, check_master_pass
 from . import ratelimit
 from .config import settings
 from .db import get_db
-from .models import Partner, Tenant, User, utcnow
+from .media import delete_media
+from .models import Partner, Room, Tenant, User, utcnow
 from .notify import send_email
 from .routes_admin import get_tenant_for
 from .schemas import (AcceptIn, ForgotIn, LoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
@@ -306,9 +307,13 @@ def create_partner(body: PartnerIn, db: Session = Depends(get_db), p: Principal 
 
 @router.patch("/partners/{pid}")
 def update_partner(pid: int, body: PartnerUpdate, db: Session = Depends(get_db),
-                   p: Principal = Depends(require_platform)):
+                   p: Principal = Depends(current)):
     partner = _partner_for(db, pid, p)
-    for k, v in body.model_dump(exclude_unset=True).items():
+    data = body.model_dump(exclude_unset=True)
+    # Partneren må selv bestemme, hvad husets lokaleskærme viser. Navn og aktiv er leverandørens.
+    if not p.is_platform and set(data) - {"meeting_privacy"}:
+        raise HTTPException(403, "Det kan kun din leverandør gøre")
+    for k, v in data.items():
         setattr(partner, k, v.strip() if isinstance(v, str) else v)
     db.commit()
     return _partner_out(db, partner)
@@ -319,6 +324,10 @@ def delete_partner(pid: int, db: Session = Depends(get_db), p: Principal = Depen
     partner = _partner_for(db, pid, p)
     if db.scalar(select(func.count()).select_from(Tenant).where(Tenant.partner_id == pid)):
         raise HTTPException(409, "Partneren har stadig firmaer. Flyt eller slet dem først.")
+    for room in db.scalars(select(Room).where(Room.partner_id == pid)).all():
+        delete_media(room.photo_path)
+        db.delete(room)  # bookinger slettes af databasen (ON DELETE CASCADE)
+    db.flush()  # lokalerne først: der er ingen relationship, så SQLAlchemy kender ikke rækkefølgen
     db.query(User).filter(User.partner_id == pid).delete()
     db.delete(partner)
     db.commit()
