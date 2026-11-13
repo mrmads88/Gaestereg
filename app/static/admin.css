@@ -305,3 +305,12 @@ kbd{font:600 .7rem var(--f-mono);border:1px solid var(--rule);border-bottom-widt
 td .ib{width:30px;height:30px}
 .delbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fde8e6;border-radius:12px;padding:10px 12px}
 .delbar b{color:var(--bad)}
+
+/* åbningstider */
+.hours{display:grid;gap:6px}
+.hours .day{display:grid;grid-template-columns:120px auto 1fr;align-items:center;gap:10px}
+.hours .day input[type=time]{border:1px solid var(--rule);border-radius:9px;padding:6px 8px;background:#fbfbfa;font-family:var(--f-body)}
+.hours .day .t{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hours .day.closed .t{opacity:.35;pointer-events:none}
+@media (max-width:520px){.hours .day{grid-template-columns:1fr auto}.hours .day .t{grid-column:1/-1}}
+.tag.pkg{background:var(--accent-soft);color:var(--accent)}

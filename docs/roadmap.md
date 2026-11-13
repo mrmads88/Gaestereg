@@ -11,15 +11,16 @@ Alt skal kunne køre gratis i dev. Prod opgraderes først, når der er en betale
 - Sletning af én gæsts data (ét besøg eller alle med samme mobilnummer) af hensyn til GDPR.
 - Billeder går gennem et lagringslag (`media.storage`), så de kan flyttes til Azure Blob Storage med én ændring.
 
-## Fase 2: Gæsteoplevelse
+## Fase 2: Gæsteoplevelse (udrullet)
 - WiFi-navn og -kode på kvitteringsskærmen og gæstekortet.
 - Knappen "Pakke/levering", der giver godsmodtager eller reception besked.
 - Åbningstider og en "Vi har lukket"-tekst uden for åbningstid.
 - Flere gæster på én gang (gruppe til samme møde).
 - Husregler, fortrolighedsaftale eller sikkerhedsinstruks, som gæsten accepterer ved check-ind.
 - Værten svarer fra et link i SMS'en ("kommer om 5 min"), og svaret vises på skærmen.
-- Påmindelse til en anden (fx receptionen), hvis værten ikke reagerer inden for X minutter. Skal ske uden at polle databasen.
-- Teams-besked i stedet for eller ud over SMS (indgående webhook pr. firma).
+- Påmindelse til receptionen, hvis værten ikke reagerer inden for X minutter (timer i hukommelsen, ingen polling).
+- Teams-besked ud over SMS (Workflows-webhook pr. firma).
+- Svarlinket gør SMS'en ca. 50 tegn længere (ofte 2 SMS'er). Kan senere forkortes med et kortere token.
 
 ## Fase 3: Forhåndsregistrering
 - Værten inviterer en gæst. Gæsten får SMS/mail med QR-kode og kode.

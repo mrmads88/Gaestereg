@@ -260,3 +260,34 @@ main{flex:1;min-height:0;position:relative}
   #printArea .badge{max-width:none;width:100%;box-shadow:none;border-radius:0}
   #printArea .b-band,#printArea .b-foot{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* Fase 2: pakker, flere gæster, husregler, WiFi, værtens svar, lukket */
+.headbtns{display:flex;gap:10px;flex-wrap:wrap}
+.extras{display:flex;flex-direction:column;gap:12px}
+.extras .group .fl{flex-direction:row;align-items:center;gap:12px}
+.extras .group .fl > div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.extras .rm{width:44px;height:44px;border-radius:50%;border:1px solid var(--rule);background:var(--card);display:grid;place-items:center;flex:none;color:var(--soft)}
+.addguest{align-self:flex-start;display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 20px;border-radius:999px;border:1.5px dashed color-mix(in oklab, var(--brand) 45%, var(--rule));background:transparent;font-weight:700;color:var(--brand-ink)}
+.terms{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--rule);border-radius:20px;padding:14px 16px 14px 18px;box-shadow:var(--shadow)}
+.tcheck{flex:1;display:flex;align-items:center;gap:14px;font-weight:600;font-size:1.05rem;cursor:pointer;min-width:0}
+.tcheck input{width:30px;height:30px;accent-color:var(--brand);flex:none}
+.ghost.sm{min-height:46px;padding:0 20px;box-shadow:none}
+.replyline{display:flex;align-items:center;gap:10px;background:var(--brand-soft);color:var(--brand-ink);border-radius:16px;padding:12px 18px;font-weight:700;font-size:1.15rem}
+.replyline.wait::before{content:"";width:12px;height:12px;border-radius:50%;background:currentColor;opacity:.6;animation:pulse 1.2s ease-in-out infinite}
+.replyline.got{background:color-mix(in oklab, var(--ok) 14%, var(--card));color:color-mix(in oklab, var(--ok) 80%, var(--ink))}
+@keyframes pulse{50%{opacity:.15}}
+@media (prefers-reduced-motion: reduce){.replyline.wait::before{animation:none}}
+.wifi{display:flex;align-items:center;gap:18px;background:var(--card);border:1px solid var(--rule);border-radius:18px;padding:12px 20px;box-shadow:var(--shadow);text-align:left}
+.wifi svg{color:var(--brand-ink);flex:none}
+.wifi small{display:block;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.wifi b{font-size:1.15rem;overflow-wrap:anywhere}
+.done .note{background:var(--brand-soft);color:var(--brand-ink);border-radius:14px;padding:12px 18px;font-weight:600;max-width:40ch}
+.seal.closed{background:color-mix(in oklab, var(--brand) 80%, var(--ink))}
+.seal.closed::after{border-color:color-mix(in oklab, var(--brand) 35%, transparent)}
+.seal.closed circle,.seal.closed path{fill:none;stroke:#fff;stroke-width:4;stroke-linecap:round;stroke-dasharray:none;animation:none!important}
+.overlay{position:fixed;inset:0;z-index:30;background:rgb(10 14 20 / .5);display:grid;place-items:center;padding:24px}
+.ov-box{background:var(--card);border-radius:26px;width:min(760px,100%);max-height:84vh;display:flex;flex-direction:column;gap:16px;padding:28px;box-shadow:0 30px 60px -20px rgb(0 0 0 / .5)}
+.ov-box h2{font-size:1.8rem}
+.ov-text{overflow-y:auto;white-space:pre-wrap;font-size:1.08rem;line-height:1.55;color:var(--ink);padding-right:6px;user-select:text}
+.ov-act{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.b-wifi{font-size:.62rem;color:var(--soft);margin-top:8px;padding-top:6px;border-top:1px dashed var(--rule);overflow-wrap:anywhere}

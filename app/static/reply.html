@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Svar din gæst</title>
+<link rel="icon" href="/static/brand/nodd-icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Hanken+Grotesk:wght@400;600;700&display=swap">
+<style>
+/* Værtens svarside. Åbnes fra SMS/mail på telefonen. --brand sættes til kundens farve. */
+:root{--brand:#12352e;--ink:#14171d;--soft:#5d6470;--paper:#f4f5f2;--card:#fff;--rule:#e2e4e0;--ok:#14955f;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.45 var(--f-body);-webkit-font-smoothing:antialiased;
+  min-height:100vh;padding:max(20px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px))}
+main{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.logo{height:56px;background:#fff;border:1px solid var(--rule);border-radius:14px;display:grid;place-items:center;padding:8px 14px}
+.logo img{max-height:38px;max-width:100%;object-fit:contain}
+.logo b{font-family:var(--f-display)}
+h1{font-family:var(--f-display);font-size:1.9rem;line-height:1.08;letter-spacing:-.02em;margin:6px 0 0;text-wrap:balance}
+.sub{color:var(--soft);margin:0}
+.btns{display:flex;flex-direction:column;gap:10px}
+button{font:700 1.08rem var(--f-body);min-height:60px;border-radius:16px;border:1px solid var(--rule);background:var(--card);color:var(--ink);cursor:pointer;padding:0 18px;text-align:left;display:flex;align-items:center;gap:12px}
+button.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.5}
+button i{font-style:normal;font-size:1.3rem;width:28px;text-align:center}
+.done{background:var(--card);border:1px solid var(--rule);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:8px}
+.done b{font-family:var(--f-display);font-size:1.3rem}
+.done .ok{width:40px;height:40px;border-radius:50%;background:#e1f4ea;color:var(--ok);display:grid;place-items:center;font-weight:800;font-size:1.3rem}
+.change{background:none;border:0;min-height:auto;padding:0;color:var(--brand);text-decoration:underline;font-weight:600;font-size:.95rem}
+.err{color:#cf3a30;font-weight:600}
+.foot{color:var(--soft);font-size:.8rem;text-align:center;margin-top:10px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="logo" id="logo"></div>
+  <div>
+    <h1 id="title">Din gæst venter</h1>
+    <p class="sub" id="sub"></p>
+  </div>
+  <div class="btns" id="btns" hidden>
+    <button class="pri" type="button" data-a="now"><i>→</i>Jeg kommer nu</button>
+    <button type="button" data-a="5"><i>5</i>Jeg kommer om 5 minutter</button>
+    <button type="button" data-a="10"><i>10</i>Jeg kommer om 10 minutter</button>
+    <button type="button" data-a="reception"><i>✕</i>Jeg kan ikke. Receptionen tager imod</button>
+  </div>
+  <div class="done" id="done" hidden>
+    <span class="ok">✓</span>
+    <b id="doneText"></b>
+    <span class="sub" id="doneSub"></span>
+    <button class="change" type="button" id="change">Skift svar</button>
+  </div>
+  <p class="err" id="err" hidden></p>
+  <p class="foot">Nodd gæsteregistrering</p>
+</main>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const token = decodeURIComponent(location.pathname.split("/").pop());
+  const api = "/api/reply/" + encodeURIComponent(token);
+  let info = null;
+  function render() {
+    document.documentElement.style.setProperty("--brand", info.color || "#12352e");
+    $("logo").innerHTML = "";
+    if (info.logo_url) { const img = new Image(); img.src = info.logo_url; img.alt = info.tenant; $("logo").appendChild(img); }
+    else { const b = document.createElement("b"); b.textContent = info.tenant; $("logo").appendChild(b); }
+    $("title").textContent = info.guests + " venter på dig";
+    $("sub").textContent = "Ankom kl. " + info.time + (info.company ? " fra " + info.company : "") + ". Vælg et svar, så kan gæsten se det på skærmen.";
+    const answered = !!info.answer;
+    $("btns").hidden = answered; $("done").hidden = !answered;
+    if (answered) {
+      $("doneText").textContent = info.answer_text;
+      $("doneSub").textContent = info.answer === "reception" ? "Receptionen har fået besked." : "Gæsten kan se dit svar på skærmen i receptionen.";
+    }
+    if (info.checked_out) { $("sub").textContent = "Gæsten er allerede tjekket ud."; $("btns").hidden = true; }
+  }
+  async function load() {
+    try {
+      const r = await fetch(api, { cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "Linket virker ikke");
+      info = d; render();
+    } catch (e) { $("title").textContent = "Linket virker ikke"; $("sub").textContent = e.message; }
+  }
+  $("btns").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    document.querySelectorAll("#btns button").forEach((x) => (x.disabled = true));
+    $("err").hidden = true;
+    try {
+      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer: b.dataset.a }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "Svaret kunne ikke sendes");
+      info = d; render();
+    } catch (err) { $("err").textContent = err.message + ". Prøv igen."; $("err").hidden = false; }
+    document.querySelectorAll("#btns button").forEach((x) => (x.disabled = false));
+  });
+  $("change").addEventListener("click", () => { $("done").hidden = true; $("btns").hidden = false; });
+  load();
+})();
+</script>
+</body>
+</html>

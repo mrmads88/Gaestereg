@@ -28,6 +28,15 @@ const T = {
     stepOf: "Trin {a} af {b}", sHost: "Vælg person", sName: "Om dig", ready: "Du er tjekket ind",
     errNet: "Der er ingen forbindelse. Prøv igen om lidt.", reception: "Receptionen",
     chooseLang: "Vælg sprog", welcomeTo: "Velkommen til {n}",
+    pkg: "Pakke", pkgQ: "Hvem er pakken til?", pkgLead: "Tryk på modtageren.", pkgAny: "Godsmodtagelsen",
+    pkgAnySub: "Hvis du ikke ved hvem", pkgFrom: "Fra hvilket firma?", pkgName: "Dit navn", pkgSend: "Giv besked",
+    pkgDone: "Tak for pakken", pkgDoneSub: "{h} har fået besked.", pkgTo: "Pakke til",
+    addGuest: "Tilføj gæst", guestN: "Gæst {n}", remove: "Fjern", accept: "Jeg har læst og accepterer {x}",
+    read: "Læs", acceptBtn: "Accepter", close: "Luk", wifi: "WiFi", wifiPw: "Kode",
+    closedTitle: "Vi har lukket", closedSub: "Kom gerne igen inden for åbningstiden.", hoursToday: "Åbent i dag",
+    closedToday: "Lukket i dag", replyWait: "Venter på svar fra {h}", reply_now: "{h} er på vej ud til dig",
+    reply_5: "{h} kommer om 5 minutter", reply_10: "{h} kommer om 10 minutter",
+    reply_reception: "Receptionen tager imod dig", guestsHi: "Velkommen, {n}", and: "og",
   },
   en: {
     wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin",
@@ -45,6 +54,15 @@ const T = {
     stepOf: "Step {a} of {b}", sHost: "Choose person", sName: "About you", ready: "You're checked in",
     errNet: "No connection. Please try again shortly.", reception: "Reception",
     chooseLang: "Choose language", welcomeTo: "Welcome to {n}",
+    pkg: "Delivery", pkgQ: "Who is the delivery for?", pkgLead: "Tap the recipient.", pkgAny: "Goods reception",
+    pkgAnySub: "If you're not sure who", pkgFrom: "Which company are you from?", pkgName: "Your name", pkgSend: "Notify",
+    pkgDone: "Thanks for the delivery", pkgDoneSub: "{h} has been notified.", pkgTo: "Delivery for",
+    addGuest: "Add guest", guestN: "Guest {n}", remove: "Remove", accept: "I have read and accept {x}",
+    read: "Read", acceptBtn: "Accept", close: "Close", wifi: "Wi-Fi", wifiPw: "Password",
+    closedTitle: "We're closed", closedSub: "Please come back during opening hours.", hoursToday: "Open today",
+    closedToday: "Closed today", replyWait: "Waiting for {h} to reply", reply_now: "{h} is on the way to meet you",
+    reply_5: "{h} will be here in 5 minutes", reply_10: "{h} will be here in 10 minutes",
+    reply_reception: "Reception will help you", guestsHi: "Welcome, {n}", and: "and",
   },
 };
 let lang = "da";
@@ -58,7 +76,23 @@ const flag = (c) => '<span class="flag">' + window.NODD_LANG(c).flag() + "</span
 function home() {
   const d = CFG && LANGS().includes(CFG.lang_default) ? CFG.lang_default : LANGS()[0];
   if (lang !== d) { lang = d; applyLang(); }
-  show(HOME());
+  show(isOpen() ? HOME() : "closed");
+}
+// Åbningstider: 7 dage (mandag først), hver [åbner, lukker] eller null. Tom liste = altid åben.
+// Forhåndsvisningen i admin ignorerer åbningstider, så man kan rette skærmen om aftenen.
+function isOpen(d) {
+  const h = CFG && CFG.opening_hours;
+  if (PREVIEW || !h || h.length !== 7) return true;
+  d = d || new Date();
+  const day = h[(d.getDay() + 6) % 7];
+  if (!day) return false;
+  const m = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  return m >= day[0] && m < day[1];
+}
+function renderClosed() {
+  $("closedText").textContent = CFG.closed_text || t("closedSub");
+  const today = CFG.opening_hours && CFG.opening_hours[(new Date().getDay() + 6) % 7];
+  $("closedHours").textContent = today ? t("hoursToday") + " " + today[0] + "–" + today[1] : t("closedToday");
 }
 
 let CFG = null, cur = "loading", visit = {}, lastAct = Date.now(), homeT, cfgSig = "";
@@ -74,7 +108,7 @@ async function loadConfig() {
     if (sig === cfgSig) return;
     cfgSig = sig; CFG = cfg;
     applyLook();
-    if (["loading", "error", "start", "lang"].includes(cur)) home();
+    if (["loading", "error", "start", "lang", "closed"].includes(cur)) home();
   } catch (e) {
     if (!CFG) { toast(t("errNet"), true); setTimeout(loadConfig, 5000); }
   }
@@ -104,7 +138,10 @@ function applyLang() {
   $("consent").textContent = t("consent").replace("{d}", CFG.retention_days);
   tick();
   if (cur === "start") renderHosts();
-  if (cur === "name") renderChosen();
+  if (cur === "closed") renderClosed();
+  if (cur === "pkg") renderPkg();
+  if (cur === "pkg2") renderPkgChosen();
+  if (cur === "name") { renderChosen(); renderExtras(); renderTerms(); }
   if (cur === "out") renderOut();
   if (["name", "done"].includes(cur)) { updateProgress(); updateBadge(); }
 }
@@ -131,6 +168,7 @@ function tick() {
 const BELL = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>';
 function pic(h) { return h.photo_url ? '<img src="' + esc(h.photo_url) + '" alt="" loading="lazy">' : '<span class="ini">' + esc(initials(h.name)) + "</span>"; }
 function renderHosts() {
+  $("pkgBtn").hidden = !CFG.delivery_enabled;
   const all = CFG.hosts;
   const withPhotos = CFG.show_photos && all.some((h) => h.photo_url);
   $("searchWrap").hidden = all.length <= 12;
@@ -174,8 +212,9 @@ function badgeHTML(g, live) {
   const logo = CFG.logo_url ? '<img src="' + esc(CFG.logo_url) + '" alt="">' : "<span>" + esc(CFG.name) + "</span>";
   return '<div class="badge"><div class="b-band"><span class="b-logo">' + logo + '</span><span class="b-kind">' + t("guest") + "</span></div>" +
     '<div class="b-body"><span class="b-name">' + name + '</span><span class="b-co">' + co + "</span>" +
-    '<div class="b-grid"><div><small>' + t("visitingL") + "</small><b>" + esc(g.host || t("reception")) + "</b></div><div><small>" + t("date") + '</small><b class="mono">' + pad(d.getDate()) + "." + pad(d.getMonth() + 1) + " · " + esc(g.time || hhmm(d)) + "</b></div></div></div>" +
-    '<div class="b-foot"><span>' + esc(CFG.name) + '</span><span class="mono">' + esc(g.no || "") + "</span></div></div>";
+    '<div class="b-grid"><div><small>' + t("visitingL") + "</small><b>" + esc(g.host || t("reception")) + "</b></div><div><small>" + t("date") + '</small><b class="mono">' + pad(d.getDate()) + "." + pad(d.getMonth() + 1) + " · " + esc(g.time || hhmm(d)) + "</b></div></div>" +
+    (CFG.wifi_name ? '<div class="b-wifi">' + t("wifi") + ": " + esc(CFG.wifi_name) + (CFG.wifi_password ? " · " + t("wifiPw") + ": " + esc(CFG.wifi_password) : "") + "</div>" : "") +
+    "</div>" + '<div class="b-foot"><span>' + esc(CFG.name) + '</span><span class="mono">' + esc(g.no || "") + "</span></div></div>";
 }
 function updateBadge() {
   const g = { host: visit.host ? visit.host.name : "", time: visit.in, no: visit.no };
@@ -189,11 +228,11 @@ let stack = [];
 function show(id, push) {
   cur = id;
   document.querySelectorAll("main .screen").forEach((s) => (s.hidden = s.id !== "s-" + id));
-  if (id === "start" || id === "lang") { stack = []; visit = {}; $("search").value = ""; }
+  if (id === "start" || id === "lang" || id === "closed") { stack = []; visit = {}; $("search").value = ""; extras = []; termsOk(false); }
   else if (push !== false && !["loading", "error"].includes(id)) stack.push(id);
   const flow = id === "name" || id === "done";
   $("wallIdle").hidden = flow; $("wallFlow").hidden = !flow;
-  $("wallHint").style.visibility = flow ? "hidden" : "visible";
+  $("wallHint").style.visibility = flow || id === "closed" ? "hidden" : "visible";
   // På sprogskærmen står flagene midt på skærmen. Så er de små i hjørnet overflødige.
   $("langSw").hidden = MODE() === "off" || id === "lang";
   if (flow) { updateProgress(); updateBadge(); }
@@ -203,6 +242,10 @@ function show(id, push) {
   if (id === "start") renderHosts();
   if (id === "name") prepName();
   if (id === "out") renderOut();
+  if (id === "pkg") renderPkg();
+  if (id === "pkg2") { renderPkgChosen(); $("pCompany").value = ""; $("pName").value = ""; }
+  if (id === "closed") renderClosed();
+  if (id !== "done") stopReplyPoll();
 }
 document.addEventListener("click", (e) => {
   const g = e.target.closest("[data-go]"); if (g) { show(g.dataset.go); return; }
@@ -211,8 +254,37 @@ document.addEventListener("click", (e) => {
 });
 
 // ---------- name step ----------
+// ---------- flere gæster ----------
+let extras = [];
+function renderExtras() {
+  $("extras").hidden = !CFG.group_checkin;
+  if (!CFG.group_checkin) return;
+  $("extraList").innerHTML = extras.length ? '<div class="group">' + extras.map((v, i) =>
+    '<div class="fl"><div><label for="xg' + i + '">' + esc(t("guestN").replace("{n}", i + 2)) + '</label><input class="osk-in" id="xg' + i + '" data-x="' + i + '" maxlength="120" value="' + esc(v) + '"></div>' +
+    '<button type="button" class="rm" data-rm="' + i + '" aria-label="' + esc(t("remove")) + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>').join("") + "</div>" : "";
+  $("addGuest").hidden = extras.length >= 9;
+}
+$("addGuest").addEventListener("click", () => { extras.push(""); renderExtras(); const el = $("xg" + (extras.length - 1)); if (el) el.focus(); });
+$("extraList").addEventListener("input", (e) => { const i = e.target.dataset.x; if (i != null) extras[+i] = e.target.value; });
+$("extraList").addEventListener("click", (e) => { const b = e.target.closest("[data-rm]"); if (!b) return; extras.splice(+b.dataset.rm, 1); renderExtras(); });
+
+// ---------- husregler ----------
+function termsOk(v) { $("termsOk").checked = !!v; }
+function renderTerms() {
+  $("termsRow").hidden = !CFG.terms_enabled;
+  $("termsLabel").textContent = t("accept").replace("{x}", CFG.terms_title || "husreglerne");
+  $("termsRead").hidden = !CFG.terms_text;
+}
+$("termsOk").addEventListener("change", validate);
+$("termsRead").addEventListener("click", () => {
+  $("termsTitle").textContent = CFG.terms_title || ""; $("termsText").textContent = CFG.terms_text || "";
+  $("termsOv").hidden = false; hideOsk();
+});
+$("termsClose").addEventListener("click", () => ($("termsOv").hidden = true));
+$("termsAccept").addEventListener("click", () => { $("termsOv").hidden = true; termsOk(true); validate(); });
+
 function prepName() {
-  renderChosen();
+  renderChosen(); renderExtras(); renderTerms();
   $("flPhone").hidden = !CFG.ask_phone;
   $("flCompany").hidden = !CFG.ask_company;
   $("nameOpt").hidden = CFG.name_required;
@@ -224,7 +296,8 @@ function digits(s) { return (s || "").replace(/\D/g, ""); }
 function validate() {
   const okName = !CFG.name_required || $("fName").value.trim().length >= 2;
   const okPhone = !CFG.ask_phone || !CFG.phone_required || digits($("fPhone").value).length >= 8;
-  $("checkinBtn").disabled = !(okName && okPhone);
+  const okTerms = !CFG.terms_enabled || $("termsOk").checked;
+  $("checkinBtn").disabled = !(okName && okPhone && okTerms);
 }
 ["fName", "fPhone", "fCompany"].forEach((id) => $(id).addEventListener("input", () => { validate(); updateBadge(); }));
 
@@ -233,24 +306,87 @@ $("nameForm").addEventListener("submit", async (e) => {
   e.preventDefault(); if ($("checkinBtn").disabled || busy) return;
   busy = true; $("checkinBtn").disabled = true;
   const body = { host_id: visit.host ? visit.host.id : null, guest_name: $("fName").value.trim(),
-    guest_phone: CFG.ask_phone ? $("fPhone").value.trim() : "", guest_company: CFG.ask_company ? $("fCompany").value.trim() : "", preview: PREVIEW };
+    guest_phone: CFG.ask_phone ? $("fPhone").value.trim() : "", guest_company: CFG.ask_company ? $("fCompany").value.trim() : "", preview: PREVIEW,
+    extra_guests: CFG.group_checkin ? extras.map((x) => x.trim()).filter(Boolean) : [], accept_terms: !!(CFG.terms_enabled && $("termsOk").checked) };
   try {
     const r = await fetch(API + "/checkin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) { toast(data.detail && typeof data.detail === "string" ? data.detail : t("errNet"), true); if (r.status === 404) loadConfig(); return; }
-    visit.name = data.guest_name; visit.company = body.guest_company; visit.no = data.badge_no; visit.in = data.time;
-    const f = first(visit.name);
-    $("doneTitle").textContent = t("hi") + (f ? ", " + f : "");
+    visit.name = data.guest_name; visit.company = body.guest_company; visit.no = data.badge_no; visit.in = data.time; visit.id = data.visit_id;
+    const guests = data.guests || [{ name: visit.name, badge_no: visit.no }];
+    const names = guests.map((x) => first(x.name)).filter(Boolean);
+    $("doneTitle").textContent = names.length > 1 ? t("guestsHi").replace("{n}", names.slice(0, -1).join(", ") + " " + t("and") + " " + names[names.length - 1]) : t("hi") + (names[0] ? ", " + names[0] : "");
     $("doneSub").textContent = visit.host ? t("notified").replace("{h}", first(visit.host.name)) : t("notifiedRec");
     $("printNote").hidden = !CFG.print_badge;
-    const g = { name: visit.name, company: visit.company, host: visit.host ? visit.host.name : "", time: visit.in, no: visit.no };
-    $("inlineBadge").innerHTML = badgeHTML(g, false);
+    $("wifiBox").hidden = !CFG.wifi_name; $("wifiName").textContent = CFG.wifi_name || ""; $("wifiPw").textContent = CFG.wifi_password || "–";
+    const badges = guests.map((x) => ({ name: x.name, company: visit.company, host: visit.host ? visit.host.name : "", time: visit.in, no: x.badge_no }));
+    $("inlineBadge").innerHTML = badgeHTML(badges[0], false);
+    // Med værtens svar slået til står kvitteringen længere, så gæsten kan nå at se svaret.
+    const waitReply = CFG.host_reply && visit.host && !PREVIEW;
+    const ms = waitReply ? 45000 : 10000;
+    $("doneTimer").style.setProperty("--d", ms / 1000 + "s");
     show("done"); restartTimer("doneTimer");
-    if (CFG.print_badge && !PREVIEW) printBadge(g);
-    clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "done") home(); }, 10000);
+    if (waitReply) startReplyPoll(); else $("replyLine").hidden = true;
+    if (CFG.print_badge && !PREVIEW) printBadge(badges);
+    clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "done") home(); }, ms);
   } catch (err) {
     toast(t("errNet"), true);
   } finally { busy = false; validate(); }
+});
+
+// ---------- værtens svar ----------
+// Spørger serveren hvert 3. sekund i op til 45 sekunder. Svaret ligger i serverens hukommelse,
+// så det vækker ikke databasen.
+let replyT = null;
+function stopReplyPoll() { clearInterval(replyT); replyT = null; }
+function startReplyPoll() {
+  stopReplyPoll();
+  const line = $("replyLine"), h = first(visit.host.name), vid = visit.id, started = Date.now();
+  line.hidden = false; line.className = "replyline wait"; line.textContent = t("replyWait").replace("{h}", h);
+  replyT = setInterval(async () => {
+    if (cur !== "done" || Date.now() - started > 45000) return stopReplyPoll();
+    try {
+      const r = await fetch(API + "/reply/" + vid, { cache: "no-store" });
+      const d = r.ok ? await r.json() : {};
+      if (d.answer) {
+        stopReplyPoll();
+        line.className = "replyline got"; line.textContent = t("reply_" + d.answer).replace("{h}", h);
+        clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "done") home(); }, 15000);
+      }
+    } catch (e) {}
+  }, 3000);
+}
+
+// ---------- pakke/levering ----------
+let pkgTo = null;
+function renderPkg() {
+  const list = CFG.hosts;
+  $("pkgHosts").innerHTML = list.map((h) => '<button class="host" type="button" data-pkg="' + h.id + '"><span class="pic">' + pic(h) + '</span><span class="tx"><b>' + esc(h.name) + "</b><span>" + esc(h.title || "") + "</span></span></button>").join("") +
+    '<button class="host any" type="button" data-pkg="any"><span class="pic">' + BELL + '</span><span class="tx"><b>' + t("pkgAny") + "</b><span>" + t("pkgAnySub") + "</span></span></button>";
+  $("pkgHosts").style.setProperty("--cols", list.length + 1 <= 6 ? 3 : 4);
+}
+function renderPkgChosen() {
+  const h = pkgTo;
+  $("pkgChosen").innerHTML = '<span class="pic">' + (h ? (h.photo_url ? '<img src="' + esc(h.photo_url) + '" alt="">' : esc(initials(h.name))) : BELL) +
+    "</span><div><small>" + t("pkgTo") + "</small><b>" + esc(h ? h.name : t("pkgAny")) + "</b></div>";
+}
+$("pkgHosts").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pkg]"); if (!b) return;
+  pkgTo = b.dataset.pkg === "any" ? null : CFG.hosts.find((h) => String(h.id) === b.dataset.pkg);
+  show("pkg2");
+});
+$("pkgForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); if (busy) return; busy = true; $("pkgSend").disabled = true;
+  try {
+    const r = await fetch(API + "/delivery", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ host_id: pkgTo ? pkgTo.id : null, courier_company: $("pCompany").value.trim(), courier_name: $("pName").value.trim(), preview: PREVIEW }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { toast(typeof d.detail === "string" ? d.detail : t("errNet"), true); return; }
+    $("pkgDoneSub").textContent = t("pkgDoneSub").replace("{h}", pkgTo ? first(pkgTo.name) : t("pkgAny"));
+    $("pkgNote").textContent = CFG.delivery_note || ""; $("pkgNote").hidden = !CFG.delivery_note;
+    show("pkgdone"); restartTimer("pkgTimer");
+    clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "pkgdone") home(); }, 8000);
+  } catch (err) { toast(t("errNet"), true); } finally { busy = false; $("pkgSend").disabled = false; }
 });
 
 // ---------- check out ----------
@@ -276,9 +412,9 @@ function restartTimer(id) { const el = $(id), i = el.firstElementChild; el.repla
 
 // ---------- print ----------
 const SIZES = { "62x100": "62mm 100mm", "54x86": "86mm 54mm", a6: "A6" };
-function printBadge(g) {
-  $("pageSize").textContent = "@media print{@page{size:" + (SIZES[CFG.badge_size] || "auto") + ";margin:0}}";
-  $("printArea").innerHTML = badgeHTML(g, false);
+function printBadge(list) {
+  $("pageSize").textContent = "@media print{@page{size:" + (SIZES[CFG.badge_size] || "auto") + ";margin:0}#printArea .badge{break-after:page}}";
+  $("printArea").innerHTML = [].concat(list).map((g) => badgeHTML(g, false)).join("");
   setTimeout(() => { try { window.print(); } catch (e) {} }, 500);
 }
 
@@ -328,10 +464,13 @@ $("osk").addEventListener("click", (e) => {
 setInterval(() => {
   tick();
   // Efter en pause: tilbage til start og standardsproget, så næste gæst ikke møder den forriges sprog.
-  const atHome = cur === HOME() && lang === (LANGS().includes(CFG && CFG.lang_default) ? CFG.lang_default : LANGS()[0]);
+  if (CFG && cur === "closed" && isOpen()) { home(); return; }
+  if (CFG && ["start", "lang"].includes(cur) && !isOpen()) { home(); return; }
+  const homeScreen = isOpen() ? HOME() : "closed";
+  const atHome = cur === homeScreen && lang === (LANGS().includes(CFG && CFG.lang_default) ? CFG.lang_default : LANGS()[0]);
   if (CFG && !["loading", "error"].includes(cur) && !atHome && Date.now() - lastAct > (CFG.idle_seconds || 60) * 1000) home();
 }, 1000);
-setInterval(() => { if (["start", "lang", "error"].includes(cur)) loadConfig(); }, 60000);
+setInterval(() => { if (["start", "lang", "error", "closed"].includes(cur)) loadConfig(); }, 60000);
 window.addEventListener("message", (e) => { if (e.origin === location.origin && e.data === "reload-config") { cfgSig = ""; loadConfig(); } });
 
 let toastT;
