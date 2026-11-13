@@ -14,6 +14,7 @@
 - `main` udrulles til Azure **dev** (NOTIFY_MODE=test).
 - `production` udrulles til Azure **prod** (NOTIFY_MODE=live). Kun via PR fra `main`.
 - Lav feature-branches fra `main`. Commit eller push aldrig direkte til `production`.
+- **Send altid Mads en mail (til hans egen Gmail via Gmail-værktøjet), når der er udrullet til dev eller prod**: hvad der er nyt, link til miljøet og hvad han skal teste. Send den først, når GitHub Actions-kørslen er grøn.
 - Workflow: `.github/workflows/deploy.yml`. Azure-opsætning: `docs/azure.md`, `infra/main.bicep` og `infra/opret-miljo.sh` (Sweden Central, gratis F1 + Azure SQL free offer til dev).
 
 ## Arkitektur
