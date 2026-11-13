@@ -63,6 +63,18 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .lang{display:flex;padding:4px;border-radius:999px;background:color-mix(in srgb, var(--wall-ink) 10%, transparent);border:1px solid color-mix(in srgb, var(--wall-ink) 18%, transparent)}
 .lang button{min-width:48px;min-height:40px;border-radius:999px;font-weight:700;font-size:.85rem;letter-spacing:.06em;color:color-mix(in srgb, var(--wall-ink) 72%, transparent)}
 .lang button[aria-pressed="true"]{background:var(--wall-ink);color:var(--wall)}
+.lang button{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 12px}
+.lang .flag{width:24px;height:16px;border-radius:3px;overflow:hidden;flex:none;box-shadow:0 0 0 1px rgb(0 0 0 / .15)}
+.flag svg{display:block;width:100%;height:100%}
+/* Sprogvalg som første skærm */
+.langpick{display:flex;flex-direction:column;gap:30px;align-items:center;text-align:center}
+.langs{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;width:100%}
+.langbtn{flex:0 1 280px;display:flex;flex-direction:column;align-items:center;gap:16px;background:var(--card);border:1px solid var(--rule);
+  border-radius:26px;padding:30px 24px 26px;box-shadow:var(--shadow);transition:transform .12s,border-color .12s}
+.langbtn:active{transform:scale(.97);border-color:var(--brand);box-shadow:0 0 0 4px var(--brand-soft)}
+.langbtn .flag{width:132px;height:88px;border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px rgb(0 0 0 / .12),0 8px 20px -10px rgb(0 0 0 / .35)}
+.langbtn b{font-family:var(--f-display);font-size:1.7rem;font-weight:650;letter-spacing:-.01em}
+.langbtn span{color:var(--soft);font-size:1.05rem;margin-top:-10px}
 .wall-hint{display:none;font-size:.9rem;opacity:.7}
 @media (min-width:900px){
   .wall{flex-direction:column;align-items:stretch;padding-block:40px 36px}

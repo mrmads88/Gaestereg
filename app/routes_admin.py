@@ -15,7 +15,7 @@ from .media import delete_media, media_url, save_image
 from .models import Host, Notification, Partner, Tenant, User, Visit, new_token, utcnow
 from .notify import build_messages, deliver
 from .schemas import (HostIn, HostUpdate, Reorder, SubscriptionIn, TenantCreate, TenantUpdate, host_admin,
-                      tenant_admin)
+                      tenant_admin, tenant_languages)
 from .timeutil import days_ago_utc, local_iso
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(current)])
@@ -75,8 +75,16 @@ def update_tenant(tid: int, body: TenantUpdate, db: Session = Depends(get_db), p
     data = body.model_dump(exclude_unset=True)
     if "active" in data and p.role == "tenant":
         raise HTTPException(403, "Kontakt din leverandør for at slå skærmen fra eller til")
+    if "languages" in data:
+        data["languages"] = ",".join(data["languages"])
     for k, v in data.items():
         setattr(t, k, v.strip() if isinstance(v, str) and k not in ("sms_template", "email_template") else v)
+    # Standardsproget skal være et af de valgte sprog.
+    langs = tenant_languages(t)
+    if t.lang_default not in langs:
+        if "lang_default" in data:
+            raise HTTPException(422, "Standardsproget skal være et af de sprog, der vises på skærmen")
+        t.lang_default = langs[0]
     db.commit()
     return _out(t, p)
 

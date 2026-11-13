@@ -38,6 +38,6 @@
 - Brug subqueries frem for lange `IN (...)`-lister. SQL Server tillader højst 2100 parametre.
 
 - Personers e-mail og mobil må aldrig med i kiosk-API'et (`schemas.host_public`). Der er en test for det.
-- Al brugervendt tekst er på dansk (kiosken har også engelsk i `kiosk.js` → `T.en`).
+- Al brugervendt tekst er på dansk. Skærmen kan vises på flere sprog: navne og flag i `app/static/langs.js`, tekster i `kiosk.js` (`T.<kode>`) og koden i `SUPPORTED_LANGS` i `schemas.py`. Et nyt sprog skal ind alle tre steder (der er en test for det). Pr. kunde: `languages`, `lang_default` og `lang_mode` (`toggle` = flag i hjørnet, `first` = sprogvalg som første skærm, `off`). Skærmen går tilbage til standardsproget efter hver gæst.
 - Billeder valideres og skaleres i `media.py`. SVG med scripts afvises, og `/media` sendes med streng CSP.
 - Kør tests og klik flowet igennem i browseren efter ændringer i kiosk eller admin.

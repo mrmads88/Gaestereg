@@ -27,6 +27,7 @@ const T = {
     guest: "GÆST", visitingL: "Besøger", date: "Dato", phName: "Dit navn", phCo: "Dit firma", space: "mellemrum",
     stepOf: "Trin {a} af {b}", sHost: "Vælg person", sName: "Om dig", ready: "Du er tjekket ind",
     errNet: "Der er ingen forbindelse. Prøv igen om lidt.", reception: "Receptionen",
+    chooseLang: "Vælg sprog", welcomeTo: "Velkommen til {n}",
   },
   en: {
     wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin",
@@ -43,10 +44,22 @@ const T = {
     guest: "VISITOR", visitingL: "Visiting", date: "Date", phName: "Your name", phCo: "Your company", space: "space",
     stepOf: "Step {a} of {b}", sHost: "Choose person", sName: "About you", ready: "You're checked in",
     errNet: "No connection. Please try again shortly.", reception: "Reception",
+    chooseLang: "Choose language", welcomeTo: "Welcome to {n}",
   },
 };
 let lang = "da";
 const t = (k) => (T[lang] || T.da)[k] || k;
+// Sprog: kundens valgte sprog, som både har tekster her og flag i langs.js.
+const LANGS = () => ((CFG && CFG.languages) || ["da"]).filter((c) => T[c] && window.NODD_LANG && window.NODD_LANG(c));
+const MODE = () => (LANGS().length < 2 ? "off" : (CFG && CFG.lang_mode) || "toggle");
+const HOME = () => (MODE() === "first" ? "lang" : "start");
+const flag = (c) => '<span class="flag">' + window.NODD_LANG(c).flag() + "</span>";
+// Tilbage til start: kundens standardsprog og den første skærm (sprogvalg eller personer).
+function home() {
+  const d = CFG && LANGS().includes(CFG.lang_default) ? CFG.lang_default : LANGS()[0];
+  if (lang !== d) { lang = d; applyLang(); }
+  show(HOME());
+}
 
 let CFG = null, cur = "loading", visit = {}, lastAct = Date.now(), homeT, cfgSig = "";
 
@@ -61,7 +74,7 @@ async function loadConfig() {
     if (sig === cfgSig) return;
     cfgSig = sig; CFG = cfg;
     applyLook();
-    if (cur === "loading" || cur === "error" || cur === "start") show("start");
+    if (["loading", "error", "start", "lang"].includes(cur)) home();
   } catch (e) {
     if (!CFG) { toast(t("errNet"), true); setTimeout(loadConfig, 5000); }
   }
@@ -83,10 +96,10 @@ function applyLook() {
 
 function applyLang() {
   document.querySelectorAll("[data-t]").forEach((el) => (el.textContent = t(el.dataset.t)));
-  document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lang === lang));
   document.documentElement.lang = lang;
   if (!CFG) return;
-  $("wWelcome").textContent = lang === "da" ? CFG.welcome_text : "Welcome to " + CFG.name;
+  renderLangs();
+  $("wWelcome").textContent = lang === "da" ? CFG.welcome_text : t("welcomeTo").replace("{n}", CFG.name);
   $("search").placeholder = t("searchP");
   $("consent").textContent = t("consent").replace("{d}", CFG.retention_days);
   tick();
@@ -95,12 +108,23 @@ function applyLang() {
   if (cur === "out") renderOut();
   if (["name", "done"].includes(cur)) { updateProgress(); updateBadge(); }
 }
-document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => { lang = b.dataset.lang; applyLang(); if (activeIn) renderOsk(); }));
+function renderLangs() {
+  const langs = LANGS(), mode = MODE();
+  $("langSw").hidden = mode === "off" || cur === "lang";
+  $("langSw").innerHTML = langs.map((c) => '<button type="button" data-lang="' + c + '" aria-pressed="' + (c === lang) + '" aria-label="' +
+    esc(window.NODD_LANG(c).native) + '">' + flag(c) + c.toUpperCase() + "</button>").join("");
+  $("langQ").textContent = langs.map((c) => T[c].chooseLang).join(" · ");
+  $("langList").innerHTML = langs.map((c) => { const L = window.NODD_LANG(c);
+    return '<button class="langbtn" type="button" data-pick="' + c + '">' + flag(c) + "<b>" + esc(L.native) + "</b><span>" + esc(L.hello) + "</span></button>"; }).join("");
+}
+$("langSw").addEventListener("click", (e) => { const b = e.target.closest("[data-lang]"); if (!b) return; lang = b.dataset.lang; applyLang(); if (activeIn) renderOsk(); });
+$("langList").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; lang = b.dataset.pick; applyLang(); show("start"); });
 
 function tick() {
   const d = new Date();
   $("wClock").textContent = hhmm(d); $("nClock").textContent = hhmm(d);
-  $("wDate").textContent = d.toLocaleDateString(lang === "da" ? "da-DK" : "en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const L = window.NODD_LANG && window.NODD_LANG(lang);
+  $("wDate").textContent = d.toLocaleDateString(L ? L.locale : "da-DK", { weekday: "long", day: "numeric", month: "long" });
 }
 
 // ---------- hosts ----------
@@ -165,11 +189,13 @@ let stack = [];
 function show(id, push) {
   cur = id;
   document.querySelectorAll("main .screen").forEach((s) => (s.hidden = s.id !== "s-" + id));
-  if (id === "start") { stack = []; visit = {}; $("search").value = ""; }
+  if (id === "start" || id === "lang") { stack = []; visit = {}; $("search").value = ""; }
   else if (push !== false && !["loading", "error"].includes(id)) stack.push(id);
   const flow = id === "name" || id === "done";
   $("wallIdle").hidden = flow; $("wallFlow").hidden = !flow;
   $("wallHint").style.visibility = flow ? "hidden" : "visible";
+  // På sprogskærmen står flagene midt på skærmen. Så er de små i hjørnet overflødige.
+  $("langSw").hidden = MODE() === "off" || id === "lang";
   if (flow) { updateProgress(); updateBadge(); }
   $("hang").classList.toggle("issued", id === "done");
   hideOsk();
@@ -181,7 +207,7 @@ function show(id, push) {
 document.addEventListener("click", (e) => {
   const g = e.target.closest("[data-go]"); if (g) { show(g.dataset.go); return; }
   if (e.target.closest("[data-back]")) { stack.pop(); const to = stack.pop(); show(to || "start"); return; }
-  if (e.target.closest("[data-home]")) show("start");
+  if (e.target.closest("[data-home]")) home();
 });
 
 // ---------- name step ----------
@@ -221,7 +247,7 @@ $("nameForm").addEventListener("submit", async (e) => {
     $("inlineBadge").innerHTML = badgeHTML(g, false);
     show("done"); restartTimer("doneTimer");
     if (CFG.print_badge && !PREVIEW) printBadge(g);
-    clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "done") show("start"); }, 10000);
+    clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "done") home(); }, 10000);
   } catch (err) {
     toast(t("errNet"), true);
   } finally { busy = false; validate(); }
@@ -243,7 +269,7 @@ $("outRows").addEventListener("click", async (e) => {
   }
   $("byeTitle").textContent = t("bye") + ", " + first(b.dataset.name);
   show("bye"); restartTimer("byeTimer");
-  clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "bye") show("start"); }, 5000);
+  clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "bye") home(); }, 5000);
 });
 
 function restartTimer(id) { const el = $(id), i = el.firstElementChild; el.replaceChild(i.cloneNode(), i); }
@@ -301,9 +327,11 @@ $("osk").addEventListener("click", (e) => {
 ["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, () => (lastAct = Date.now()), true));
 setInterval(() => {
   tick();
-  if (CFG && !["start", "loading", "error"].includes(cur) && Date.now() - lastAct > (CFG.idle_seconds || 60) * 1000) show("start");
+  // Efter en pause: tilbage til start og standardsproget, så næste gæst ikke møder den forriges sprog.
+  const atHome = cur === HOME() && lang === (LANGS().includes(CFG && CFG.lang_default) ? CFG.lang_default : LANGS()[0]);
+  if (CFG && !["loading", "error"].includes(cur) && !atHome && Date.now() - lastAct > (CFG.idle_seconds || 60) * 1000) home();
 }, 1000);
-setInterval(() => { if (cur === "start" || cur === "error") loadConfig(); }, 60000);
+setInterval(() => { if (["start", "lang", "error"].includes(cur)) loadConfig(); }, 60000);
 window.addEventListener("message", (e) => { if (e.origin === location.origin && e.data === "reload-config") { cfgSig = ""; loadConfig(); } });
 
 let toastT;

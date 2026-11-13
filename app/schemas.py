@@ -10,6 +10,10 @@ from .timeutil import local_iso
 
 HEX = r"^#[0-9a-fA-F]{6}$"
 
+# Sprog, skærmen kan vises på. Skal passe med app/static/langs.js (flag og navne) og T i kiosk.js (tekster).
+# Nyt sprog: tilføj koden her, en post i langs.js og teksterne i kiosk.js. tests/test_api.py tjekker, at de passer.
+SUPPORTED_LANGS = ["da", "en"]
+
 
 class TenantCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
@@ -34,6 +38,25 @@ class TenantUpdate(BaseModel):
     print_badge: bool | None = None
     badge_size: Literal["62x100", "54x86", "a6"] | None = None
     idle_seconds: int | None = Field(None, ge=15, le=600)
+    languages: list[str] | None = Field(None, min_length=1, max_length=len(SUPPORTED_LANGS))
+    lang_default: str | None = None
+    lang_mode: Literal["toggle", "first", "off"] | None = None
+
+    @field_validator("languages")
+    @classmethod
+    def _langs(cls, v):
+        if v is None:
+            return v
+        if any(x not in SUPPORTED_LANGS for x in v) or len(set(v)) != len(v):
+            raise ValueError("Ukendt eller gentaget sprog")
+        return v
+
+    @field_validator("lang_default")
+    @classmethod
+    def _lang_default(cls, v):
+        if v is not None and v not in SUPPORTED_LANGS:
+            raise ValueError("Ukendt sprog")
+        return v
     retention_days: int | None = Field(None, ge=1, le=365)
     sms_sender: str | None = Field(None, max_length=11)
     sms_template: str | None = Field(None, max_length=640)
@@ -156,8 +179,14 @@ TENANT_FIELDS = [
     "id", "name", "kiosk_token", "active", "color", "background_scope", "background_dim", "welcome_text",
     "show_photos", "name_required", "ask_phone", "phone_required", "ask_company", "allow_unknown_host",
     "reception_email", "reception_phone", "print_badge", "badge_size", "idle_seconds", "retention_days",
+    "lang_default", "lang_mode",
     "sms_sender", "sms_template", "email_subject", "email_template",
 ]
+
+
+def tenant_languages(t: Tenant) -> list[str]:
+    langs = [x for x in (t.languages or "").split(",") if x in SUPPORTED_LANGS]
+    return langs or [SUPPORTED_LANGS[0]]
 
 
 SUBSCRIPTION_FIELDS = ["sub_yearly_price", "self_service", "self_service_monthly_price", "sub_note"]
@@ -165,6 +194,7 @@ SUBSCRIPTION_FIELDS = ["sub_yearly_price", "self_service", "self_service_monthly
 
 def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False) -> dict:
     d = {f: getattr(t, f) for f in TENANT_FIELDS}
+    d["languages"] = tenant_languages(t)
     d["partner_id"] = t.partner_id
     d["partner_name"] = t.partner.name if t.partner else ""
     d["self_service"] = t.self_service  # så kunde- og partner-admins kan se, om kunde-login virker
@@ -191,6 +221,7 @@ def tenant_public(t: Tenant) -> dict:
         "phone_required": t.phone_required, "ask_company": t.ask_company,
         "allow_unknown_host": t.allow_unknown_host, "print_badge": t.print_badge, "badge_size": t.badge_size,
         "idle_seconds": t.idle_seconds, "retention_days": t.retention_days,
+        "languages": tenant_languages(t), "lang_default": t.lang_default, "lang_mode": t.lang_mode,
         "hosts": [host_public(h, t.show_photos) for h in t.hosts if h.active],
     }
 
