@@ -84,17 +84,28 @@ PROFIL="$(mktemp)"
 trap 'rm -f "$PROFIL"' EXIT
 az webapp deployment list-publishing-profiles -g "$RG" -n "$APP" --xml > "$PROFIL"
 
+forbind_github() {
+  # Hvert trin skal lykkes. `set -e` virker ikke inde i en funktion, der kaldes fra `if`.
+  local branch
+  branch=$([ "$MILJO" = prod ] && echo production || echo main)
+  gh api -X PUT "repos/$GITHUB_REPO/environments/$GH_ENV" --silent \
+     -F "deployment_branch_policy[protected_branches]=false" \
+     -F "deployment_branch_policy[custom_branch_policies]=true" || return 1
+  gh api -X POST "repos/$GITHUB_REPO/environments/$GH_ENV/deployment-branch-policies" --silent \
+     -f name="$branch" -f type=branch 2>/dev/null || true   # findes allerede
+  gh secret set AZURE_WEBAPP_PUBLISH_PROFILE --repo "$GITHUB_REPO" --env "$GH_ENV" < "$PROFIL" || return 1
+  gh variable set AZURE_WEBAPP_NAME --repo "$GITHUB_REPO" --env "$GH_ENV" --body "$APP" || return 1
+}
+
 GITHUB_OK=false
+GITHUB_FEJL="GitHub CLI er ikke logget ind."
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   echo "Forbinder GitHub-miljøet '$GH_ENV' i $GITHUB_REPO ..."
-  BRANCH=$([ "$MILJO" = prod ] && echo production || echo main)
-  gh api -X PUT "repos/$GITHUB_REPO/environments/$GH_ENV" --silent \
-     -F "deployment_branch_policy[protected_branches]=false" -F "deployment_branch_policy[custom_branch_policies]=true"
-  gh api -X POST "repos/$GITHUB_REPO/environments/$GH_ENV/deployment-branch-policies" --silent \
-     -f name="$BRANCH" -f type=branch 2>/dev/null || true   # findes allerede
-  gh secret set AZURE_WEBAPP_PUBLISH_PROFILE --repo "$GITHUB_REPO" --env "$GH_ENV" < "$PROFIL"
-  gh variable set AZURE_WEBAPP_NAME --repo "$GITHUB_REPO" --env "$GH_ENV" --body "$APP"
-  GITHUB_OK=true
+  if forbind_github; then
+    GITHUB_OK=true
+  else
+    GITHUB_FEJL="GitHub afviste det. Log ind med 'gh auth login --web' (ikke en token) og kør scriptet igen."
+  fi
 fi
 
 cat <<EOF
@@ -106,16 +117,17 @@ Færdig.
   Demo-skærm:   $URL/k/demo      (når koden er udrullet)
 EOF
 if $NY_ADMIN; then
-  echo "  Admin-kode:   $ADMIN_PASSWORD   <- gem den i din adgangskodemanager nu"
+  echo "  Admin-kode:   $ADMIN_PASSWORD   <- ny. Gem den i din adgangskodemanager nu"
 else
-  echo "  Admin-kode:   uændret (se den under App Service > Environment variables > ADMIN_PASSWORD)"
+  echo "  Admin-kode:   $ADMIN_PASSWORD   (uændret)"
 fi
 echo
 if $GITHUB_OK; then
   echo "GitHub-miljøet '$GH_ENV' er sat op. Udrul ved at pushe til $([ "$MILJO" = prod ] && echo production || echo main),"
   echo "eller kør workflowet 'Test og udrul' igen under Actions."
 else
-  echo "GitHub CLI er ikke logget ind, så GitHub skal sættes op i hånden (se docs/azure.md, trin 3):"
+  echo "$GITHUB_FEJL"
+  echo "Eller sæt GitHub op i hånden (se docs/azure.md, trin 3):"
   echo "  Miljø '$GH_ENV' > secret AZURE_WEBAPP_PUBLISH_PROFILE = indholdet herunder"
   echo "  Miljø '$GH_ENV' > variable AZURE_WEBAPP_NAME = $APP"
   echo
