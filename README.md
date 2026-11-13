@@ -7,6 +7,7 @@ Gæsteregistrering til receptioner.
 Touch-skærm til receptionen, som du kan sætte op og brande pr. kunde.
 
 - **Skærmen** (`/k/<kode>`): kundens logo og farver, personer med billede, navn og titel. Gæsten trykker på den, de skal besøge, skriver navn og mobilnummer og tjekker ind. Værten får besked på SMS, e-mail eller begge.
+- **Sprog**: dansk og engelsk med flag. Pr. kunde vælger du sprogene, standardsproget, og om gæsten møder et sprogvalg som første skærm, små flag i hjørnet eller slet intet sprogvalg. Nye sprog tilføjes i `app/static/langs.js` og `kiosk.js`.
 - **Admin** (`/admin`): opret kunder, upload logo og baggrund, tilføj personer med e-mail, mobil og flueben for SMS/e-mail, ret beskedteksterne og se besøg og sendte beskeder. Med live forhåndsvisning af skærmen.
 
 ## Kør lokalt

@@ -210,6 +210,15 @@
             </div>
           </div>
           <div class="card">
+            <h3>Sprog</h3>
+            <div class="fld"><span>Sprog på skærmen</span><div class="langchecks" id="langChecks"></div></div>
+            <div class="fld" id="langDefaultFld"><span>Standardsprog</span><div class="seg" data-seg="lang_default" id="langDefault"></div>
+              <small class="hint">Skærmen starter på dette sprog og går tilbage til det efter hver gæst.</small></div>
+            <div class="fld" id="langModeFld"><span>Sådan vælger gæsten sprog</span>
+              <div class="seg" data-seg="lang_mode"><button type="button" data-v="toggle">Flag i hjørnet</button><button type="button" data-v="first">Første skærm</button><button type="button" data-v="off">Skjult</button></div>
+              <small class="hint" id="langModeHint"></small></div>
+          </div>
+          <div class="card">
             <h3>"Ved ikke hvem"</h3>
             <label class="switch"><input type="checkbox" data-f="allow_unknown_host"><i></i><em>Vis knappen "Ved ikke hvem" på skærmen</em></label>
             <p class="muted">Gæster, der trykker på den, sendes til receptionen. Beskeden går til både e-mail og mobil, hvis de er udfyldt.</p>
@@ -311,6 +320,7 @@
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<script src="/static/langs.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

@@ -28,10 +28,7 @@
       </div>
     </div>
     <div class="wall-bot">
-      <div class="lang" role="group" aria-label="Sprog">
-        <button type="button" data-lang="da" aria-pressed="true">DA</button>
-        <button type="button" data-lang="en" aria-pressed="false">EN</button>
-      </div>
+      <div class="lang" id="langSw" role="group" aria-label="Sprog / Language" hidden></div>
       <span class="wall-hint" id="wallHint" data-t="wallHint"></span>
     </div>
   </aside>
@@ -42,6 +39,10 @@
 
       <section class="screen center gut narrowc" id="s-error" hidden>
         <div class="done"><h2 data-t="errTitle"></h2><p data-t="errBody"></p></div>
+      </section>
+
+      <section class="screen center gut" id="s-lang" hidden>
+        <div class="langpick"><h2 class="q" id="langQ"></h2><div class="langs" id="langList"></div></div>
       </section>
 
       <section class="screen gut" id="s-start" hidden>
@@ -104,6 +105,7 @@
 <div id="printArea"></div>
 <div class="toast" id="toast" hidden></div>
 <style id="pageSize"></style>
+<script src="/static/langs.js"></script>
 <script src="/static/kiosk.js"></script>
 </body>
 </html>

@@ -212,3 +212,48 @@ def test_live_mode_records_failure_when_not_configured(monkeypatch):
     n = Notification(channel="sms", recipient="20304050", body="x")
     notify.deliver(n, Tenant(name="X", sms_sender="X"))
     assert n.status == "fejl" and "GATEWAYAPI_TOKEN" in n.error
+
+
+def test_kiosk_language_settings(admin):
+    t = admin.post("/api/admin/tenants", json={"name": "Sprog A/S"}).json()
+    cfg = admin.get(f"/api/kiosk/{t['kiosk_token']}/config").json()
+    assert cfg["lang_default"] == "da" and cfg["lang_mode"] == "toggle"
+    r = admin.patch(f"/api/admin/tenants/{t['id']}", json={"lang_default": "en", "lang_mode": "first"})
+    assert r.status_code == 200 and r.json()["lang_mode"] == "first"
+    cfg = admin.get(f"/api/kiosk/{t['kiosk_token']}/config").json()
+    assert cfg["lang_default"] == "en" and cfg["lang_mode"] == "first"
+    assert admin.patch(f"/api/admin/tenants/{t['id']}", json={"lang_default": "de"}).status_code == 422
+    assert admin.patch(f"/api/admin/tenants/{t['id']}", json={"lang_mode": "stor"}).status_code == 422
+    admin.delete(f"/api/admin/tenants/{t['id']}")
+
+
+
+def test_languages_are_defined_everywhere():
+    """Et sprog skal findes i SUPPORTED_LANGS, langs.js (flag) og kiosk.js (tekster)."""
+    import re
+    from pathlib import Path
+
+    from app.schemas import SUPPORTED_LANGS
+    static = Path(__file__).resolve().parent.parent / "app" / "static"
+    flags = re.findall(r'code: "(\w+)"', (static / "langs.js").read_text(encoding="utf-8"))
+    kiosk = (static / "kiosk.js").read_text(encoding="utf-8")
+    texts = re.findall(r"^  (\w\w): \{$", kiosk, re.M)
+    assert flags == SUPPORTED_LANGS and texts == SUPPORTED_LANGS
+    # Alle sprog har de samme tekstnøgler som dansk.
+    blocks = re.split(r"^  \w\w: \{$", kiosk.split("const T = {", 1)[1].split("\n};", 1)[0], flags=re.M)[1:]
+    keys = [set(re.findall(r"(\w+): \"", b)) for b in blocks]
+    assert all(k == keys[0] for k in keys)
+
+
+def test_language_list_and_default_stay_consistent(admin):
+    t = admin.post("/api/admin/tenants", json={"name": "Sprogliste ApS"}).json()
+    r = admin.patch(f"/api/admin/tenants/{t['id']}", json={"languages": ["en"]}).json()
+    assert r["languages"] == ["en"] and r["lang_default"] == "en"  # standard følger med
+    assert admin.patch(f"/api/admin/tenants/{t['id']}", json={"lang_default": "da"}).status_code == 422
+    assert admin.patch(f"/api/admin/tenants/{t['id']}", json={"languages": []}).status_code == 422
+    assert admin.patch(f"/api/admin/tenants/{t['id']}", json={"languages": ["en", "en"]}).status_code == 422
+    assert admin.patch(f"/api/admin/tenants/{t['id']}", json={"languages": ["xx"]}).status_code == 422
+    r = admin.patch(f"/api/admin/tenants/{t['id']}", json={"languages": ["da", "en"], "lang_default": "da"}).json()
+    assert r["languages"] == ["da", "en"] and r["lang_default"] == "da"
+    assert admin.get(f"/api/kiosk/{t['kiosk_token']}/config").json()["languages"] == ["da", "en"]
+    admin.delete(f"/api/admin/tenants/{t['id']}")

@@ -237,7 +237,29 @@ function renderHead() {
   const url = location.origin + T.kiosk_url;
   $("kioskUrl").textContent = url; $("openKiosk").href = T.kiosk_url;
 }
+// ---------- sprog på skærmen ----------
+const LANG_HINTS = {
+  toggle: "Små flag i hjørnet af skærmen. Gæsten kan skifte sprog undervejs.",
+  first: "Gæsten møder først store flag og vælger sprog, før de vælger person.",
+  off: "Skærmen vises kun på standardsproget.",
+};
+const flagOf = (c) => { const L = window.NODD_LANG && window.NODD_LANG(c); return L ? '<span class="flag">' + L.flag() + "</span>" : ""; };
+function renderLangs() {
+  const on = T.languages || ["da"];
+  $("langChecks").innerHTML = (window.NODD_LANGS || []).map((L) => '<label>' + '<input type="checkbox" value="' + L.code + '"' +
+    (on.includes(L.code) ? " checked" : "") + (on.length === 1 && on.includes(L.code) ? " disabled" : "") + ">" + flagOf(L.code) + esc(L.name) + "</label>").join("");
+  $("langDefault").innerHTML = on.map((c) => '<button type="button" data-v="' + c + '">' + flagOf(c) + esc((window.NODD_LANG(c) || {}).name || c) + "</button>").join("");
+  const single = on.length < 2;
+  $("langModeFld").hidden = single; $("langDefaultFld").hidden = single;
+  $("langModeHint").textContent = LANG_HINTS[T.lang_mode] || "";
+}
+$("langChecks").addEventListener("change", () => {
+  const langs = [...$("langChecks").querySelectorAll("input:checked")].map((x) => x.value);
+  if (langs.length) patchTenant({ languages: langs });
+});
+
 function bindFields() {
+  renderLangs();
   document.querySelectorAll("#editor [data-f]").forEach((el) => {
     const v = T[el.dataset.f];
     if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v;

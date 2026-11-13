@@ -71,6 +71,11 @@ class Tenant(Base):
     print_badge: Mapped[bool] = mapped_column(Boolean, default=False)
     badge_size: Mapped[str] = mapped_column(Unicode(10), default="62x100")
     idle_seconds: Mapped[int] = mapped_column(Integer, default=60)
+    # Sprog på skærmen. languages: kommasepareret, fx "da,en" (se SUPPORTED_LANGS i schemas.py og static/langs.js).
+    # lang_mode: toggle = lille sprogknap, first = gæsten vælger sprog først, off = kun standardsproget.
+    languages: Mapped[str] = mapped_column(Unicode(60), default="da,en", server_default=text("'da,en'"))
+    lang_default: Mapped[str] = mapped_column(Unicode(5), default="da", server_default=text("'da'"))
+    lang_mode: Mapped[str] = mapped_column(Unicode(10), default="toggle", server_default=text("'toggle'"))
     retention_days: Mapped[int] = mapped_column(Integer, default=30)
 
     # messages
