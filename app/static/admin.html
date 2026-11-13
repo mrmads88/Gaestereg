@@ -169,8 +169,10 @@
           <div class="statusbox" id="msgStatus"></div>
           <div class="card">
             <h3>SMS</h3>
-            <label class="fld"><span>Afsendernavn (maks 11 tegn, bogstaver og tal)</span><input data-f="sms_sender" maxlength="11"></label>
-            <label class="fld"><span>Tekst <b class="mono" id="smsCount"></b></span><textarea data-f="sms_template" rows="3" maxlength="640"></textarea></label>
+            <label class="fld"><span>Afsender</span><input data-f="sms_sender" maxlength="11" placeholder="Fx Reception">
+              <small class="hint">Vises som afsender på værtens telefon i stedet for et nummer. Brug fx firmanavnet. SMS tillader højst 11 tegn (bogstaver, tal og mellemrum). Undgå æ, ø og å her. Nogle telefoner viser dem forkert.</small></label>
+            <label class="fld"><span>Besked <b class="mono" id="smsCount"></b></span><textarea data-f="sms_template" rows="3" maxlength="640"></textarea>
+              <small class="hint">Én SMS er 160 tegn. Længere beskeder sendes som flere SMS'er, der sættes sammen på telefonen (højst 640 tegn).</small></label>
           </div>
           <div class="card">
             <h3>E-mail</h3>
