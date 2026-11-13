@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import date, datetime, timezone
 from typing import Literal
@@ -39,6 +40,21 @@ class TenantUpdate(BaseModel):
     print_badge: bool | None = None
     badge_size: Literal["62x100", "54x86", "a6"] | None = None
     idle_seconds: int | None = Field(None, ge=15, le=600)
+    wifi_name: str | None = Field(None, max_length=64)
+    wifi_password: str | None = Field(None, max_length=64)
+    delivery_enabled: bool | None = None
+    delivery_email: str | None = Field(None, max_length=200)
+    delivery_phone: str | None = Field(None, max_length=40)
+    delivery_note: str | None = Field(None, max_length=300)
+    opening_hours: list[list[str] | None] | None = None  # 7 dage, mandag først. [] = altid åben
+    closed_text: str | None = Field(None, max_length=300)
+    group_checkin: bool | None = None
+    terms_enabled: bool | None = None
+    terms_title: str | None = Field(None, max_length=120)
+    terms_text: str | None = Field(None, max_length=8000)
+    host_reply: bool | None = None
+    escalate_minutes: int | None = Field(None, ge=0, le=120)
+    teams_webhook: str | None = Field(None, max_length=1000)
     languages: list[str] | None = Field(None, min_length=1, max_length=len(SUPPORTED_LANGS))
     lang_default: str | None = None
     lang_mode: Literal["toggle", "first", "off"] | None = None
@@ -50,6 +66,27 @@ class TenantUpdate(BaseModel):
             return v
         if any(x not in SUPPORTED_LANGS for x in v) or len(set(v)) != len(v):
             raise ValueError("Ukendt eller gentaget sprog")
+        return v
+
+    @field_validator("opening_hours")
+    @classmethod
+    def _hours(cls, v):
+        if v is None or v == []:
+            return v
+        if len(v) != 7:
+            raise ValueError("Åbningstider skal have 7 dage")
+        for day in v:
+            if day is None:
+                continue
+            if len(day) != 2 or not all(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", x) for x in day) or day[0] >= day[1]:
+                raise ValueError("Skriv åbningstider som 08:00 til 16:00, hvor åbning er før lukning")
+        return v
+
+    @field_validator("teams_webhook")
+    @classmethod
+    def _teams(cls, v):
+        if v and not v.startswith("https://"):
+            raise ValueError("Teams-adressen skal starte med https://")
         return v
 
     @field_validator("lang_default")
@@ -101,7 +138,28 @@ class CheckinIn(BaseModel):
     guest_name: str = Field("", max_length=120)
     guest_phone: str = Field("", max_length=40)
     guest_company: str = Field("", max_length=120)
+    extra_guests: list[str] = Field(default_factory=list, max_length=9)  # flere gæster til samme møde
+    accept_terms: bool = False
     preview: bool = False
+
+    @field_validator("extra_guests")
+    @classmethod
+    def _extra(cls, v):
+        v = [" ".join(x.split()) for x in v]
+        if any(len(x) > 120 for x in v):
+            raise ValueError("Et navn er for langt")
+        return [x for x in v if x]
+
+
+class DeliveryIn(BaseModel):
+    host_id: int | None = None  # None = godsmodtagelsen
+    courier_company: str = Field("", max_length=120)
+    courier_name: str = Field("", max_length=120)
+    preview: bool = False
+
+
+class ReplyIn(BaseModel):
+    answer: Literal["now", "5", "10", "reception"]
 
 
 class LoginIn(BaseModel):
@@ -180,9 +238,19 @@ TENANT_FIELDS = [
     "id", "name", "kiosk_token", "active", "color", "background_scope", "background_dim", "welcome_text",
     "show_photos", "name_required", "ask_phone", "phone_required", "ask_company", "allow_unknown_host",
     "reception_email", "reception_phone", "print_badge", "badge_size", "idle_seconds", "retention_days",
-    "lang_default", "lang_mode",
+    "lang_default", "lang_mode", "wifi_name", "wifi_password", "delivery_enabled", "delivery_email", "delivery_phone",
+    "delivery_note", "closed_text", "group_checkin", "terms_enabled", "terms_title", "terms_text", "host_reply",
+    "escalate_minutes", "teams_webhook",
     "sms_sender", "sms_template", "email_subject", "email_template",
 ]
+
+
+def opening_hours(t: Tenant) -> list:
+    try:
+        v = json.loads(t.opening_hours) if t.opening_hours else []
+        return v if isinstance(v, list) and len(v) in (0, 7) else []
+    except ValueError:
+        return []
 
 
 def tenant_languages(t: Tenant) -> list[str]:
@@ -196,6 +264,7 @@ SUBSCRIPTION_FIELDS = ["sub_yearly_price", "self_service", "self_service_monthly
 def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False, host_count: int | None = None) -> dict:
     d = {f: getattr(t, f) for f in TENANT_FIELDS}
     d["languages"] = tenant_languages(t)
+    d["opening_hours"] = opening_hours(t)
     d["partner_id"] = t.partner_id
     d["partner_name"] = t.partner.name if t.partner else ""
     d["self_service"] = t.self_service  # så kunde- og partner-admins kan se, om kunde-login virker
@@ -227,6 +296,11 @@ def tenant_public(t: Tenant) -> dict:
         "allow_unknown_host": t.allow_unknown_host, "print_badge": t.print_badge, "badge_size": t.badge_size,
         "idle_seconds": t.idle_seconds, "retention_days": t.retention_days,
         "languages": tenant_languages(t), "lang_default": t.lang_default, "lang_mode": t.lang_mode,
+        # Kun det, skærmen skal vise. Godsmodtagelsens kontakt og Teams-adressen bliver på serveren.
+        "wifi_name": t.wifi_name, "wifi_password": t.wifi_password, "delivery_enabled": t.delivery_enabled,
+        "delivery_note": t.delivery_note, "opening_hours": opening_hours(t), "closed_text": t.closed_text,
+        "group_checkin": t.group_checkin, "terms_enabled": t.terms_enabled, "terms_title": t.terms_title,
+        "terms_text": t.terms_text, "host_reply": t.host_reply,
         "hosts": [host_public(h, t.show_photos) for h in t.hosts if h.active],
     }
 

@@ -208,6 +208,41 @@
               <label class="switch"><input type="checkbox" data-f="ask_phone"><i></i><em>Spørg om mobilnummer</em></label>
               <label class="switch sub"><input type="checkbox" data-f="phone_required"><i></i><em>Mobilnummer er påkrævet</em></label>
               <label class="switch"><input type="checkbox" data-f="ask_company"><i></i><em>Spørg om firma</em></label>
+              <label class="switch"><input type="checkbox" data-f="group_checkin"><i></i><em>Flere gæster kan tjekke ind på én gang (op til 10)</em></label>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Husregler eller fortrolighedsaftale</h3>
+            <label class="switch"><input type="checkbox" data-f="terms_enabled"><i></i><em>Gæsten skal acceptere, før de kan tjekke ind</em></label>
+            <div class="g2">
+              <label class="fld"><span>Navn</span><input data-f="terms_title" maxlength="120" placeholder="Fx husreglerne eller fortrolighedsaftalen"></label>
+              <div></div>
+            </div>
+            <label class="fld"><span>Tekst</span><textarea data-f="terms_text" rows="6" maxlength="8000" placeholder="Fx: Bær gæstekortet synligt. Følg altid din vært. Fotografering er ikke tilladt."></textarea>
+              <small class="hint">Gæsten kan læse teksten på skærmen. Accepten gemmes ved besøget.</small></label>
+          </div>
+          <div class="card">
+            <h3>Pakker og levering</h3>
+            <label class="switch"><input type="checkbox" data-f="delivery_enabled"><i></i><em>Vis knappen "Pakke" på skærmen</em></label>
+            <p class="muted small">Buddet vælger modtageren, som får besked på SMS eller e-mail. Vælger buddet "Godsmodtagelsen", går beskeden hertil. Står der intet, går den til receptionen.</p>
+            <div class="g2">
+              <label class="fld"><span>Godsmodtagelsens e-mail</span><input data-f="delivery_email" type="email" maxlength="200"></label>
+              <label class="fld"><span>Godsmodtagelsens mobil</span><input data-f="delivery_phone" type="tel" maxlength="40"></label>
+            </div>
+            <label class="fld"><span>Besked til buddet</span><input data-f="delivery_note" maxlength="300" placeholder="Fx: Læg pakken på hylden til venstre for døren"></label>
+          </div>
+          <div class="card">
+            <h3>Åbningstider</h3>
+            <label class="switch"><input type="checkbox" id="hoursOn"><i></i><em>Vis "Vi har lukket" uden for åbningstid</em></label>
+            <div class="hours" id="hoursGrid"></div>
+            <label class="fld" id="closedFld"><span>Tekst når der er lukket</span><input data-f="closed_text" maxlength="300" placeholder="Fx: Ring på 70 70 70 70, så kommer vi ud til dig"></label>
+          </div>
+          <div class="card">
+            <h3>WiFi til gæster</h3>
+            <p class="muted small">Vises på kvitteringsskærmen og på gæstekortet. Lad feltet stå tomt, hvis det ikke skal vises.</p>
+            <div class="g2">
+              <label class="fld"><span>Netværk</span><input data-f="wifi_name" maxlength="64" placeholder="Fx Gæst"></label>
+              <label class="fld"><span>Kode</span><input data-f="wifi_password" maxlength="64"></label>
             </div>
           </div>
           <div class="card">
@@ -257,6 +292,18 @@
             <h3>E-mail</h3>
             <label class="fld"><span>Emne</span><input data-f="email_subject" maxlength="200"></label>
             <label class="fld"><span>Tekst</span><textarea data-f="email_template" rows="8" maxlength="4000"></textarea></label>
+          </div>
+          <div class="card">
+            <h3>Værtens svar og påmindelse</h3>
+            <label class="switch"><input type="checkbox" data-f="host_reply"><i></i><em>Send et svarlink med beskeden</em></label>
+            <p class="muted small">Værten trykker på linket og svarer "Jeg kommer nu", "om 5 min", "om 10 min" eller "Receptionen tager imod". Gæsten ser svaret på skærmen. Linket gør SMS'en ca. 50 tegn længere, så den ofte fylder 2 SMS'er.</p>
+            <label class="fld"><span>Påmind receptionen, hvis værten ikke har svaret efter (minutter)</span><input type="number" min="0" max="120" data-f="escalate_minutes">
+              <small class="hint">0 = ingen påmindelse. Påmindelsen går til receptionens mobil og e-mail (under Gæsteflow).</small></label>
+          </div>
+          <div class="card">
+            <h3>Teams</h3>
+            <label class="fld"><span>Webhook-adresse til en Teams-kanal</span><input data-f="teams_webhook" type="url" maxlength="1000" placeholder="https://…">
+              <small class="hint">I Teams: højreklik på kanalen › Workflows › "Send webhook alerts to a channel", og kopiér adressen hertil. Så får kanalen også en besked, når en gæst eller en pakke ankommer. Gratis, i modsætning til SMS.</small></label>
           </div>
           <div class="card">
             <h3>Flettefelter</h3>

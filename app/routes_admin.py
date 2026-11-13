@@ -3,6 +3,7 @@
 Alle endpoints kender den indloggede (Principal) og tjekker, at vedkommende må se kunden.
 En kunde, man ikke må se, giver 404, så man ikke kan gætte sig til, hvilke kunder der findes.
 """
+import json
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -82,8 +83,11 @@ def update_tenant(tid: int, body: TenantUpdate, db: Session = Depends(get_db), p
         raise HTTPException(403, "Kontakt din leverandør for at slå skærmen fra eller til")
     if "languages" in data:
         data["languages"] = ",".join(data["languages"])
+    if "opening_hours" in data:
+        data["opening_hours"] = json.dumps(data["opening_hours"]) if data["opening_hours"] else ""
+    keep_raw = ("sms_template", "email_template", "terms_text", "opening_hours")
     for k, v in data.items():
-        setattr(t, k, v.strip() if isinstance(v, str) and k not in ("sms_template", "email_template") else v)
+        setattr(t, k, v.strip() if isinstance(v, str) and k not in keep_raw else v)
     # Standardsproget skal være et af de valgte sprog.
     langs = tenant_languages(t)
     if t.lang_default not in langs:
@@ -254,7 +258,8 @@ def visits(tid: int, days: int = 14, db: Session = Depends(get_db), p: Principal
     rows = db.scalars(select(Visit).where(Visit.tenant_id == tid, Visit.checked_in_at >= days_ago_utc(days))
                       .order_by(Visit.checked_in_at.desc()).limit(500))
     return [{"id": v.id, "guest_name": v.guest_name, "guest_phone": v.guest_phone,
-             "guest_company": v.guest_company, "host_name": v.host_name,
+             "guest_company": v.guest_company, "host_name": v.host_name, "kind": v.kind,
+             "terms_accepted": v.terms_accepted, "host_reply": v.host_reply, "group_ref": v.group_ref,
              "checked_in_at": local_iso(v.checked_in_at), "checked_out_at": local_iso(v.checked_out_at)}
             for v in rows]
 

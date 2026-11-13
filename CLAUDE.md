@@ -24,6 +24,9 @@
 - Skemaet styres af Alembic (`app/migrations/versions`). `init_db()` kører `upgrade head` ved opstart. Databaser fra før Alembic markeres først som `0001`. Ændrer du en model, så skriv en ny migration i hånden. `tests/test_migrations.py` fejler, hvis model og migration ikke passer sammen. Nye NOT NULL-kolonner på eksisterende tabeller skal have `server_default`.
 - Koden skal virke på både SQLite og SQL Server. CI kører testene på begge. Kør dem mod SQL Server lokalt med Docker (se README).
 - Skærmstatus (`presence.py`) og loginbegrænsning (`ratelimit.py`) ligger i hukommelsen, så de ikke rammer databasen. Det forudsætter én worker. Kører appen på flere servere, skal de flyttes til en fælles cache.
+- Værtens svar (`replies.py`, `/r/<token>`) og påmindelser ligger også i hukommelsen: svaret skrives én gang i databasen, men skærmen spørger kun hukommelsen (`/api/kiosk/<token>/reply/<id>`). Påmindelser er tråd-timere og forsvinder ved genstart.
+- Besøg har `kind` (`guest` eller `delivery`). Pakker står ikke på tjek-ud-listen. Gæster, der kom sammen, har samme `group_ref` og giver én samlet besked.
+- Skærmens offentlige config (`tenant_public`) må kun indeholde det, skærmen viser. Godsmodtagelsens kontakt, Teams-adressen og påmindelser bliver på serveren (der er en test).
 - Billeder gemmes via `media.storage` (lokale filer nu). Brug den, ikke `settings.media_dir` direkte, så Blob Storage senere kun kræver en ny storage-klasse.
 - Azure SQL's gratis-database går på pause. `db.py` venter, mens den vågner. Kiosk-config caches i hukommelsen (`routes_kiosk._config_cache`) og tømmes af middleware i `main.py` ved alle admin-ændringer. Ingen polling må ramme databasen.
 - Billeder ligger som filer i `DATA_DIR/media` (`/home/data` i Azure).

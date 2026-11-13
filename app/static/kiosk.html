@@ -48,7 +48,8 @@
       <section class="screen gut" id="s-start" hidden>
         <div class="head">
           <div><h2 class="q" data-t="qHost"></h2><p class="lead" data-t="leadHost"></p></div>
-          <button class="outbtn" type="button" data-go="out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg><span data-t="checkOut"></span></button>
+          <div class="headbtns"><button class="outbtn" type="button" data-go="pkg" id="pkgBtn" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg><span data-t="pkg"></span></button>
+          <button class="outbtn" type="button" data-go="out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg><span data-t="checkOut"></span></button></div>
         </div>
         <label class="search" id="searchWrap" hidden><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input class="osk-in" id="search" autocomplete="off" aria-label="Søg"></label>
         <div class="hosts" id="hosts"></div>
@@ -64,6 +65,9 @@
             <div class="fl" id="flPhone"><label for="fPhone"><span data-t="lPhone"></span> <small id="phoneOpt" data-t="optional"></small></label><input class="osk-in mono" id="fPhone" data-num maxlength="20"></div>
             <div class="fl" id="flCompany"><label for="fCompany"><span data-t="lCompany"></span> <small data-t="optional"></small></label><input class="osk-in" id="fCompany" maxlength="120"></div>
           </div>
+          <div class="extras" id="extras" hidden><div id="extraList" class="stack"></div>
+            <button class="addguest" type="button" id="addGuest"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-t="addGuest"></span></button></div>
+          <div class="terms" id="termsRow" hidden><label class="tcheck"><input type="checkbox" id="termsOk"><span id="termsLabel"></span></label><button type="button" class="ghost sm" id="termsRead" data-t="read"></button></div>
           <div class="actions">
             <p class="consent"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></svg><span id="consent"></span></p>
             <button class="cta" type="submit" id="checkinBtn"><span data-t="checkIn"></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></button>
@@ -76,10 +80,49 @@
           <div class="seal"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M13 27l9 9 17-19"/></svg></div>
           <h2 id="doneTitle"></h2>
           <p id="doneSub"></p>
+          <p class="replyline" id="replyLine" hidden></p>
+          <div class="wifi" id="wifiBox" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg><span><small data-t="wifi"></small><b id="wifiName"></b></span><span><small data-t="wifiPw"></small><b class="mono" id="wifiPw"></b></span></div>
           <span class="chip" id="printNote" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg><span data-t="printing"></span></span>
           <div class="inline-badge" id="inlineBadge"></div>
           <button class="ghost" type="button" data-home data-t="finish"></button>
           <div class="timer" id="doneTimer"><i></i></div>
+        </div>
+      </section>
+
+      <section class="screen gut" id="s-pkg" hidden>
+        <button class="back" type="button" data-back><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span data-t="back"></span></button>
+        <div><span class="eyebrow" data-t="pkg"></span><h2 class="q" data-t="pkgQ"></h2><p class="lead" data-t="pkgLead"></p></div>
+        <div class="hosts compact" id="pkgHosts"></div>
+      </section>
+
+      <section class="screen gut narrowc" id="s-pkg2" hidden>
+        <button class="back" type="button" data-back><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span data-t="back"></span></button>
+        <div class="chosen" id="pkgChosen"></div>
+        <form id="pkgForm" autocomplete="off" class="stack">
+          <div class="group">
+            <div class="fl"><label for="pCompany"><span data-t="pkgFrom"></span> <small data-t="optional"></small></label><input class="osk-in" id="pCompany" maxlength="120"></div>
+            <div class="fl"><label for="pName"><span data-t="pkgName"></span> <small data-t="optional"></small></label><input class="osk-in" id="pName" maxlength="120"></div>
+          </div>
+          <div class="actions"><span></span><button class="cta" type="submit" id="pkgSend"><span data-t="pkgSend"></span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg></button></div>
+        </form>
+      </section>
+
+      <section class="screen center gut narrowc" id="s-pkgdone" hidden>
+        <div class="done">
+          <div class="seal"><svg viewBox="0 0 52 52" aria-hidden="true"><path d="M13 27l9 9 17-19"/></svg></div>
+          <h2 data-t="pkgDone"></h2>
+          <p id="pkgDoneSub"></p>
+          <p class="note" id="pkgNote" hidden></p>
+          <div class="timer" id="pkgTimer" style="--d:8s"><i></i></div>
+        </div>
+      </section>
+
+      <section class="screen center gut narrowc" id="s-closed" hidden>
+        <div class="done">
+          <div class="seal closed"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="11"/><path d="M26 20v6l4 3"/></svg></div>
+          <h2 data-t="closedTitle"></h2>
+          <p id="closedText"></p>
+          <p class="note" id="closedHours"></p>
         </div>
       </section>
 
@@ -100,6 +143,10 @@
     </main>
     <div class="osk gut" id="osk" hidden aria-label="Skærmtastatur"></div>
   </section>
+</div>
+<div class="overlay" id="termsOv" hidden role="dialog" aria-modal="true" aria-labelledby="termsTitle">
+  <div class="ov-box"><h2 id="termsTitle"></h2><div class="ov-text" id="termsText"></div>
+    <div class="ov-act"><button class="ghost" type="button" id="termsClose" data-t="close"></button><button class="cta" type="button" id="termsAccept"><span data-t="acceptBtn"></span></button></div></div>
 </div>
 <div id="previewTag" class="preview-tag" hidden>Forhåndsvisning · intet gemmes eller sendes</div>
 <div id="printArea"></div>

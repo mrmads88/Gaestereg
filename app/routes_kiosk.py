@@ -1,17 +1,18 @@
 """Public API used by the kiosk screen. Identified only by the tenant's secret kiosk token."""
 import re
 import time
+import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from . import presence
+from . import presence, replies
 from .config import settings
 from .db import SessionLocal, get_db
 from .models import Host, Notification, Tenant, Visit, utcnow
-from .notify import notify_visit
-from .schemas import CheckinIn, tenant_public
+from .notify import escalate, notify_visit
+from .schemas import CheckinIn, DeliveryIn, tenant_public
 from .timeutil import days_ago_utc, local_hhmm, start_of_local_day_utc
 
 router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
@@ -68,7 +69,7 @@ def config(token: str, pv: bool = False):
 
 
 @router.post("/{token}/checkin")
-def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, db: Session = Depends(get_db)):
+def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, db: Session = Depends(get_db)):
     presence.mark(token)
     t = tenant_by_token(token, db)
     name = " ".join(body.guest_name.split())
@@ -92,20 +93,66 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, db: Session = Depe
     elif not t.allow_unknown_host:
         raise HTTPException(422, "Vælg hvem du skal besøge")
 
+    if t.terms_enabled and not body.accept_terms:
+        raise HTTPException(422, f"Accepter {t.terms_title or 'husreglerne'} for at fortsætte")
+    extra = body.extra_guests if t.group_checkin else []
+
     host_name = host.name if host else "Receptionen"
     if body.preview:
         # Admin preview: show the whole flow without storing or sending anything.
         return {"visit_id": 0, "badge_no": "G-0000", "guest_name": name, "host_name": host_name,
-                "time": local_hhmm(utcnow()), "preview": True}
+                "time": local_hhmm(utcnow()), "preview": True,
+                "guests": [{"name": n, "badge_no": "G-0000"} for n in [name] + extra]}
 
-    v = Visit(tenant_id=t.id, host_id=host.id if host else None, host_name=host_name,
-              guest_name=name, guest_phone=phone, guest_company=company)
+    group = uuid.uuid4().hex[:12] if extra else ""
+    visits = []
+    for i, n in enumerate([name] + extra):
+        visits.append(Visit(tenant_id=t.id, host_id=host.id if host else None, host_name=host_name,
+                            guest_name=n, guest_phone=phone if i == 0 else "", guest_company=company,
+                            group_ref=group, terms_accepted=bool(t.terms_enabled and body.accept_terms)))
+    db.add_all(visits)
+    db.commit()
+    v = visits[0]
+    base = str(request.base_url)
+    bg.add_task(notify_visit, v.id, base)
+    if host is not None:
+        replies.register(v.id, token)
+        replies.schedule(v.id, t.escalate_minutes, escalate)
+    purge_old(db, t)
+    return {"visit_id": v.id, "badge_no": f"G-{v.id:04d}", "guest_name": name, "host_name": host_name,
+            "time": local_hhmm(v.checked_in_at), "preview": False,
+            "guests": [{"name": x.guest_name, "badge_no": f"G-{x.id:04d}"} for x in visits]}
+
+
+@router.post("/{token}/delivery")
+def delivery(token: str, body: DeliveryIn, bg: BackgroundTasks, db: Session = Depends(get_db)):
+    """Et bud afleverer en pakke. Modtageren (eller godsmodtagelsen) får besked."""
+    presence.mark(token)
+    t = tenant_by_token(token, db)
+    if not t.delivery_enabled:
+        raise HTTPException(404, "Pakkemodtagelse er ikke slået til")
+    host = None
+    if body.host_id is not None:
+        host = db.get(Host, body.host_id)
+        if host is None or host.tenant_id != t.id or not host.active:
+            raise HTTPException(404, "Personen findes ikke længere. Vælg igen")
+    to = host.name if host else "Godsmodtagelsen"
+    if body.preview:
+        return {"ok": True, "to": to, "preview": True}
+    v = Visit(tenant_id=t.id, kind="delivery", host_id=host.id if host else None, host_name=to,
+              guest_name=" ".join(body.courier_name.split()), guest_company=" ".join(body.courier_company.split()),
+              checked_out_at=utcnow())
     db.add(v)
     db.commit()
     bg.add_task(notify_visit, v.id)
-    purge_old(db, t)
-    return {"visit_id": v.id, "badge_no": f"G-{v.id:04d}", "guest_name": name, "host_name": host_name,
-            "time": local_hhmm(v.checked_in_at), "preview": False}
+    return {"ok": True, "to": to, "preview": False}
+
+
+@router.get("/{token}/reply/{visit_id}")
+def reply_status(token: str, visit_id: int):
+    """Har værten svaret? Kun fra hukommelsen, så skærmen kan spørge ofte uden at vække databasen."""
+    a = replies.answer_for_kiosk(token, visit_id)
+    return {"answer": a, "text": replies.ANSWERS.get(a) if a else None}
 
 
 @router.get("/{token}/inside")
@@ -114,7 +161,7 @@ def inside(token: str, db: Session = Depends(get_db)):
     """Guests checked in today and not yet out. Short names only, since the screen is public."""
     t = tenant_by_token(token, db)
     rows = db.scalars(
-        select(Visit).where(Visit.tenant_id == t.id, Visit.checked_out_at.is_(None),
+        select(Visit).where(Visit.tenant_id == t.id, Visit.kind == "guest", Visit.checked_out_at.is_(None),
                             Visit.checked_in_at >= start_of_local_day_utc())
         .order_by(Visit.checked_in_at.desc())
     )

@@ -278,8 +278,25 @@ $("langChecks").addEventListener("change", () => {
   if (langs.length) patchTenant({ languages: langs });
 });
 
+// ---------- åbningstider ----------
+const DAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
+const DEFAULT_HOURS = [["08:00", "16:00"], ["08:00", "16:00"], ["08:00", "16:00"], ["08:00", "16:00"], ["08:00", "15:00"], null, null];
+function renderHours() {
+  const h = T.opening_hours || [], on = h.length === 7;
+  $("hoursOn").checked = on; $("hoursGrid").hidden = !on; $("closedFld").hidden = !on;
+  if (!on) return;
+  $("hoursGrid").innerHTML = DAYS.map((d, i) => { const v = h[i];
+    return '<div class="day' + (v ? "" : " closed") + '" data-d="' + i + '"><b>' + d + '</b><label class="check"><input type="checkbox" data-open' + (v ? " checked" : "") + "> Åben</label>" +
+      '<span class="t"><input type="time" data-from value="' + (v ? v[0] : "08:00") + '" aria-label="' + d + ' åbner"> til <input type="time" data-to value="' + (v ? v[1] : "16:00") + '" aria-label="' + d + ' lukker"></span></div>'; }).join("");
+}
+function readHours() {
+  return [...$("hoursGrid").querySelectorAll(".day")].map((row) => row.querySelector("[data-open]").checked ? [row.querySelector("[data-from]").value, row.querySelector("[data-to]").value] : null);
+}
+$("hoursOn").addEventListener("change", (e) => patchTenant({ opening_hours: e.target.checked ? DEFAULT_HOURS : [] }));
+$("hoursGrid").addEventListener("change", () => patchTenant({ opening_hours: readHours() }));
+
 function bindFields() {
-  renderLangs();
+  renderLangs(); renderHours();
   document.querySelectorAll("#editor [data-f]").forEach((el) => {
     const v = T[el.dataset.f];
     if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v;
@@ -454,12 +471,13 @@ $("addHost").addEventListener("submit", async (e) => {
 });
 
 // ---------- messages ----------
-const FIELDS = [["vaert_fornavn", "værtens fornavn"], ["vaert", "værtens fulde navn"], ["gaest", "gæstens navn"], ["telefon", "gæstens mobil"], ["firma", "gæstens firma"], ["tid", "klokkeslæt"], ["kunde", "kundens navn"]];
-const SAMPLE = { vaert_fornavn: "Anne", vaert: "Anne Kjær", gaest: "Mads Hansen", telefon: "+45 20 30 40 50", firma: "Hansen ApS", tid: "10:42", kunde: "" };
+const FIELDS = [["vaert_fornavn", "værtens fornavn"], ["vaert", "værtens fulde navn"], ["gaest", "gæstens navn"], ["telefon", "gæstens mobil"], ["firma", "gæstens firma"], ["tid", "klokkeslæt"], ["kunde", "kundens navn"], ["svarlink", "link værten svarer på"]];
+const SAMPLE = { vaert_fornavn: "Anne", vaert: "Anne Kjær", gaest: "Mads Hansen", telefon: "+45 20 30 40 50", firma: "Hansen ApS", tid: "10:42", kunde: "", svarlink: location.origin + "/r/…" };
 function fill(tpl) { return String(tpl || "").replace(/\{(\w+)\}/g, (m, k) => (k in SAMPLE ? (k === "kunde" ? T.name : SAMPLE[k]) : m)); }
 function renderSample() {
   const sms = document.querySelector('[data-f="sms_template"]').value;
-  const text = fill(sms);
+  let text = fill(sms);
+  if (T.host_reply && !sms.includes("{svarlink}")) text += "\nSvar: " + location.origin + "/r/…";
   $("sample").textContent = (document.querySelector('[data-f="sms_sender"]').value || "Reception") + ":\n" + text;
   const parts = text.length <= 160 ? 1 : Math.ceil(text.length / 153);
   $("smsCount").textContent = text.length + " tegn · " + parts + " SMS";
@@ -491,9 +509,9 @@ async function loadLog() {
   try {
     const [v, n] = await Promise.all([api("GET", "/api/admin/tenants/" + T.id + "/visits"), api("GET", "/api/admin/tenants/" + T.id + "/notifications")]);
     VISITS = v; $("delBar").hidden = true;
-    $("visitRows").innerHTML = v.map((x) => '<tr data-vid="' + x.id + '"><td class=n>' + fmt(x.checked_in_at) + "</td><td>" + esc(x.guest_name) + "</td><td class=n>" + esc(x.guest_phone) + "</td><td>" + esc(x.guest_company) + "</td><td>" + esc(x.host_name) + "</td><td class=n>" + (x.checked_out_at ? fmt(x.checked_out_at).split(" ").pop() : "") +
+    $("visitRows").innerHTML = v.map((x) => '<tr data-vid="' + x.id + '"><td class=n>' + fmt(x.checked_in_at) + "</td><td>" + esc(x.guest_name || (x.kind === "delivery" ? "Bud" : "")) + (x.kind === "delivery" ? ' <span class="tag pkg">pakke</span>' : "") + (x.terms_accepted ? ' <span class="tag ss" title="Har accepteret husreglerne">regler ✓</span>' : "") + "</td><td class=n>" + esc(x.guest_phone) + "</td><td>" + esc(x.guest_company) + "</td><td>" + esc(x.host_name) + (x.host_reply ? '<div class="small muted">' + esc({ now: "Kommer nu", "5": "Om 5 min", "10": "Om 10 min", reception: "Receptionen tager den" }[x.host_reply] || "") + "</div>" : "") + "</td><td class=n>" + (x.checked_out_at ? fmt(x.checked_out_at).split(" ").pop() : "") +
       '</td><td><button class="ib del" type="button" data-delvisit aria-label="Slet besøget fra ' + esc(x.guest_name) + '">' + I.x + "</button></td></tr>").join("") || '<tr><td colspan="7" class="muted">Ingen besøg endnu.</td></tr>';
-    $("noteRows").innerHTML = n.map((x) => "<tr><td class=n>" + fmt(x.created_at) + "</td><td>" + (x.channel === "sms" ? "SMS" : "E-mail") + "</td><td>" + esc(x.recipient) + '</td><td><span class="pill ' + esc(x.status) + '">' + esc(x.status) + "</span>" + (x.error ? '<div class="small" style="color:var(--bad)">' + esc(x.error) + "</div>" : "") + '</td><td><div class="body">' + esc(x.subject ? x.subject + "\n\n" + x.body : x.body) + "</div></td></tr>").join("") || '<tr><td colspan="5" class="muted">Ingen beskeder endnu.</td></tr>';
+    $("noteRows").innerHTML = n.map((x) => "<tr><td class=n>" + fmt(x.created_at) + "</td><td>" + ({ sms: "SMS", email: "E-mail", teams: "Teams" }[x.channel] || x.channel) + "</td><td>" + esc(x.recipient) + '</td><td><span class="pill ' + esc(x.status) + '">' + esc(x.status) + "</span>" + (x.error ? '<div class="small" style="color:var(--bad)">' + esc(x.error) + "</div>" : "") + '</td><td><div class="body">' + esc(x.subject ? x.subject + "\n\n" + x.body : x.body) + "</div></td></tr>").join("") || '<tr><td colspan="5" class="muted">Ingen beskeder endnu.</td></tr>';
   } catch (err) { toast(err.message, true); }
 }
 $("refreshLog").addEventListener("click", loadLog);

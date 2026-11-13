@@ -84,6 +84,24 @@ class Tenant(Base):
     email_subject: Mapped[str] = mapped_column(Unicode(200), default=DEFAULT_MAIL_SUBJECT)
     email_template: Mapped[str] = mapped_column(UnicodeText, default=DEFAULT_MAIL_BODY)
 
+    # gæsteoplevelse (fase 2)
+    wifi_name: Mapped[str] = mapped_column(Unicode(64), default="", server_default=text("''"))
+    wifi_password: Mapped[str] = mapped_column(Unicode(64), default="", server_default=text("''"))
+    delivery_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    delivery_email: Mapped[str] = mapped_column(Unicode(200), default="", server_default=text("''"))
+    delivery_phone: Mapped[str] = mapped_column(Unicode(40), default="", server_default=text("''"))
+    delivery_note: Mapped[str] = mapped_column(Unicode(300), default="", server_default=text("''"))
+    # JSON: 7 elementer (mandag først), hvert enten null (lukket) eller ["08:00", "16:00"]. Tom = altid åben.
+    opening_hours: Mapped[str] = mapped_column(Unicode(300), default="", server_default=text("''"))
+    closed_text: Mapped[str] = mapped_column(Unicode(300), default="", server_default=text("''"))
+    group_checkin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    terms_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    terms_title: Mapped[str] = mapped_column(Unicode(120), default="", server_default=text("''"))
+    terms_text: Mapped[str] = mapped_column(UnicodeText, default="", server_default=text("''"))
+    host_reply: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    escalate_minutes: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    teams_webhook: Mapped[str] = mapped_column(Unicode(1000), default="", server_default=text("''"))
+
     # subscription (kun platform-admin kan se og rette)
     sub_yearly_price: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # kr/år
     self_service: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
@@ -130,6 +148,11 @@ class Visit(Base):
     guest_company: Mapped[str] = mapped_column(Unicode(120), default="")
     checked_in_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
     checked_out_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    kind: Mapped[str] = mapped_column(Unicode(10), default="guest", server_default=text("'guest'"))  # guest | delivery
+    group_ref: Mapped[str] = mapped_column(Unicode(16), default="", server_default=text("''"))  # gæster der kom sammen
+    terms_accepted: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    host_reply: Mapped[str] = mapped_column(Unicode(20), default="", server_default=text("''"))  # now | 5 | 10 | reception
+    host_reply_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Notification(Base):
