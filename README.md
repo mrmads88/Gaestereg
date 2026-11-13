@@ -30,6 +30,22 @@ docker run -d --name mssql -e ACCEPT_EULA=Y -e 'MSSQL_SA_PASSWORD=Test_Passw0rd!
 DATABASE_URL='mssql+pyodbc://sa:Test_Passw0rd%21@localhost:1433/gaestereg_test?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes' python -m pytest -q
 ```
 
+## Roller og selvbetjening
+
+| Rolle | Logger ind med | Kan |
+|---|---|---|
+| Leverandør (dig) | "Leverandør-login" og `ADMIN_PASSWORD` | Alt: kunder, partnere, abonnement, sletning |
+| Partner, fx et kontorhotel | E-mail og adgangskode | Oprette og rette alle firmaer under partneren og invitere administratorer. Ikke se priser eller slette |
+| Kunde-admin | E-mail og adgangskode | Rette eget firma: personer, udseende, gæsteflow, beskeder, besøg og invitere kolleger. Kræver at **Selvbetjening** er slået til under Abonnement |
+
+Invitationer sendes på e-mail, når SMTP er sat op og `NOTIFY_MODE=live`. Ellers viser admin linket, så du kan sende det selv. Linket virker i 7 dage og kun én gang.
+
+Under **Abonnement** (kun leverandøren) står årspris, pris for selvbetjening pr. måned, betalt-til-dato og partner. Systemet fakturerer ikke selv. Det holder styr på aftalen og markerer kunder, hvor betalingen er udløbet.
+
+## Import fra Excel
+
+Partnere og leverandøren kan importere mange firmaer og personer på én gang. Kunde-admins kan importere personer til deres eget firma. Hent skabelonen i admin, udfyld én række pr. person og upload. Billeder kan sættes ind i arket ud for personen eller lægges i en ZIP-fil sammen med arket. Du ser altid en forhåndsvisning, før noget gemmes. Personer findes igen på e-mail, så arket kan rettes og importeres igen.
+
 ## Sådan virker beskederne
 
 Når en gæst tjekker ind, sendes beskeder til værten efter fluebenene:
@@ -57,7 +73,11 @@ app/
   config.py         indstillinger fra miljøvariabler
   models.py         Tenant (kunde), Host (person), Visit, Notification
   routes_kiosk.py   offentligt API til skærmen
-  routes_admin.py   admin-API (kræver login)
+  auth.py           login, roller og invitationslinks
+  routes_access.py  login, brugere og partnere
+  routes_admin.py   admin-API for kunder og personer (kræver login)
+  importer.py       import fra Excel, CSV og ZIP
+  migrations/       Alembic-migrationer
   notify.py         SMS og e-mail
   media.py          upload og skalering af billeder
   static/           kiosk.html/.css/.js og admin.html/.css/.js

@@ -17,10 +17,32 @@
   <form class="login-card" id="loginForm">
     <div class="brandmark">G</div>
     <h1>Gæsteregistrering</h1>
-    <p class="muted">Log ind for at sætte kunder og skærme op.</p>
+    <p class="muted" id="loginLead">Log ind for at rette jeres skærm, personer og beskeder.</p>
+    <label class="fld" id="emailFld"><span>E-mail</span><input type="email" id="loginEmail" autocomplete="username" maxlength="200"></label>
     <label class="fld"><span>Adgangskode</span><input type="password" id="pw" autocomplete="current-password" required></label>
     <button class="btn pri wide" type="submit">Log ind</button>
     <p class="err" id="loginErr" hidden></p>
+    <div class="login-links"><button class="linkbtn" type="button" id="forgotBtn">Glemt adgangskode?</button><button class="linkbtn" type="button" id="platformBtn">Leverandør-login</button></div>
+  </form>
+  <form class="login-card" id="forgotForm" hidden>
+    <div class="brandmark">G</div>
+    <h1>Glemt adgangskode</h1>
+    <p class="muted">Skriv din e-mail. Så sender vi et link, hvor du kan vælge en ny adgangskode.</p>
+    <label class="fld"><span>E-mail</span><input type="email" id="forgotEmail" required maxlength="200"></label>
+    <button class="btn pri wide" type="submit">Send link</button>
+    <p class="muted" id="forgotMsg" hidden></p>
+    <div class="login-links"><button class="linkbtn" type="button" data-back>Tilbage til login</button></div>
+  </form>
+  <form class="login-card" id="inviteForm" hidden>
+    <div class="brandmark">G</div>
+    <h1 id="inviteTitle">Velkommen</h1>
+    <p class="muted" id="inviteLead"></p>
+    <label class="fld"><span>Ny adgangskode</span><input type="password" id="invPw" autocomplete="new-password" minlength="10" required></label>
+    <label class="fld"><span>Gentag adgangskode</span><input type="password" id="invPw2" autocomplete="new-password" minlength="10" required>
+      <small class="hint">Mindst 10 tegn. En sætning er nemmere at huske, fx "blå kaffe på tirsdag".</small></label>
+    <button class="btn pri wide" type="submit">Gem og log ind</button>
+    <p class="err" id="inviteErr" hidden></p>
+    <div class="login-links"><button class="linkbtn" type="button" data-back>Til login</button></div>
   </form>
 </div>
 
@@ -28,14 +50,20 @@
 <div id="appView" class="shell" hidden>
   <header class="top">
     <div class="top-l"><div class="brandmark sm">G</div><b>Gæsteregistrering</b><span class="envpill" id="envPill"></span></div>
-    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
+    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
   </header>
   <div class="banner" id="banner" hidden></div>
 
   <div class="cols">
-    <aside class="side">
-      <div class="side-h"><span class="lbl">Kunder</span><button class="btn pri sm" type="button" id="newTenant">+ Ny kunde</button></div>
+    <aside class="side" id="side">
+      <div id="partnerSec" hidden>
+        <div class="side-h"><span class="lbl" id="partnerLbl">Partnere</span><button class="btn ghost sm" type="button" id="newPartner">+ Ny partner</button></div>
+        <form class="newform" id="newPartnerForm" hidden><input id="newPartnerName" placeholder="Fx Kontorhotellet Havnen" maxlength="120" aria-label="Partnerens navn"><button class="btn pri sm" type="submit">Opret</button></form>
+        <nav class="tlist" id="pList"></nav>
+      </div>
+      <div class="side-h"><span class="lbl" id="tenantLbl">Kunder</span><button class="btn pri sm" type="button" id="newTenant">+ Ny kunde</button></div>
       <form class="newform" id="newForm" hidden><input id="newName" placeholder="Kundens navn, fx Junckers" maxlength="120" aria-label="Kundens navn"><button class="btn pri sm" type="submit">Opret</button></form>
+      <input class="tfilter" id="tFilter" type="search" placeholder="Søg" aria-label="Søg i kunder" hidden>
       <nav class="tlist" id="tList"></nav>
     </aside>
 
@@ -43,6 +71,39 @@
       <div class="empty-state" id="noTenant">
         <h2>Vælg en kunde</h2>
         <p class="muted">Eller opret en ny. Hver kunde får sit eget skærmlink, logo, personer og beskeder.</p>
+      </div>
+
+      <div id="partnerView" class="pview" hidden>
+        <div class="ed-head">
+          <div class="ed-logo"><span id="pvInitials"></span></div>
+          <div class="ed-title"><h1 id="pName"></h1><p class="muted" id="pSub"></p></div>
+        </div>
+        <div class="card" id="pSettings">
+          <h3>Partner</h3>
+          <div class="g2">
+            <label class="fld"><span>Navn</span><input id="pNameIn" maxlength="120"></label>
+            <div class="fld"><span>Aftalen er</span><label class="switch"><input type="checkbox" id="pActive"><i></i><em>Aktiv</em></label></div>
+          </div>
+          <p class="muted small">Når aftalen er slået fra, kan partnerens administratorer ikke logge ind. Skærmene kører videre.</p>
+        </div>
+        <div class="card">
+          <h3>Administratorer</h3>
+          <p class="muted">De kan oprette og rette alle firmaer under <b class="pn"></b>, men ikke se priser eller slette firmaer.</p>
+          <div class="users" id="pUsers"></div>
+          <form class="invite" id="pInvite"><input name="email" type="email" required placeholder="E-mail" maxlength="200" aria-label="E-mail"><input name="name" placeholder="Navn" maxlength="120" aria-label="Navn"><button class="btn pri sm" type="submit">Invitér</button></form>
+          <div class="linkbox" id="pLink" hidden></div>
+        </div>
+        <div class="card">
+          <h3>Importér firmaer og personer</h3>
+          <div id="pImport"></div>
+        </div>
+        <div class="card">
+          <div class="row"><h3 class="grow">Firmaer</h3><span class="muted small" id="pCount"></span></div>
+          <div class="ptenants" id="pTenants"></div>
+        </div>
+        <div class="card danger" id="pDanger">
+          <div class="row"><div class="grow"><b>Slet partner</b><p class="muted">Kan kun lade sig gøre, når partneren ikke har firmaer. Administratorerne slettes også.</p></div><button class="btn bad" type="button" id="delPartner">Slet partner</button></div>
+        </div>
       </div>
 
       <div id="editor" hidden>
@@ -61,12 +122,18 @@
           <button role="tab" type="button" data-tab="flow" aria-selected="false">Gæsteflow</button>
           <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
+          <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
+          <button role="tab" type="button" data-tab="sub" aria-selected="false" id="subTab" hidden>Abonnement</button>
         </div>
 
         <!-- PEOPLE -->
         <section class="tab" id="tab-people">
           <p class="muted">Dem gæsterne kan vælge på skærmen. E-mail og mobil vises aldrig på skærmen. De bruges kun til beskeden.</p>
           <div class="hostlist" id="hostList"></div>
+          <details class="card importbox" id="tImportBox">
+            <summary><b>Importér personer fra Excel</b> <span class="muted small">Mange personer på én gang, også med billeder</span></summary>
+            <div id="tImport"></div>
+          </details>
           <form class="card addhost" id="addHost">
             <h3>Tilføj person</h3>
             <div class="g4">
@@ -95,7 +162,7 @@
             </div>
             <div class="g2">
               <div class="fld"><span>Brandfarve</span><div class="colorrow"><input type="color" data-f="color" id="colorPick" aria-label="Brandfarve"><input id="colorHex" maxlength="7" class="mono" aria-label="Farvekode"></div></div>
-              <div class="fld"><span>Skærmen er</span><label class="switch"><input type="checkbox" data-f="active"><i></i><em>Aktiv</em></label></div>
+              <div class="fld" id="activeFld"><span>Skærmen er</span><label class="switch"><input type="checkbox" data-f="active"><i></i><em>Aktiv</em></label></div>
             </div>
           </div>
           <div class="card">
@@ -125,7 +192,7 @@
           <div class="card danger">
             <h3>Farezone</h3>
             <div class="row"><div class="grow"><b>Nyt skærmlink</b><p class="muted">Det gamle link holder op med at virke med det samme.</p></div><button class="btn ghost" type="button" id="rotate">Lav nyt link</button></div>
-            <div class="row"><div class="grow"><b>Slet kunde</b><p class="muted">Sletter kunden, personer, billeder og alle besøg.</p></div><button class="btn bad" type="button" id="delTenant">Slet kunde</button></div>
+            <div class="row" id="delRow"><div class="grow"><b>Slet kunde</b><p class="muted">Sletter kunden, personer, billeder og alle besøg.</p></div><button class="btn bad" type="button" id="delTenant">Slet kunde</button></div>
           </div>
         </section>
 
@@ -185,6 +252,38 @@
             <div class="chips" id="chips"></div>
             <h3 style="margin-top:18px">Eksempel på SMS</h3>
             <pre class="sample" id="sample"></pre>
+          </div>
+        </section>
+
+        <!-- ACCESS -->
+        <section class="tab" id="tab-access" hidden>
+          <div class="note warnbox" id="ssWarn" hidden></div>
+          <div class="card">
+            <h3>Administratorer</h3>
+            <p class="muted">De kan rette personer, udseende, gæsteflow og beskeder og se besøg for <b class="tn"></b>. Hver logger ind med sin egen e-mail.</p>
+            <div class="users" id="tUsers"></div>
+            <form class="invite" id="tInvite"><input name="email" type="email" required placeholder="E-mail" maxlength="200" aria-label="E-mail"><input name="name" placeholder="Navn" maxlength="120" aria-label="Navn"><button class="btn pri sm" type="submit">Invitér</button></form>
+            <div class="linkbox" id="tLink" hidden></div>
+          </div>
+        </section>
+
+        <!-- SUBSCRIPTION (kun platform) -->
+        <section class="tab" id="tab-sub" hidden>
+          <div class="card">
+            <h3>Abonnement</h3>
+            <p class="muted">Kun du kan se og rette dette. Kunder og partnere ser det ikke.</p>
+            <div class="g2">
+              <label class="fld"><span>Årsabonnement (kr. pr. år)</span><input type="number" min="0" step="100" data-s="sub_yearly_price"></label>
+              <label class="fld"><span>Betalt til og med</span><input type="date" data-s="sub_paid_until"></label>
+            </div>
+            <div class="g2">
+              <div class="fld"><span>Selvbetjening</span><label class="switch"><input type="checkbox" data-s="self_service"><i></i><em>Kundens administratorer kan logge ind</em></label></div>
+              <label class="fld"><span>Selvbetjening (kr. pr. måned)</span><input type="number" min="0" step="10" data-s="self_service_monthly_price"></label>
+            </div>
+            <label class="fld"><span>Partner</span><select data-s="partner_id" id="subPartner"></select>
+              <small class="hint">Partnerens administratorer kan rette alle firmaer, der hører til partneren.</small></label>
+            <label class="fld"><span>Note</span><textarea data-s="sub_note" rows="3" maxlength="500" placeholder="Fx fakturanummer, kontaktperson, aftaler"></textarea></label>
+            <p class="muted small" id="subSummary"></p>
           </div>
         </section>
 

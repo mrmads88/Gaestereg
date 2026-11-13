@@ -18,17 +18,21 @@ White-label gæsteregistrering til receptioner. Mads sælger løsningen til kund
 
 ## Arkitektur
 
-- FastAPI + SQLAlchemy 2. Lokalt og i tests: SQLite (`DATA_DIR/app.db`). I Azure: Azure SQL via `DATABASE_URL` (`mssql+pyodbc`). Tabeller oprettes med `create_all` ved start. Tilføjes kolonner til en eksisterende tabel, skal der en migration til (indfør Alembic, før første ændring af et eksisterende skema i prod).
+- FastAPI + SQLAlchemy 2. Lokalt og i tests: SQLite (`DATA_DIR/app.db`). I Azure: Azure SQL via `DATABASE_URL` (`mssql+pyodbc`).
+- Skemaet styres af Alembic (`app/migrations/versions`). `init_db()` kører `upgrade head` ved opstart. Databaser fra før Alembic markeres først som `0001`. Ændrer du en model, så skriv en ny migration i hånden. `tests/test_migrations.py` fejler, hvis model og migration ikke passer sammen. Nye NOT NULL-kolonner på eksisterende tabeller skal have `server_default`.
 - Koden skal virke på både SQLite og SQL Server. CI kører testene på begge. Kør dem mod SQL Server lokalt med Docker (se README).
 - Azure SQL's gratis-database går på pause. `db.py` venter, mens den vågner. Kiosk-config caches i hukommelsen (`routes_kiosk._config_cache`) og tømmes af middleware i `main.py` ved alle admin-ændringer. Ingen polling må ramme databasen.
 - Billeder ligger som filer i `DATA_DIR/media` (`/home/data` i Azure).
 - Multi-tenant: alt hænger på `Tenant`. Skærmen identificeres kun via `Tenant.kiosk_token` i URL'en `/k/<token>`.
-- Admin er én superbruger (`ADMIN_PASSWORD`) med signeret cookie. Pr.-kunde-login er ikke bygget endnu.
+- Roller (`auth.py`): platform (dig, `ADMIN_PASSWORD` uden e-mail), partner (fx kontorhotel, ser alle firmaer med samme `partner_id` og kan oprette nye) og tenant (kunde-admin, ét firma, kun når `Tenant.self_service` er slået til). Brugere logger ind med e-mail og adgangskode (scrypt). Invitation og ny adgangskode sker med et signeret link (`/admin#invite=...`), som kun virker én gang (`User.token_version`).
+- Kun platform må se og rette abonnement (`/tenants/{id}/subscription`), slette firmaer og oprette partnere. Kunde-admins må ikke slå skærmen fra (`active`).
+- Import (`importer.py`): Excel, CSV eller ZIP med ark og billeder. Kører i én transaktion, og forhåndsvisningen (`dry_run`) rulles tilbage.
 - Beskeder sendes som FastAPI BackgroundTasks i `notify.py`. Alle forsøg gemmes i `Notification` med status `test`/`sendt`/`fejl`.
 - Frontend er vanilla JS uden build-step i `app/static/`. Kiosk og admin deler fonte (Bricolage Grotesque, Hanken Grotesk, IBM Plex Mono).
 
 ## Regler
 
+- Alle admin-endpoints skal tage `p: Principal = Depends(current)` og hente kunder med `get_tenant_for(db, tid, p)` (personer med `_host(db, hid, p)`). Det er dem, der sikrer, at man kun ser sine egne firmaer. En kunde, man ikke må se, giver 404. Skriv en test i `tests/test_access.py` for nye endpoints.
 - Brug `Unicode`/`UnicodeText` (ikke `String`/`Text`) i modellerne, så det bliver NVARCHAR på SQL Server.
 - SQL Server tillader kun én kaskadevej til en tabel. Nye fremmednøgler med `ondelete` skal tjekkes mod de eksisterende (fx har `visits.host_id` og `notifications.visit_id` ingen). Ryd op i koden i stedet.
 - Brug subqueries frem for lange `IN (...)`-lister. SQL Server tillader højst 2100 parametre.

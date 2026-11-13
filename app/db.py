@@ -1,7 +1,10 @@
 import logging
 import time
+from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
@@ -61,6 +64,28 @@ def get_db():
         db.close()
 
 
-def init_db():
+MIGRATIONS = Path(__file__).parent / "migrations"
+BASELINE = "0001"
+
+
+def _alembic_config(connection) -> Config:
+    cfg = Config()
+    cfg.set_main_option("script_location", str(MIGRATIONS))
+    cfg.attributes["connection"] = connection
+    return cfg
+
+
+def init_db() -> None:
+    """Bring the database up to the newest schema with Alembic.
+
+    Databases made before Alembic (with create_all) already have the baseline tables, so they
+    are marked as being on the baseline first. New databases are built from scratch.
+    """
     from . import models  # noqa: F401  (registers tables)
-    Base.metadata.create_all(engine)
+    with engine.begin() as conn:
+        tables = set(inspect(conn).get_table_names())
+        cfg = _alembic_config(conn)
+        if "tenants" in tables and "alembic_version" not in tables:
+            log.info("Eksisterende database uden Alembic. Markeres som revision %s.", BASELINE)
+            command.stamp(cfg, BASELINE)
+        command.upgrade(cfg, "head")

@@ -1,8 +1,8 @@
 import secrets
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 # Unicode/UnicodeText bliver NVARCHAR på SQL Server (æøå og emoji) og VARCHAR/TEXT på SQLite.
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Unicode, UnicodeText
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Unicode, UnicodeText, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -27,12 +27,26 @@ DEFAULT_MAIL_BODY = (
 )
 
 
+class Partner(Base):
+    """Fx et kontorhotel eller et bureau, der opretter og vedligeholder flere firmaer (tenants)."""
+    __tablename__ = "partners"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    tenants: Mapped[list["Tenant"]] = relationship(back_populates="partner")
+
+
 class Tenant(Base):
     """One customer, e.g. a company or a building. Each has its own kiosk link and look."""
     __tablename__ = "tenants"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(Unicode(120))
+    # Ingen ondelete: en partner slettes ikke, mens den har firmaer.
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, index=True)
     kiosk_token: Mapped[str] = mapped_column(Unicode(40), unique=True, index=True, default=new_token)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -65,9 +79,17 @@ class Tenant(Base):
     email_subject: Mapped[str] = mapped_column(Unicode(200), default=DEFAULT_MAIL_SUBJECT)
     email_template: Mapped[str] = mapped_column(UnicodeText, default=DEFAULT_MAIL_BODY)
 
+    # subscription (kun platform-admin kan se og rette)
+    sub_yearly_price: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # kr/år
+    self_service: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    self_service_monthly_price: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    sub_paid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    sub_note: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
+
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Host.sort_order"
     )
+    partner: Mapped[Partner | None] = relationship(back_populates="tenants")
 
 
 class Host(Base):
@@ -119,3 +141,28 @@ class Notification(Base):
     status: Mapped[str] = mapped_column(Unicode(10), default="venter")  # venter | sendt | test | fejl
     error: Mapped[str] = mapped_column(UnicodeText, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class User(Base):
+    """En admin-bruger, der logger ind med e-mail og adgangskode.
+
+    role = "partner": administrerer alle firmaer under partner_id og kan oprette nye.
+    role = "tenant":  administrerer ét firma (tenant_id). Kræver Tenant.self_service.
+    Platform-admin (dig) logger ind med ADMIN_PASSWORD og er ikke en række her.
+    """
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(Unicode(200), unique=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120), default="")
+    role: Mapped[str] = mapped_column(Unicode(10))  # partner | tenant
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, index=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True,
+                                                  index=True)
+    password_hash: Mapped[str] = mapped_column(Unicode(300), default="")  # tom indtil invitationen er brugt
+    # Tælles op ved ny adgangskode eller nyt invitationslink. Gør gamle links og logins ugyldige.
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+

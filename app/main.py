@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from . import routes_admin, routes_kiosk
+from . import routes_access, routes_admin, routes_import, routes_kiosk
 from .config import settings
 from .db import SessionLocal, init_db
 from .models import Tenant
@@ -45,8 +45,10 @@ async def _refresh_kiosk_config(request: Request, call_next):
 
 
 app.include_router(routes_kiosk.router)
-app.include_router(routes_admin.public)
+app.include_router(routes_access.public)
+app.include_router(routes_access.router)
 app.include_router(routes_admin.router)
+app.include_router(routes_import.router)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")

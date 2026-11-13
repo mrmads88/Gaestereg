@@ -1,25 +1,9 @@
 import io
 import os
-import shutil
-import tempfile
 
 import pytest
-
-_tmp = tempfile.mkdtemp()
-os.environ.update(DATA_DIR=_tmp, APP_ENV="local", ADMIN_PASSWORD="hemmelig", NOTIFY_MODE="test", SEED_DEMO="1")
-
-from fastapi.testclient import TestClient  # noqa: E402
-from PIL import Image  # noqa: E402
-from sqlalchemy import func, select  # noqa: E402
-
-from app.main import app  # noqa: E402
-
-
-@pytest.fixture(scope="module")
-def client():
-    with TestClient(app) as c:
-        yield c
-    shutil.rmtree(_tmp, ignore_errors=True)
+from PIL import Image
+from sqlalchemy import func, select
 
 
 @pytest.fixture(scope="module")
@@ -54,7 +38,7 @@ def test_unknown_token_404(client):
     assert client.get("/api/kiosk/findesikke/config").status_code == 404
 
 
-def test_full_customer_setup_and_checkin(admin):
+def test_full_customer_setup_and_checkin(admin, data_dir):
     t = admin.post("/api/admin/tenants", json={"name": "Testkunde A/S"}).json()
     tid, token = t["id"], t["kiosk_token"]
     assert t["sms_sender"] == "Testkunde A"
@@ -76,7 +60,7 @@ def test_full_customer_setup_and_checkin(admin):
 
     ph = admin.post(f"/api/admin/hosts/{both['id']}/photo", files={"file": ("p.png", png_bytes(900, 1200), "image/png")})
     assert ph.status_code == 200
-    stored = Image.open(os.path.join(_tmp, "media", ph.json()["photo_url"].split("/")[-1]))
+    stored = Image.open(os.path.join(data_dir, "media", ph.json()["photo_url"].split("/")[-1]))
     assert stored.size == (600, 600)
 
     # phone is required by default
