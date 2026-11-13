@@ -55,6 +55,7 @@ class TenantUpdate(BaseModel):
     host_reply: bool | None = None
     escalate_minutes: int | None = Field(None, ge=0, le=120)
     teams_webhook: str | None = Field(None, max_length=1000)
+    house_screen: bool | None = None
     languages: list[str] | None = Field(None, min_length=1, max_length=len(SUPPORTED_LANGS))
     lang_default: str | None = None
     lang_mode: Literal["toggle", "first", "off"] | None = None
@@ -140,6 +141,7 @@ class CheckinIn(BaseModel):
     guest_company: str = Field("", max_length=120)
     extra_guests: list[str] = Field(default_factory=list, max_length=9)  # flere gæster til samme møde
     invitation_code: str = Field("", max_length=20)  # gæsten tjekkede ind med en kode fra en invitation
+    firm_id: int | None = None  # husets skærm: det firma, gæsten valgte
     accept_terms: bool = False
     preview: bool = False
 
@@ -154,6 +156,7 @@ class CheckinIn(BaseModel):
 
 class DeliveryIn(BaseModel):
     host_id: int | None = None  # None = godsmodtagelsen
+    firm_id: int | None = None  # husets skærm: firmaet pakken er til (None = husets godsmodtagelse)
     courier_company: str = Field("", max_length=120)
     courier_name: str = Field("", max_length=120)
     preview: bool = False
@@ -167,6 +170,8 @@ class InvitationIn(BaseModel):
     guest_company: str = Field("", max_length=120)
     expected_at: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")  # lokal tid, fx 2026-11-14T10:30
     send: bool = True
+    recurring: bool = False  # fast gæst: koden kan bruges igen indtil valid_until
+    valid_until: str = Field("", pattern=r"^(\d{4}-\d{2}-\d{2})?$")  # lokal dato, fx 2027-03-31
 
     @field_validator("guest_email")
     @classmethod
@@ -260,7 +265,7 @@ TENANT_FIELDS = [
     "reception_email", "reception_phone", "print_badge", "badge_size", "idle_seconds", "retention_days",
     "lang_default", "lang_mode", "wifi_name", "wifi_password", "delivery_enabled", "delivery_email", "delivery_phone",
     "delivery_note", "closed_text", "group_checkin", "terms_enabled", "terms_title", "terms_text", "host_reply",
-    "escalate_minutes", "teams_webhook",
+    "escalate_minutes", "teams_webhook", "house_screen",
     "sms_sender", "sms_template", "email_subject", "email_template",
 ]
 
@@ -306,8 +311,9 @@ def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False, hos
     return d
 
 
-def tenant_public(t: Tenant) -> dict:
-    return {
+def tenant_public(t: Tenant, firms: list[Tenant] | None = None) -> dict:
+    """Det, skærmen viser. firms: husets skærm viser alle partnerens firmaer (se house.firms_of)."""
+    d = {
         "name": t.name, "color": t.color, "logo_url": media_url(t.logo_path),
         "background_url": media_url(t.background_path), "background_scope": t.background_scope,
         "background_dim": t.background_dim, "welcome_text": t.welcome_text or f"Velkommen til {t.name}",
@@ -323,6 +329,12 @@ def tenant_public(t: Tenant) -> dict:
         "terms_text": t.terms_text, "host_reply": t.host_reply,
         "hosts": [host_public(h, t.show_photos) for h in t.hosts if h.active],
     }
+    d["house"] = bool(t.house_screen and firms)
+    if d["house"]:
+        d["firms"] = [{"id": f.id, "name": f.name, "logo_url": media_url(f.logo_path), "color": f.color,
+                       "allow_unknown_host": f.allow_unknown_host,
+                       "hosts": [host_public(h, t.show_photos) for h in f.hosts if h.active]} for f in firms]
+    return d
 
 
 def user_out(u: User) -> dict:

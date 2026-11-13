@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, true
 from sqlalchemy.orm import Session
 
 from . import invitations as inv_mod
@@ -52,6 +52,15 @@ def _create(db: Session, t: Tenant, host: Host | None, body: InvitationIn, by: s
         raise HTTPException(422, "Skriv gæstens mobil eller e-mail, så de kan få koden")
     data = body.model_dump()
     data["expected_at"] = _expected(body.expected_at)
+    if body.recurring:
+        if not body.valid_until:
+            raise HTTPException(422, "Vælg hvor længe den faste gæst må bruge koden")
+        until = from_local(body.valid_until + "T23:59")
+        if until < data["expected_at"]:
+            raise HTTPException(422, "Slutdatoen skal være efter starttidspunktet")
+        if until > utcnow() + timedelta(days=731):
+            raise HTTPException(422, "Højst to år frem")
+        data["valid_until_utc"] = until
     inv = inv_mod.create(db, t, host, data, by)
     if body.send:
         bg.add_task(inv_mod.send_to_guest, inv.id, _base(request))
@@ -68,7 +77,11 @@ def list_invitations(tid: int, request: Request, all: bool = False, db: Session 
     if all:
         q = q.where(Invitation.expected_at >= utcnow() - timedelta(days=30))
     else:
-        q = q.where(Invitation.status == "pending", Invitation.expected_at >= utcnow() - timedelta(hours=12))
+        now = utcnow()
+        q = q.where(Invitation.status == "pending", or_(
+            Invitation.expected_at >= now - timedelta(hours=12),
+            # == true() og ikke .is_(True): SQL Server forstår ikke "IS 1".
+            and_(Invitation.recurring == true(), or_(Invitation.valid_until.is_(None), Invitation.valid_until >= now))))
     return [inv_mod.out(x, _base(request)) for x in db.scalars(q.order_by(Invitation.expected_at).limit(500))]
 
 
@@ -199,7 +212,9 @@ def guest_info(token: str, db: Session = Depends(get_db)):
     if inv is None:
         raise HTTPException(404, "Linket virker ikke længere")
     t = db.get(Tenant, inv.tenant_id)
-    return {"tenant": t.name, "color": t.color, "logo_url": media_url(t.logo_path),
+    when = (f"som fast gæst til og med {local_day_label(inv.valid_until)}" if inv.recurring and inv.valid_until
+            else f"{local_day_label(inv.expected_at)} kl. {local_hhmm(inv.expected_at)}")
+    return {"tenant": t.name, "color": t.color, "logo_url": media_url(t.logo_path), "recurring": inv.recurring,
             "guest": inv.guest_name.split(" ")[0], "host": inv.host_name, "code": inv.code, "status": inv.status,
-            "when": f"{local_day_label(inv.expected_at)} kl. {local_hhmm(inv.expected_at)}",
+            "when": when,
             "qr": inv_mod.qr_svg(inv.code, scale=10)}

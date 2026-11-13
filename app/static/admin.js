@@ -2,7 +2,7 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const initials = (n) => String(n || "?").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const initials = (n) => String(n || "?").split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
 let tenants = [], partners = [], T = null, P = null, STATUS = null, ME = null, tab = "people", lastField = null;
 const can = (k) => !!(ME && ME.can[k]);
@@ -129,6 +129,7 @@ function setupRole() {
   $("newName").placeholder = r === "platform" ? "Kundens navn, fx Junckers" : "Firmaets navn";
   $("subTab").hidden = !can("subscription");
   $("activeFld").hidden = !can("toggle_active");
+  $("houseFld").hidden = !can("toggle_active");
   $("delRow").hidden = !can("delete_tenant");
   $("pSettings").hidden = $("pDanger").hidden = !can("partners");
   $("switchBtn").hidden = r === "tenant";
@@ -199,6 +200,7 @@ async function renderPartner(keepImport) {
     '<p class="muted">Ingen firmaer endnu. Opret dem ét ad gangen i listen til venstre, eller importér dem alle fra et Excel-ark ovenfor.</p>';
   $("pLink").hidden = true;
   if (!keepImport) renderImport($("pImport"), { partner_id: P.id, withFirm: true });
+  loadHouse("p", "/api/admin/partners/" + P.id, true);
   renderUsers($("pUsers"), await api("GET", "/api/admin/partners/" + P.id + "/users").catch(() => []));
 }
 $("pTenants").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
@@ -238,6 +240,7 @@ function upsertList() { const i = tenants.findIndex((x) => x.id === T.id); if (i
 
 // ---------- render editor ----------
 function renderAll() {
+  $("houseFld").hidden = !can("toggle_active") || !T.partner_id;
   renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
   document.querySelectorAll(".tn").forEach((x) => (x.textContent = T.name));
   renderImport($("tImport"), { tenant_id: T.id, withFirm: false });
@@ -506,8 +509,43 @@ $("chips").addEventListener("click", (e) => {
 
 // ---------- log ----------
 const fmt = (iso) => iso ? new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+// ---------- i huset nu, evakuering og statistik ----------
+const MONTHS_DA = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+function renderInside(tbody, nEl, list, showFirm) {
+  nEl.textContent = list.length ? "(" + list.length + ")" : "";
+  tbody.innerHTML = list.map((g) => "<tr><td class=n>" + esc(g.time) + "</td><td>" + esc(g.name) + "</td><td class=n>" + esc(g.phone) + "</td><td>" + esc(showFirm ? g.firm : g.company) + "</td><td>" + esc(g.host) + "</td></tr>").join("") ||
+    '<tr><td colspan="5" class="muted">Ingen gæster i huset lige nu.</td></tr>';
+}
+function renderStats(box, data) {
+  const m = data.months.slice(-6), off = data.months.length - m.length;
+  const head = "<tr><th>Firma</th>" + m.map((x) => "<th>" + MONTHS_DA[+x.slice(5) - 1] + " " + x.slice(2, 4) + "</th>").join("") + "<th>I alt</th></tr>";
+  const rows = data.firms.map((f) => { const g = f.guests.slice(off); return "<tr><td>" + esc(f.name) + "</td>" + g.map((n) => "<td>" + n + "</td>").join("") + "<td>" + g.reduce((a, b) => a + b, 0) + "</td></tr>"; }).join("");
+  const tot = m.map((_, i) => data.firms.reduce((a, f) => a + f.guests[off + i], 0));
+  box.innerHTML = '<table class="stats"><thead>' + head + "</thead><tbody>" + (rows || '<tr><td colspan="8" class="muted">Ingen besøg endnu.</td></tr>') + "</tbody>" +
+    (data.firms.length > 1 ? "<tfoot><tr><td>I alt</td>" + tot.map((n) => "<td>" + n + "</td>").join("") + "<td>" + tot.reduce((a, b) => a + b, 0) + "</td></tr></tfoot>" : "") + "</table>";
+}
+function evacButtons(prefix, base) {
+  const copy = (url) => (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast("Link kopieret"), () => toast(url));
+  $(prefix + "EvacCopy").onclick = async () => { try { copy((await api("GET", base + "/evac-link")).url); } catch (err) { toast(err.message, true); } };
+  $(prefix + "EvacNew").onclick = async (e) => {
+    const b = e.currentTarget;
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Lav nyt link"; }, 3000); return; }
+    try { const r = await api("POST", base + "/evac-link"); $(prefix + "EvacOpen").href = r.url; copy(r.url); toast("Nyt link lavet og kopieret. Det gamle virker ikke længere."); } catch (err) { toast(err.message, true); }
+  };
+  api("GET", base + "/evac-link").then((r) => ($(prefix + "EvacOpen").href = r.url)).catch(() => {});
+}
+async function loadHouse(prefix, base, showFirm) {
+  try {
+    const [inside, stats] = await Promise.all([api("GET", base + "/inside"), api("GET", base + "/stats?months=6")]);
+    renderInside($(prefix + "Inside"), $(prefix + "InsideN"), inside, showFirm); renderStats($(prefix + "Stats"), stats);
+    $(prefix + "StatsCsv").href = base + "/stats?format=csv&months=12";
+    evacButtons(prefix, base);
+  } catch (err) { toast(err.message, true); }
+}
+
 async function loadLog() {
   if (!T) return;
+  loadHouse("t", "/api/admin/tenants/" + T.id, false);
   try {
     const [v, n] = await Promise.all([api("GET", "/api/admin/tenants/" + T.id + "/visits"), api("GET", "/api/admin/tenants/" + T.id + "/notifications")]);
     VISITS = v; $("delBar").hidden = true;
@@ -602,7 +640,7 @@ async function loadExpected() {
   if (!f.date.value) { const [d, tm] = nextSlot(); f.date.value = d; f.time.value = tm; f.date.min = today2(); }
   try {
     const list = await api("GET", "/api/admin/tenants/" + T.id + "/invitations" + ($("expAll").checked ? "?all=true" : ""));
-    $("expRows").innerHTML = list.map((x) => '<tr data-iid="' + x.id + '"><td class=n>' + fmt(x.expected_at) + "</td><td>" + esc(x.guest_name) + (x.guest_company ? '<div class="small muted">' + esc(x.guest_company) + "</div>" : "") +
+    $("expRows").innerHTML = list.map((x) => '<tr data-iid="' + x.id + '"><td class=n>' + (x.recurring ? '<span class="tag rec">fast gæst</span><div class="small muted">til ' + fmtDay(x.valid_until) + "</div>" : fmt(x.expected_at)) + "</td><td>" + esc(x.guest_name) + (x.guest_company ? '<div class="small muted">' + esc(x.guest_company) + "</div>" : "") +
       '</td><td>' + esc(x.host_name) + '<div class="small muted">af ' + esc(x.created_by) + '</div></td><td><span class="code6">' + esc(x.code) + '</span></td><td><span class="pill ' + x.status + '">' + STATUS_DA[x.status] + "</span></td><td><div class=acts>" +
       (x.status === "pending" ? '<button class="btn ghost sm" type="button" data-resend>Send igen</button><a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(x.guest_url) + '">Gæstens side</a><button class="btn ghost sm" type="button" data-cancel>Annullér</button>' : "") +
       "</div></td></tr>").join("") || '<tr><td colspan="6" class="muted">Ingen forventede gæster.</td></tr>';
@@ -611,10 +649,12 @@ async function loadExpected() {
     '<p class="muted small">Tilføj personer først.</p>';
 }
 $("expAll").addEventListener("change", loadExpected);
+$("expRec").addEventListener("change", (e) => { $("expUntilFld").hidden = !e.target.checked; });
 $("expForm").addEventListener("submit", async (e) => {
   e.preventDefault(); const f = e.target;
   const body = { host_id: f.host_id.value ? +f.host_id.value : null, guest_name: f.guest_name.value.trim(), guest_phone: f.guest_phone.value.trim(),
-    guest_email: f.guest_email.value.trim(), guest_company: f.guest_company.value.trim(), expected_at: f.date.value + "T" + f.time.value, send: f.send.checked };
+    guest_email: f.guest_email.value.trim(), guest_company: f.guest_company.value.trim(), expected_at: f.date.value + "T" + f.time.value, send: f.send.checked,
+    recurring: f.recurring.checked, valid_until: f.recurring.checked ? f.valid_until.value : "" };
   try {
     const r = await api("POST", "/api/admin/tenants/" + T.id + "/invitations", body);
     toast(r.guest_name + " er inviteret med koden " + r.code + (body.send ? "" : ". Koden er ikke sendt."));

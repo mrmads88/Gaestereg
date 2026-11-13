@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const pad = (n) => (n < 10 ? "0" : "") + n;
 const hhmm = (d) => pad(d.getHours()) + ":" + pad(d.getMinutes());
-const initials = (n) => String(n || "?").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+const initials = (n) => String(n || "?").split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w)).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 const first = (n) => String(n || "").split(" ")[0];
 
 const TOKEN = decodeURIComponent(location.pathname.split("/").filter(Boolean).pop() || "");
@@ -42,6 +42,8 @@ const T = {
     haveCode: "Jeg har en kode", codeQ: "Tast din kode", codeLead: "Du har fået den på SMS eller mail.",
     scan: "Scan QR-kode", scanStop: "Stop kamera", codeBad: "Koden passer ikke. Tjek den, eller vælg personen i stedet.",
     clear: "Ryd",
+    qFirm: "Hvilket firma skal du besøge?", leadFirm: "Tryk på firmaet, eller søg efter personen.", allFirms: "Alle firmaer",
+    searchAll: "Søg på firma eller person", firmReception: "Firmaets modtagelse", houseReception: "Husets reception",
   },
   en: {
     wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin",
@@ -71,6 +73,8 @@ const T = {
     haveCode: "I have a code", codeQ: "Enter your code", codeLead: "You received it by text message or email.",
     scan: "Scan QR code", scanStop: "Stop camera", codeBad: "That code doesn't match. Check it, or choose the person instead.",
     clear: "Clear",
+    qFirm: "Which company are you visiting?", leadFirm: "Tap the company, or search for the person.", allFirms: "All companies",
+    searchAll: "Search company or person", firmReception: "Company reception", houseReception: "Building reception",
   },
 };
 let lang = "da";
@@ -81,7 +85,13 @@ const MODE = () => (LANGS().length < 2 ? "off" : (CFG && CFG.lang_mode) || "togg
 const HOME = () => (MODE() === "first" ? "lang" : "start");
 const flag = (c) => '<span class="flag">' + window.NODD_LANG(c).flag() + "</span>";
 // Tilbage til start: kundens standardsprog og den første skærm (sprogvalg eller personer).
+// Husets skærm (kontorhotel): gæsten vælger først firma. FIRM er det valgte firma, ellers null.
+let FIRM = null, pkgFirm = null;
+const curHosts = () => (FIRM ? FIRM.hosts : CFG.hosts);
+const allowUnknown = () => (FIRM ? FIRM.allow_unknown_host : CFG.allow_unknown_host);
+const firmById = (id) => (CFG.firms || []).find((f) => f.id === id) || null;
 function home() {
+  FIRM = null; pkgFirm = null;
   const d = CFG && LANGS().includes(CFG.lang_default) ? CFG.lang_default : LANGS()[0];
   if (lang !== d) { lang = d; applyLang(); }
   show(isOpen() ? HOME() : "closed");
@@ -175,27 +185,56 @@ function tick() {
 // ---------- hosts ----------
 const BELL = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></svg>';
 function pic(h) { return h.photo_url ? '<img src="' + esc(h.photo_url) + '" alt="" loading="lazy">' : '<span class="ini">' + esc(initials(h.name)) + "</span>"; }
+function firmLogo(f) { return f.logo_url ? '<img src="' + esc(f.logo_url) + '" alt="">' : '<span class="ini">' + esc(initials(f.name)) + "</span>"; }
+function renderFirms() {
+  const el = $("hosts"), q = $("search").value.trim().toLowerCase();
+  $("startQ").textContent = t("qFirm"); $("startLead").textContent = t("leadFirm"); $("firmBack").hidden = true;
+  $("searchWrap").hidden = false; $("search").placeholder = t("searchAll");
+  el.classList.remove("compact");
+  if (q) {  // søg på tværs af firmaer: både firmanavne og personer
+    const firms = CFG.firms.filter((f) => f.name.toLowerCase().includes(q));
+    const people = [];
+    CFG.firms.forEach((f) => f.hosts.forEach((h) => { if (h.name.toLowerCase().includes(q) || (h.title || "").toLowerCase().includes(q)) people.push([f, h]); }));
+    el.classList.add("compact"); el.style.setProperty("--cols", 3);
+    el.innerHTML = firms.map((f) => '<button class="host firm" type="button" data-firm="' + f.id + '"><span class="pic">' + firmLogo(f) + '</span><span class="tx"><b>' + esc(f.name) + "</b><span>" + f.hosts.length + "</span></span></button>").join("") +
+      people.map(([f, h]) => '<button class="host" type="button" data-firm="' + f.id + '" data-host="' + h.id + '"><span class="pic">' + pic(h) + '</span><span class="tx"><b>' + esc(h.name) + "</b><span>" + esc(f.name) + (h.title ? " · " + esc(h.title) : "") + "</span></span></button>").join("") ||
+      '<p class="empty">' + t("noHit") + "</p>";
+    return;
+  }
+  const n = CFG.firms.length;
+  el.style.setProperty("--cols", n <= 2 ? 2 : n <= 12 ? 3 : 4);
+  el.innerHTML = CFG.firms.map((f) => '<button class="host firm" type="button" data-firm="' + f.id + '"><span class="pic">' + firmLogo(f) + '</span><span class="tx"><b>' + esc(f.name) + "</b></span></button>").join("");
+}
+// Pakke-knappen starter forfra med firmavalget. Tilbage fra næste skærm husker firmaet.
+$("pkgBtn").addEventListener("click", () => { pkgFirm = null; });
+$("firmBack").addEventListener("click", () => { FIRM = null; $("search").value = ""; renderHosts(); });
+
 function renderHosts() {
   $("pkgBtn").hidden = !CFG.delivery_enabled;
-  const all = CFG.hosts;
+  if (CFG.house && !FIRM) return renderFirms();
+  $("startQ").textContent = t("qHost"); $("startLead").textContent = FIRM ? FIRM.name : t("leadHost");
+  $("firmBack").hidden = !(CFG.house && FIRM); $("search").placeholder = t("searchP");
+  const all = curHosts();
   const withPhotos = CFG.show_photos && all.some((h) => h.photo_url);
   $("searchWrap").hidden = all.length <= 12;
   const q = $("search").value.trim().toLowerCase();
   const list = all.filter((h) => !q || h.name.toLowerCase().includes(q) || (h.title || "").toLowerCase().includes(q));
-  const n = list.length + (CFG.allow_unknown_host ? 1 : 0);
+  const n = list.length + (allowUnknown() ? 1 : 0);
   const el = $("hosts");
   el.classList.toggle("compact", !withPhotos || all.length > 16);
   el.style.setProperty("--cols", n <= 2 ? 2 : n <= 6 ? 3 : 4);
   let html = list.map((h) => '<button class="host" type="button" data-host="' + h.id + '"><span class="pic">' + pic(h) + '</span><span class="tx"><b>' + esc(h.name) + "</b><span>" + esc(h.title || "") + "</span></span></button>").join("");
   if (!list.length) html = '<p class="empty">' + t("noHit") + "</p>";
-  if (CFG.allow_unknown_host) html += '<button class="host any" type="button" data-host="any"><span class="pic">' + BELL + '</span><span class="tx"><b>' + t("any") + "</b><span>" + t("anySub") + "</span></span></button>";
+  if (allowUnknown()) html += '<button class="host any" type="button" data-host="any"><span class="pic">' + BELL + '</span><span class="tx"><b>' + t("any") + "</b><span>" + t("anySub") + "</span></span></button>";
   el.innerHTML = html;
 }
 $("search").addEventListener("input", renderHosts);
 $("hosts").addEventListener("click", (e) => {
+  const fb = e.target.closest("[data-firm]");
+  if (fb && !FIRM) { FIRM = firmById(+fb.dataset.firm); $("search").value = ""; if (!fb.dataset.host) { renderHosts(); $("s-start").scrollTop = 0; return; } }
   const b = e.target.closest("[data-host]"); if (!b) return;
   const id = b.dataset.host;
-  const host = id === "any" ? null : CFG.hosts.find((h) => String(h.id) === id);
+  const host = id === "any" ? null : curHosts().find((h) => String(h.id) === id);
   visit = { host, in: hhmm(new Date()) };
   show("name");
 });
@@ -204,6 +243,7 @@ function renderChosen() {
   $("chosen").innerHTML = h
     ? '<span class="pic">' + (h.photo_url ? '<img src="' + esc(h.photo_url) + '" alt="">' : esc(initials(h.name))) + '</span><div><small>' + t("visiting") + "</small><b>" + esc(h.name) + "</b> <span>" + esc(h.title || "") + "</span></div>"
     : '<span class="pic">' + BELL + '</span><div><small>' + t("visiting") + "</small><b>" + t("reception") + "</b></div>";
+  if (FIRM) $("chosen").querySelector("div").insertAdjacentHTML("beforeend", '<span class="firmname">' + esc(FIRM.name) + "</span>");
 }
 
 // ---------- progress + badge ----------
@@ -321,7 +361,7 @@ $("nameForm").addEventListener("submit", async (e) => {
   const body = { host_id: visit.host ? visit.host.id : null, guest_name: $("fName").value.trim(),
     guest_phone: CFG.ask_phone ? $("fPhone").value.trim() : "", guest_company: CFG.ask_company ? $("fCompany").value.trim() : "", preview: PREVIEW,
     extra_guests: CFG.group_checkin ? extras.map((x) => x.trim()).filter(Boolean) : [], accept_terms: !!(CFG.terms_enabled && $("termsOk").checked),
-    invitation_code: visit.invite || "" };
+    invitation_code: visit.invite || "", firm_id: FIRM ? FIRM.id : null };
   try {
     const r = await fetch(API + "/checkin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json().catch(() => ({}));
@@ -374,29 +414,37 @@ function startReplyPoll() {
 // ---------- pakke/levering ----------
 let pkgTo = null;
 function renderPkg() {
-  const list = CFG.hosts;
+  if (CFG.house && !pkgFirm) {  // husets skærm: først firma, eller husets godsmodtagelse
+    $("pkgHosts").innerHTML = CFG.firms.map((f) => '<button class="host firm" type="button" data-pfirm="' + f.id + '"><span class="pic">' + firmLogo(f) + '</span><span class="tx"><b>' + esc(f.name) + "</b></span></button>").join("") +
+      '<button class="host any" type="button" data-pkg="any"><span class="pic">' + BELL + '</span><span class="tx"><b>' + t("pkgAny") + "</b><span>" + t("houseReception") + "</span></span></button>";
+    $("pkgHosts").style.setProperty("--cols", 3);
+    return;
+  }
+  const list = pkgFirm ? pkgFirm.hosts : CFG.hosts;
   $("pkgHosts").innerHTML = list.map((h) => '<button class="host" type="button" data-pkg="' + h.id + '"><span class="pic">' + pic(h) + '</span><span class="tx"><b>' + esc(h.name) + "</b><span>" + esc(h.title || "") + "</span></span></button>").join("") +
-    '<button class="host any" type="button" data-pkg="any"><span class="pic">' + BELL + '</span><span class="tx"><b>' + t("pkgAny") + "</b><span>" + t("pkgAnySub") + "</span></span></button>";
+    '<button class="host any" type="button" data-pkg="any"><span class="pic">' + BELL + '</span><span class="tx"><b>' + (pkgFirm ? t("firmReception") : t("pkgAny")) + "</b><span>" + t("pkgAnySub") + "</span></span></button>";
   $("pkgHosts").style.setProperty("--cols", list.length + 1 <= 6 ? 3 : 4);
 }
 function renderPkgChosen() {
   const h = pkgTo;
   $("pkgChosen").innerHTML = '<span class="pic">' + (h ? (h.photo_url ? '<img src="' + esc(h.photo_url) + '" alt="">' : esc(initials(h.name))) : BELL) +
-    "</span><div><small>" + t("pkgTo") + "</small><b>" + esc(h ? h.name : t("pkgAny")) + "</b></div>";
+    "</span><div><small>" + t("pkgTo") + "</small><b>" + esc(h ? h.name : pkgFirm ? pkgFirm.name : t("pkgAny")) + "</b>" + (h && pkgFirm ? '<span class="firmname">' + esc(pkgFirm.name) + "</span>" : "") + "</div>";
 }
 $("pkgHosts").addEventListener("click", (e) => {
+  const fb = e.target.closest("[data-pfirm]");
+  if (fb) { pkgFirm = firmById(+fb.dataset.pfirm); renderPkg(); return; }
   const b = e.target.closest("[data-pkg]"); if (!b) return;
-  pkgTo = b.dataset.pkg === "any" ? null : CFG.hosts.find((h) => String(h.id) === b.dataset.pkg);
+  pkgTo = b.dataset.pkg === "any" ? null : (pkgFirm ? pkgFirm.hosts : CFG.hosts).find((h) => String(h.id) === b.dataset.pkg);
   show("pkg2");
 });
 $("pkgForm").addEventListener("submit", async (e) => {
   e.preventDefault(); if (busy) return; busy = true; $("pkgSend").disabled = true;
   try {
     const r = await fetch(API + "/delivery", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ host_id: pkgTo ? pkgTo.id : null, courier_company: $("pCompany").value.trim(), courier_name: $("pName").value.trim(), preview: PREVIEW }) });
+      body: JSON.stringify({ host_id: pkgTo ? pkgTo.id : null, firm_id: pkgFirm ? pkgFirm.id : null, courier_company: $("pCompany").value.trim(), courier_name: $("pName").value.trim(), preview: PREVIEW }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) { toast(typeof d.detail === "string" ? d.detail : t("errNet"), true); return; }
-    $("pkgDoneSub").textContent = t("pkgDoneSub").replace("{h}", pkgTo ? first(pkgTo.name) : t("pkgAny"));
+    $("pkgDoneSub").textContent = t("pkgDoneSub").replace("{h}", pkgTo ? first(pkgTo.name) : pkgFirm ? pkgFirm.name : t("pkgAny"));
     $("pkgNote").textContent = CFG.delivery_note || ""; $("pkgNote").hidden = !CFG.delivery_note;
     show("pkgdone"); restartTimer("pkgTimer");
     clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "pkgdone") home(); }, 8000);
@@ -420,7 +468,8 @@ async function submitCode(code) {
       $("codeBoxes").classList.remove("shake"); void $("codeBoxes").offsetWidth; $("codeBoxes").classList.add("shake");
       codeVal = ""; renderCode(); return;
     }
-    const host = d.host_id ? CFG.hosts.find((h) => h.id === d.host_id) || null : null;
+    if (d.firm_id) FIRM = firmById(d.firm_id);
+    const host = d.host_id ? curHosts().find((h) => h.id === d.host_id) || null : null;
     visit = { host, in: hhmm(new Date()), invite: d.code, prefill: d };
     stopScan(); show("name");
   } catch (e) { toast(t("errNet"), true); } finally { codeBusy = false; }

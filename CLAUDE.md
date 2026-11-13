@@ -28,6 +28,8 @@
 - Besøg har `kind` (`guest` eller `delivery`). Pakker står ikke på tjek-ud-listen. Gæster, der kom sammen, har samme `group_ref` og giver én samlet besked.
 - Skærmens offentlige config (`tenant_public`) må kun indeholde det, skærmen viser. Godsmodtagelsens kontakt, Teams-adressen og påmindelser bliver på serveren (der er en test).
 - Invitationer (`invitations.py`, `routes_invite.py`): 6-cifret kode pr. kunde, gæstens side `/g/<token>` med QR (segno), værtens link `/i/<token>` (signeret med `Host.link_version`). Koden virker fra 36 timer før til 36 timer efter det forventede tidspunkt. `delete_tenant` skal slette invitationer før personerne.
+- Husets skærm (`Tenant.house_screen`, `house.py`): et firma under en partner viser alle partnerens firmaer. Gæsten vælger firma (`firm_id`), og besøget gemmes hos firmaet med firmaets beskeder. Skærmens egne indstillinger (navn, mobil, husregler) gælder. Koder, tjek ud og "i huset" dækker alle partnerens firmaer (`tenant_ids_on_screen`).
+- Evakueringsliste `/e/<token>` (signeret med `evac_version` på kunde eller partner). Statistik i `visit_stats` (tælles op ved check-ind og pakker).
 - Skærmen med `?m=1` er gæstens egen telefon (fra QR-plakaten): telefonens tastatur, intet print, tæller ikke som skærm.
 - Billeder gemmes via `media.storage` (lokale filer nu). Brug den, ikke `settings.media_dir` direkte, så Blob Storage senere kun kræver en ny storage-klasse.
 - Azure SQL's gratis-database går på pause. `db.py` venter, mens den vågner. Kiosk-config caches i hukommelsen (`routes_kiosk._config_cache`) og tømmes af middleware i `main.py` ved alle admin-ændringer. Ingen polling må ramme databasen.
@@ -44,6 +46,7 @@
 - Alle admin-endpoints skal tage `p: Principal = Depends(current)` og hente kunder med `get_tenant_for(db, tid, p)` (personer med `_host(db, hid, p)`). Det er dem, der sikrer, at man kun ser sine egne firmaer. En kunde, man ikke må se, giver 404. Skriv en test i `tests/test_access.py` for nye endpoints.
 - Brug `Unicode`/`UnicodeText` (ikke `String`/`Text`) i modellerne, så det bliver NVARCHAR på SQL Server.
 - SQL Server tillader kun én kaskadevej til en tabel. Nye fremmednøgler med `ondelete` skal tjekkes mod de eksisterende (fx har `visits.host_id` og `notifications.visit_id` ingen). Ryd op i koden i stedet.
+- Sammenlign booleans med `== true()` (fra sqlalchemy), aldrig `.is_(True)`. SQL Server forstår ikke `IS 1`.
 - Brug subqueries frem for lange `IN (...)`-lister. SQL Server tillader højst 2100 parametre.
 
 - Personers e-mail og mobil må aldrig med i kiosk-API'et (`schemas.host_public`). Der er en test for det.

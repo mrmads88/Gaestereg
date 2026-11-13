@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#b42318">
+<title>Evakueringsliste</title>
+<link rel="icon" href="/static/brand/nodd-icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Evakueringsliste til brandvagtens telefon: hvem er i huset, og hvem er talt op. Stor tekst, ét tryk pr. person.
+   Afkrydsning gemmes kun i denne browser (localStorage), så to brandvagter kan dele huset op. */
+:root{--alert:#b42318;--ink:#14171d;--soft:#5d6470;--paper:#f6f4f1;--card:#fff;--rule:#e4e1dc;--safe:#127a4c;--safe-bg:#e3f4ea;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.4 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--alert);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--alert);color:#fff;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
+.hwrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{font:800 1.5rem var(--f-display);margin:0;letter-spacing:-.01em}
+.where{opacity:.85;font-size:.9rem}
+.count{display:flex;gap:10px;align-items:baseline}
+.count b{font:800 2.6rem/1 var(--f-display)}
+.count span{font-weight:600}
+.bar{height:8px;border-radius:8px;background:rgb(255 255 255 / .25);overflow:hidden}
+.bar i{display:block;height:100%;background:#fff;width:0;transition:width .2s}
+main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:10px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tools input{flex:1;min-width:0;font:inherit;border:1px solid var(--rule);border-radius:12px;padding:10px 12px;background:#fff}
+.tools button{font:700 .9rem var(--f-body);border:1px solid var(--rule);border-radius:999px;background:#fff;padding:9px 14px}
+.p:focus-visible{outline:3px solid var(--alert);outline-offset:2px}
+.p{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:12px 14px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.p .box{width:34px;height:34px;border-radius:10px;border:2.5px solid var(--alert);flex:none;display:grid;place-items:center;color:#fff;font-weight:800}
+.p .grow{flex:1;min-width:0}
+.p b{display:block;font-size:1.1rem}
+.p small{color:var(--soft);display:block}
+.p a{color:var(--alert);font-weight:700;text-decoration:none;white-space:nowrap}
+.p.safe{background:var(--safe-bg);border-color:#bfe3cd}
+.p.safe .box{background:var(--safe);border-color:var(--safe)}
+.p.safe b{text-decoration:line-through;text-decoration-thickness:2px;color:var(--safe)}
+.grp{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);margin-top:8px}
+.empty{background:var(--card);border-radius:16px;padding:22px;text-align:center;color:var(--soft)}
+.note{font-size:.8rem;color:var(--soft);text-align:center}
+.mono{font-family:var(--f-mono);font-size:.85rem}
+@media (prefers-reduced-motion: reduce){.bar i{transition:none}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="top"><h1>Evakueringsliste</h1><span class="where" id="where"></span></div>
+    <div class="count"><b id="left">–</b><span id="leftTxt">gæster mangler at blive talt</span></div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+</header>
+<main>
+  <div class="tools"><input id="q" type="search" placeholder="Søg navn eller firma" aria-label="Søg navn eller firma"><button type="button" id="reset">Nulstil</button></div>
+  <div id="list"></div>
+  <p class="note">Tryk på en gæst, når de er talt ved mødestedet. Listen opdateres hvert 30. sekund. <span class="mono" id="updated"></span></p>
+</main>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const token = decodeURIComponent(location.pathname.split("/").pop());
+  const key = "evac-" + token.slice(-16) + "-" + new Date().toDateString();
+  let guests = [], safe = new Set();
+  try { safe = new Set(JSON.parse(localStorage.getItem(key) || "[]")); } catch (e) {}
+  const save = () => { try { localStorage.setItem(key, JSON.stringify([...safe])); } catch (e) {} };
+  function render() {
+    const q = $("q").value.trim().toLowerCase();
+    const left = guests.filter((g) => !safe.has(g.id)).length;
+    $("left").textContent = left;
+    $("leftTxt").textContent = guests.length === 0 ? "gæster i huset" : left === 0 ? "Alle " + guests.length + " gæster er talt" : "af " + guests.length + " gæster mangler at blive talt";
+    $("bar").style.width = guests.length ? (100 * (guests.length - left) / guests.length) + "%" : "0";
+    const shown = guests.filter((g) => !q || (g.name + " " + g.company + " " + g.firm + " " + g.host).toLowerCase().includes(q));
+    const firms = [...new Set(shown.map((g) => g.firm))];
+    $("list").innerHTML = !guests.length ? '<div class="empty">Der er ingen gæster tjekket ind lige nu.</div>' :
+      firms.map((f) => (firms.length > 1 ? '<div class="grp">' + esc(f) + "</div>" : "") + shown.filter((g) => g.firm === f).map((g) =>
+        '<div class="p' + (safe.has(g.id) ? " safe" : "") + '" role="button" tabindex="0" aria-pressed="' + safe.has(g.id) + '" data-id="' + g.id + '"><span class="box">' + (safe.has(g.id) ? "✓" : "") + '</span><span class="grow"><b>' + esc(g.name) + "</b><small>" +
+        esc([g.company, "besøger " + g.host, "kl. " + g.time].filter(Boolean).join(" · ")) + "</small></span>" +
+        (g.phone ? '<a href="tel:' + esc(g.phone.replace(/\s/g, "")) + '" data-call>Ring</a>' : "") + "</div>").join("")).join("");
+  }
+  async function load() {
+    try {
+      const r = await fetch("/api/evac/" + encodeURIComponent(token), { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) { document.querySelector("main").innerHTML = '<div class="empty">' + esc(j.detail || "Linket virker ikke") + "</div>"; return; }
+      $("where").textContent = j.name; guests = j.guests; render();
+      $("updated").textContent = "Opdateret " + new Date().toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+    } catch (e) { $("updated").textContent = "Ingen forbindelse. Listen vises som sidst."; }
+  }
+  $("list").addEventListener("click", (e) => {
+    if (e.target.closest("[data-call]")) return;
+    const b = e.target.closest("[data-id]"); if (!b) return;
+    const id = +b.dataset.id; safe.has(id) ? safe.delete(id) : safe.add(id); save(); render();
+  });
+  $("list").addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-id]")) { e.preventDefault(); e.target.click(); }
+  });
+  $("q").addEventListener("input", render);
+  $("reset").addEventListener("click", () => { safe.clear(); save(); render(); });
+  load(); setInterval(load, 30000);
+})();
+</script>
+</body>
+</html>
