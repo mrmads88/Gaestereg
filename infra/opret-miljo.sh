@@ -33,7 +33,13 @@ echo
 
 az provider register --namespace Microsoft.Web -o none
 az provider register --namespace Microsoft.Sql -o none
-az group create -n "$RG" -l "$LOC" --tags app=gaestereg miljo="$MILJO" -o none
+# Findes ressourcegruppen allerede (fx oprettet i portalen), bruges den, uanset hvilken region den står i.
+# Gruppens region er kun metadata. Selve ressourcerne lægges i $LOC.
+if az group show -n "$RG" -o none 2>/dev/null; then
+  echo "Bruger den eksisterende ressourcegruppe $RG."
+else
+  az group create -n "$RG" -l "$LOC" --tags app=gaestereg miljo="$MILJO" -o none
+fi
 
 # Genbrug adgangskode og nøgle, hvis appen findes i forvejen.
 eksisterende() {
@@ -52,7 +58,7 @@ SQL_PASSWORD="$(tilfaeldig 28)Aa1-"
 echo "Opretter ressourcer (tager 3-6 minutter første gang) ..."
 az deployment group create -g "$RG" -n "gaestereg-$MILJO" \
   -f "$(dirname "$0")/main.bicep" \
-  -p miljo="$MILJO" appName="$APP" sqlServerName="$SQL" appSku="$APP_SKU" freeSql="$FREE_SQL" \
+  -p miljo="$MILJO" location="$LOC" appName="$APP" sqlServerName="$SQL" appSku="$APP_SKU" freeSql="$FREE_SQL" \
      sqlAdminPassword="$SQL_PASSWORD" \
   -o none
 

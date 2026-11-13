@@ -5,8 +5,8 @@ GitHub udruller automatisk:
 
 | Branch       | Miljø i GitHub | Ressourcegruppe    | App Service-plan | Database             | NOTIFY_MODE |
 |--------------|----------------|--------------------|------------------|----------------------|-------------|
-| `main`       | `dev`          | `rg-gaestereg-dev`  | F1 (gratis)      | Azure SQL, gratis    | `test`      |
-| `production` | `production`   | `rg-gaestereg-prod` | B1 (senere)      | se "Prod" herunder   | `live`      |
+| `main`       | `dev`          | `rg_gaestereg_app_dev`  | F1 (gratis)      | Azure SQL, gratis    | `test`      |
+| `production` | `production`   | `rg_gaestereg_app_prod` | B1 (senere)      | se "Prod" herunder   | `live`      |
 
 Lige nu sættes kun **dev** op. Det koster 0 kr.
 
@@ -37,12 +37,15 @@ Det nemmeste er **Azure Cloud Shell** (ikonet `>_` øverst i portal.azure.com, v
 git clone https://github.com/mrmads88/gaestereg.git
 cd gaestereg
 gh auth login          # vælg GitHub.com > HTTPS > Login with a web browser. Så kan scriptet sætte GitHub op.
-./infra/opret-miljo.sh dev
+RG=rg_gaestereg_app_dev ./infra/opret-miljo.sh dev
+RG=rg_gaestereg_app_prod ./infra/opret-miljo.sh prod
 ```
+
+Ressourcegrupperne er oprettet i portalen (Denmark East). Gruppens region er kun metadata, så ressourcerne lægges stadig i Sweden Central. Uden `RG=` opretter scriptet selv `rg-gaestereg-<miljø>`.
 
 Scriptet:
 
-1. Opretter `rg-gaestereg-dev` i Sweden Central med en F1-plan, web-app, SQL-server og en gratis database.
+1. Bruger (eller opretter) ressourcegruppen og lægger i Sweden Central en F1-plan, web-app, SQL-server og en gratis database.
 2. Sætter app-indstillingerne (`DATABASE_URL`, `ADMIN_PASSWORD`, `SECRET_KEY` med flere). Adgangskoder genereres.
 3. Opretter GitHub-miljøet `dev`, som kun `main` kan udrulle til, med secret `AZURE_WEBAPP_PUBLISH_PROFILE` og variable `AZURE_WEBAPP_NAME`.
 4. Skriver adressen og admin-koden ud. **Gem admin-koden.**
@@ -65,7 +68,7 @@ Push til `main`, eller kør workflowet **Test og udrul** under **Actions** igen 
 
 Åbn derefter `https://<app>.azurewebsites.net/admin` og `/k/demo`.
 
-Logs: **App Service > Log stream** i portalen eller `az webapp log tail -g rg-gaestereg-dev -n <app>`.
+Logs: **App Service > Log stream** i portalen eller `az webapp log tail -g rg_gaestereg_app_dev -n <app>`.
 
 ## 3. GitHub i hånden (kun hvis scriptet ikke kunne)
 
@@ -101,13 +104,13 @@ git push -u origin feature/noget-nyt     # opret PR mod main -> tests kører på
 ## Prod (senere)
 
 ```bash
-APP_SKU=B1 ./infra/opret-miljo.sh prod
+APP_SKU=B1 RG=rg_gaestereg_app_prod ./infra/opret-miljo.sh prod
 ```
 
 Herefter SMS og e-mail i prod (de bliver stående, hvis scriptet køres igen):
 
 ```bash
-az webapp config appsettings set -g rg-gaestereg-prod -n <prod-app> --settings \
+az webapp config appsettings set -g rg_gaestereg_app_prod -n <prod-app> --settings \
   GATEWAYAPI_TOKEN='<token>' \
   SMTP_HOST=smtp.office365.com SMTP_PORT=587 SMTP_USER='<bruger>' SMTP_PASSWORD='<kode>' SMTP_FROM='reception@ditdomæne.dk'
 ```
@@ -122,12 +125,12 @@ Overvej før prod:
 
 Én installation kan servere alle kunder. Hver kundes skærm bruger sit eget link `/k/<kode>`.
 Vil en partner have sit eget domæne, peg et CNAME på prod-appen og tilføj domænet:
-`az webapp config hostname add -g rg-gaestereg-prod --webapp-name <prod-app> --hostname kiosk.partner.dk`
+`az webapp config hostname add -g rg_gaestereg_app_prod --webapp-name <prod-app> --hostname kiosk.partner.dk`
 
 ## Slet et miljø
 
 ```bash
-az group delete -n rg-gaestereg-dev
+az group delete -n rg_gaestereg_app_dev
 ```
 
 Sletter app, database og billeder. Kan ikke fortrydes.
