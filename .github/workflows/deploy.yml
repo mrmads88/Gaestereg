@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Pak koden
-        run: zip -r app.zip . -x '.git/*' '.github/*' 'tests/*' 'data/*' 'docs/*' 'infra/*' '.venv/*' '*.pyc'
+        run: zip -r app.zip . -x '.git/*' '.github/*' 'tests/*' 'data/*' 'docs/*' 'infra/*' 'tools/*' '.venv/*' '*.pyc'
       - name: Udrul til Azure App Service
         id: deploy
         uses: azure/webapps-deploy@v3

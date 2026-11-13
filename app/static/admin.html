@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gæsteregistrering · Admin</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%231f3a5a%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2218%22 font-family=%22Arial%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22%3EG%3C/text%3E%3C/svg%3E">
+<title>Nodd · Admin</title>
+<link rel="icon" href="/static/brand/nodd-icon.svg" type="image/svg+xml">
+<link rel="icon" href="/static/brand/nodd-icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/static/brand/nodd-icon-180.png">
+<meta name="theme-color" content="#12352e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -15,8 +18,7 @@
 <!-- LOGIN -->
 <div id="loginView" class="login" hidden>
   <form class="login-card" id="loginForm">
-    <div class="brandmark">G</div>
-    <h1>Gæsteregistrering</h1>
+    <h1 class="brand"><img src="/static/brand/nodd-lockup.svg" alt="Nodd" width="168" height="47"></h1>
     <p class="muted" id="loginLead">Log ind for at rette jeres skærm, personer og beskeder.</p>
     <label class="fld" id="emailFld"><span>E-mail</span><input type="email" id="loginEmail" autocomplete="username" maxlength="200"></label>
     <label class="fld"><span>Adgangskode</span><input type="password" id="pw" autocomplete="current-password" required></label>
@@ -25,7 +27,7 @@
     <div class="login-links"><button class="linkbtn" type="button" id="forgotBtn">Glemt adgangskode?</button><button class="linkbtn" type="button" id="platformBtn">Leverandør-login</button></div>
   </form>
   <form class="login-card" id="forgotForm" hidden>
-    <div class="brandmark">G</div>
+    <img class="brandmark" src="/static/brand/nodd-icon.svg" alt="" width="48" height="48">
     <h1>Glemt adgangskode</h1>
     <p class="muted">Skriv din e-mail. Så sender vi et link, hvor du kan vælge en ny adgangskode.</p>
     <label class="fld"><span>E-mail</span><input type="email" id="forgotEmail" required maxlength="200"></label>
@@ -34,7 +36,7 @@
     <div class="login-links"><button class="linkbtn" type="button" data-back>Tilbage til login</button></div>
   </form>
   <form class="login-card" id="inviteForm" hidden>
-    <div class="brandmark">G</div>
+    <img class="brandmark" src="/static/brand/nodd-icon.svg" alt="" width="48" height="48">
     <h1 id="inviteTitle">Velkommen</h1>
     <p class="muted" id="inviteLead"></p>
     <label class="fld"><span>Ny adgangskode</span><input type="password" id="invPw" autocomplete="new-password" minlength="10" required></label>
@@ -49,7 +51,7 @@
 <!-- APP -->
 <div id="appView" class="shell" hidden>
   <header class="top">
-    <div class="top-l"><div class="brandmark sm">G</div><b>Gæsteregistrering</b><span class="envpill" id="envPill"></span></div>
+    <div class="top-l"><img class="lockup" src="/static/brand/nodd-lockup.svg" alt="Nodd" width="104" height="29"><span class="envpill" id="envPill"></span></div>
     <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
   </header>
   <div class="banner" id="banner" hidden></div>

@@ -105,7 +105,7 @@ def send_sms(sender: str, phone: str, text: str) -> None:
         raise RuntimeError(f"GatewayAPI svarede {r.status_code}: {r.text[:300]}")
 
 
-def send_email(to: str, subject: str, body: str, from_name: str) -> None:
+def send_email(to: str, subject: str, body: str, from_name: str, html: str | None = None) -> None:
     if not settings.smtp_configured:
         raise RuntimeError("E-mail er ikke sat op (SMTP_HOST/SMTP_FROM mangler)")
     if not valid_email(to):
@@ -115,6 +115,8 @@ def send_email(to: str, subject: str, body: str, from_name: str) -> None:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as s:
         if settings.smtp_starttls:
             s.starttls()

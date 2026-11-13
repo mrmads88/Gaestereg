@@ -31,7 +31,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Gæsteregistrering", lifespan=lifespan, docs_url="/api/docs" if settings.env != "prod" else None,
+app = FastAPI(title="Nodd", lifespan=lifespan, docs_url="/api/docs" if settings.env != "prod" else None,
               redoc_url=None)
 
 
