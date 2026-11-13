@@ -10,6 +10,7 @@ os.environ.update(DATA_DIR=_tmp, APP_ENV="local", ADMIN_PASSWORD="hemmelig", NOT
 
 from fastapi.testclient import TestClient  # noqa: E402
 from PIL import Image  # noqa: E402
+from sqlalchemy import func, select  # noqa: E402
 
 from app.main import app  # noqa: E402
 
@@ -137,6 +138,65 @@ def test_full_customer_setup_and_checkin(admin):
 
     assert admin.delete(f"/api/admin/tenants/{tid}").status_code == 200
     assert admin.get(f"/api/kiosk/{new}/config").status_code == 404
+
+
+def test_delete_host_keeps_visits_and_purge_removes_old(admin):
+    from datetime import timedelta
+
+    from app.db import SessionLocal
+    from app.models import Notification, Tenant, Visit, utcnow
+    from app.routes_kiosk import purge_old
+
+    t = admin.post("/api/admin/tenants", json={"name": "Oprydning ApS"}).json()
+    tid, token = t["id"], t["kiosk_token"]
+    h = admin.post(f"/api/admin/tenants/{tid}/hosts", json={"name": "Søren Ærø", "email": "s@test.dk"}).json()
+    for name in ("Åse Øster", "Bo Bø"):
+        r = admin.post(f"/api/kiosk/{token}/checkin", json={"host_id": h["id"], "guest_name": name,
+                                                             "guest_phone": "12345678"})
+        assert r.status_code == 200, r.text
+
+    # Personen kan slettes, selvom der er besøg. Besøgene beholder navnet.
+    assert admin.delete(f"/api/admin/hosts/{h['id']}").status_code == 200
+    visits = admin.get(f"/api/admin/tenants/{tid}/visits").json()
+    assert sorted(v["guest_name"] for v in visits) == ["Bo Bø", "Åse Øster"]
+    assert all(v["host_name"] == "Søren Ærø" for v in visits)
+
+    # Besøg ældre end retention_days slettes sammen med deres beskeder.
+    with SessionLocal() as db:
+        tenant = db.get(Tenant, tid)
+        old = db.scalars(select(Visit).where(Visit.tenant_id == tid)).first()
+        old.checked_in_at = utcnow() - timedelta(days=tenant.retention_days + 1)
+        db.commit()
+        assert db.scalar(select(func.count()).select_from(Notification).where(Notification.visit_id == old.id)) > 0
+        assert purge_old(db, tenant) == 1
+        assert db.scalar(select(func.count()).select_from(Notification).where(Notification.visit_id == old.id)) == 0
+        assert db.scalar(select(func.count()).select_from(Visit).where(Visit.tenant_id == tid)) == 1
+
+    assert admin.delete(f"/api/admin/tenants/{tid}").status_code == 200
+
+
+def test_kiosk_config_is_cached_until_admin_changes_something(admin):
+    from app.db import SessionLocal
+    from app.models import Tenant
+
+    t = admin.post("/api/admin/tenants", json={"name": "Cache A/S"}).json()
+    tid, token = t["id"], t["kiosk_token"]
+    assert admin.get(f"/api/kiosk/{token}/config").json()["name"] == "Cache A/S"
+
+    # Ændring direkte i databasen ses ikke: skærmens polling rammer ikke databasen.
+    with SessionLocal() as db:
+        db.get(Tenant, tid).name = "Direkte"
+        db.commit()
+    assert admin.get(f"/api/kiosk/{token}/config").json()["name"] == "Cache A/S"
+
+    # En ændring via admin slår igennem med det samme.
+    admin.patch(f"/api/admin/tenants/{tid}", json={"welcome_text": "Hej"})
+    cfg = admin.get(f"/api/kiosk/{token}/config").json()
+    assert cfg["name"] == "Direkte" and cfg["welcome_text"] == "Hej"
+
+    admin.patch(f"/api/admin/tenants/{tid}", json={"active": False})
+    assert admin.get(f"/api/kiosk/{token}/config").status_code == 404
+    assert admin.delete(f"/api/admin/tenants/{tid}").status_code == 200
 
 
 def test_svg_with_script_rejected(admin):

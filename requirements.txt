@@ -7,3 +7,6 @@ itsdangerous==2.2.0
 httpx==0.28.1
 pillow==11.2.1
 tzdata==2025.2
+# Azure SQL. Kræver "ODBC Driver 18 for SQL Server", som er installeret i App Service (Linux, Python).
+# Bruges kun, når DATABASE_URL starter med mssql+pyodbc://. Lokalt og i tests bruges SQLite.
+pyodbc==5.2.0

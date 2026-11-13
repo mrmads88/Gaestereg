@@ -2,7 +2,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .auth import COOKIE, MAX_AGE, check_password, make_session, require_admin
@@ -163,6 +163,8 @@ def update_host(hid: int, body: HostUpdate, db: Session = Depends(get_db)):
 def delete_host(hid: int, db: Session = Depends(get_db)):
     h = _host(db, hid)
     photo = h.photo_path
+    # Besøg beholder værtens navn (host_name), men mister koblingen til personen.
+    db.execute(update(Visit).where(Visit.host_id == h.id).values(host_id=None))
     db.delete(h)
     db.commit()
     delete_media(photo)

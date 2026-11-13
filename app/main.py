@@ -3,7 +3,7 @@ import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
@@ -33,6 +33,17 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Gæsteregistrering", lifespan=lifespan, docs_url="/api/docs" if settings.env != "prod" else None,
               redoc_url=None)
+
+
+@app.middleware("http")
+async def _refresh_kiosk_config(request: Request, call_next):
+    response = await call_next(request)
+    # Alt, admin ændrer (kunde, personer, billeder, nyt link), skal straks kunne ses på skærmen.
+    if request.method != "GET" and request.url.path.startswith("/api/admin/"):
+        routes_kiosk.clear_config_cache()
+    return response
+
+
 app.include_router(routes_kiosk.router)
 app.include_router(routes_admin.public)
 app.include_router(routes_admin.router)
