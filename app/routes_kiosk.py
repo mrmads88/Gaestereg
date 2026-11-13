@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from . import presence
 from .config import settings
 from .db import SessionLocal, get_db
 from .models import Host, Notification, Tenant, Visit, utcnow
@@ -54,7 +55,9 @@ def clear_config_cache() -> None:
 
 
 @router.get("/{token}/config")
-def config(token: str):
+def config(token: str, pv: bool = False):
+    if not pv:  # forhåndsvisningen i admin tæller ikke som en skærm
+        presence.mark(token)
     hit = _config_cache.get(token)
     if hit and time.monotonic() - hit[0] < settings.kiosk_cache_seconds:
         return hit[1]
@@ -66,6 +69,7 @@ def config(token: str):
 
 @router.post("/{token}/checkin")
 def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, db: Session = Depends(get_db)):
+    presence.mark(token)
     t = tenant_by_token(token, db)
     name = " ".join(body.guest_name.split())
     phone = body.guest_phone.strip()
@@ -106,6 +110,7 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, db: Session = Depe
 
 @router.get("/{token}/inside")
 def inside(token: str, db: Session = Depends(get_db)):
+    presence.mark(token)
     """Guests checked in today and not yet out. Short names only, since the screen is public."""
     t = tenant_by_token(token, db)
     rows = db.scalars(
@@ -119,6 +124,7 @@ def inside(token: str, db: Session = Depends(get_db)):
 
 @router.post("/{token}/checkout/{visit_id}")
 def checkout(token: str, visit_id: int, db: Session = Depends(get_db)):
+    presence.mark(token)
     t = tenant_by_token(token, db)
     v = db.get(Visit, visit_id)
     if v is None or v.tenant_id != t.id:

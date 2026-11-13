@@ -1,9 +1,10 @@
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from . import presence
 from .media import media_url
 from .models import Host, Partner, Tenant, User
 from .timeutil import local_iso
@@ -192,7 +193,7 @@ def tenant_languages(t: Tenant) -> list[str]:
 SUBSCRIPTION_FIELDS = ["sub_yearly_price", "self_service", "self_service_monthly_price", "sub_note"]
 
 
-def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False) -> dict:
+def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False, host_count: int | None = None) -> dict:
     d = {f: getattr(t, f) for f in TENANT_FIELDS}
     d["languages"] = tenant_languages(t)
     d["partner_id"] = t.partner_id
@@ -206,7 +207,11 @@ def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False) -> 
     d["background_url"] = media_url(t.background_path)
     d["kiosk_url"] = f"/k/{t.kiosk_token}"
     d["created_at"] = local_iso(t.created_at)
-    d["host_count"] = len(t.hosts)
+    d["host_count"] = len(t.hosts) if host_count is None else host_count
+    st = presence.status(t.kiosk_token)
+    d["screen"] = {"online": st["online"],
+                   "seen_at": local_iso(datetime.fromtimestamp(st["seen_at"], timezone.utc).replace(tzinfo=None))
+                   if st["seen_at"] else None}
     if with_hosts:
         d["hosts"] = [host_admin(h) for h in t.hosts]
     return d

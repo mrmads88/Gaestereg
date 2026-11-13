@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from .auth import (COOKIE, MAX_AGE, Principal, access_problem, check_master_password, check_user_password,
                    current, hash_password, invite_token, require_platform, session_platform, session_user,
                    slow_down, user_from_invite)
+from . import ratelimit
 from .config import settings
 from .db import get_db
 from .models import Partner, Tenant, User, utcnow
@@ -35,22 +36,40 @@ def can_email() -> bool:
 
 # ---------- session ----------
 
+# Højst 10 forkerte logins pr. IP og 5 pr. e-mail på 15 minutter.
+LOGIN_IP_LIMIT, LOGIN_EMAIL_LIMIT, LOGIN_WINDOW = 10, 5, 15 * 60
+
+
+def _ip(request: Request) -> str:
+    return request.client.host if request.client else "?"
+
+
 @public.post("/login")
-def login(body: LoginIn, response: Response, db: Session = Depends(get_db)):
+def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
     email = body.email.strip().lower()
+    ip_key, email_key = "login-ip:" + _ip(request), "login-mail:" + (email or "platform")
+    ratelimit.check(ip_key, LOGIN_IP_LIMIT, LOGIN_WINDOW)
+    ratelimit.check(email_key, LOGIN_EMAIL_LIMIT, LOGIN_WINDOW)
+
+    def failed(msg: str):
+        ratelimit.hit(ip_key)
+        ratelimit.hit(email_key)
+        slow_down()
+        raise HTTPException(401, msg)
+
     if not email:
         if not settings.admin_password_effective:
             raise HTTPException(503, "ADMIN_PASSWORD er ikke sat på serveren")
         if not check_master_password(body.password):
-            slow_down()
-            raise HTTPException(401, "Forkert adgangskode")
+            failed("Forkert adgangskode")
+        ratelimit.clear(email_key)
         _set_cookie(response, session_platform())
         return {"ok": True}
 
     u = db.scalar(select(User).where(func.lower(User.email) == email))
     if not check_user_password(u, body.password):
-        slow_down()
-        raise HTTPException(401, "Forkert e-mail eller adgangskode")
+        failed("Forkert e-mail eller adgangskode")
+    ratelimit.clear(email_key)
     problem = access_problem(db, u)
     if problem:
         raise HTTPException(403, problem)
@@ -175,6 +194,9 @@ def accept_invite(body: AcceptIn, response: Response, db: Session = Depends(get_
 
 @public.post("/forgot")
 def forgot(body: ForgotIn, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db)):
+    # Højst 5 pr. time pr. IP, så ingen kan bruge formularen til at sende mange mails.
+    ratelimit.check("forgot:" + _ip(request), 5, 3600)
+    ratelimit.hit("forgot:" + _ip(request))
     email = body.email.strip().lower()
     u = db.scalar(select(User).where(func.lower(User.email) == email)) if email else None
     if u is not None and u.active and can_email():
@@ -248,10 +270,18 @@ def _partner_for(db: Session, pid: int, p: Principal) -> Partner:
     return partner
 
 
+def _counts(db: Session, partner_ids=None) -> tuple[dict, dict]:
+    """Antal firmaer og administratorer pr. partner, med to forespørgsler i alt."""
+    tq = select(Tenant.partner_id, func.count()).where(Tenant.partner_id.is_not(None)).group_by(Tenant.partner_id)
+    uq = select(User.partner_id, func.count()).where(User.partner_id.is_not(None)).group_by(User.partner_id)
+    if partner_ids is not None:
+        tq, uq = tq.where(Tenant.partner_id.in_(partner_ids)), uq.where(User.partner_id.in_(partner_ids))
+    return dict(db.execute(tq).all()), dict(db.execute(uq).all())
+
+
 def _partner_out(db: Session, partner: Partner) -> dict:
-    tc = db.scalar(select(func.count()).select_from(Tenant).where(Tenant.partner_id == partner.id))
-    uc = db.scalar(select(func.count()).select_from(User).where(User.partner_id == partner.id))
-    return partner_out(partner, tc or 0, uc or 0)
+    tc, uc = _counts(db, [partner.id])
+    return partner_out(partner, tc.get(partner.id, 0), uc.get(partner.id, 0))
 
 
 @router.get("/partners")
@@ -261,7 +291,9 @@ def list_partners(db: Session = Depends(get_db), p: Principal = Depends(current)
         if p.role != "partner":
             return []
         q = q.where(Partner.id == p.partner_id)
-    return [_partner_out(db, x) for x in db.scalars(q)]
+    partners = list(db.scalars(q))
+    tc, uc = _counts(db, None if p.is_platform else [p.partner_id])
+    return [partner_out(x, tc.get(x.id, 0), uc.get(x.id, 0)) for x in partners]
 
 
 @router.post("/partners")

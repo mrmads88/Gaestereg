@@ -11,6 +11,7 @@ from sqlalchemy import select
 from . import routes_access, routes_admin, routes_import, routes_kiosk
 from .config import settings
 from .db import SessionLocal, init_db
+from .media import storage
 from .models import Tenant
 from .routes_kiosk import purge_old
 from .seed import seed_if_empty
@@ -58,10 +59,9 @@ _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")
 def media(name: str):
     if not _MEDIA_NAME.match(name):
         raise HTTPException(404)
-    p = settings.media_dir / name
-    if not p.exists():
+    if not storage.exists(name):
         raise HTTPException(404)
-    return FileResponse(p, headers={
+    return FileResponse(storage.path(name), headers={
         "Cache-Control": "public, max-age=31536000, immutable",
         "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
         "X-Content-Type-Options": "nosniff",

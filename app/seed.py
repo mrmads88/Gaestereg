@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
+from .media import storage
 from .models import Host, Tenant
 
 DEMO_LOGO = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 90">
@@ -41,7 +42,7 @@ def _placeholder_portrait(name: str, bg: str, fg: str) -> str:
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=85)
     fname = f"{uuid.uuid4().hex}.jpg"
-    (settings.media_dir / fname).write_bytes(buf.getvalue())
+    storage.save(fname, buf.getvalue())
     return fname
 
 
@@ -49,7 +50,7 @@ def seed_if_empty(db: Session) -> None:
     if not settings.seed_demo or db.scalar(select(Tenant.id).limit(1)) is not None:
         return
     logo = f"{uuid.uuid4().hex}.svg"
-    (settings.media_dir / logo).write_text(DEMO_LOGO, encoding="utf-8")
+    storage.save(logo, DEMO_LOGO.encode("utf-8"))
     t = Tenant(name="Havnens Rådgivning (demo)", color="#2a5bd7", logo_path=logo,
                welcome_text="Velkommen til Havnens Rådgivning", sms_sender="Havnen", kiosk_token="demo")
     db.add(t)

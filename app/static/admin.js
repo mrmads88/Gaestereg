@@ -99,9 +99,21 @@ async function boot() {
   const h = location.hash.match(/^#([tp])(\d+)$/);
   if (h && h[1] === "p") return selectPartner(+h[2]);
   if (h && h[1] === "t") return selectTenant(+h[2]);
+  const last = recent()[0];
+  if (last && last[0] === "p" && partners.some((x) => x.id === last[1])) return selectPartner(last[1]);
+  if (last && last[0] === "t" && tenants.some((x) => x.id === last[1])) return selectTenant(last[1]);
   if (ME.role === "partner" && ME.partner) return selectPartner(ME.partner.id);
   if (tenants[0]) selectTenant(tenants[0].id);
 }
+
+// Tilbage/frem i browseren og indsatte links (#t12 / #p3) skifter kunde uden at genindlæse siden.
+window.addEventListener("hashchange", () => {
+  if ($("appView").hidden) return;
+  const h = location.hash.match(/^#([tp])(\d+)$/); if (!h) return;
+  const id = +h[2];
+  if (h[1] === "t" && !(T && T.id === id && !P)) selectTenant(id);
+  if (h[1] === "p" && !(P && P.id === id)) selectPartner(id);
+});
 
 // Hvad man ser, afhænger af rollen.
 function setupRole() {
@@ -119,6 +131,8 @@ function setupRole() {
   $("activeFld").hidden = !can("toggle_active");
   $("delRow").hidden = !can("delete_tenant");
   $("pSettings").hidden = $("pDanger").hidden = !can("partners");
+  $("switchBtn").hidden = r === "tenant";
+  $("swKbd").textContent = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘K" : "Ctrl K";
 }
 
 // ---------- tenant list ----------
@@ -126,6 +140,7 @@ async function loadTenants() { tenants = await api("GET", "/api/admin/tenants");
 function tenantTags(t) {
   let out = "";
   if (!t.active) out += '<span class="tag off">slået fra</span>';
+  else if (t.screen && t.screen.seen_at && !t.screen.online) out += '<span class="tag offline">skærm offline</span>';
   if (can("subscription")) {
     if (t.self_service) out += '<span class="tag ss">selvbetjening</span>';
     const until = t.subscription && t.subscription.sub_paid_until;
@@ -167,7 +182,7 @@ async function selectPartner(id) {
   P = partners.find((x) => x.id === id);
   if (!P) { await loadPartners(); P = partners.find((x) => x.id === id); }
   if (!P) return;
-  T = null; location.hash = "p" + id; showView("partner");
+  T = null; location.hash = "p" + id; showView("partner"); remember("p", id); updateSwitcher();
   document.documentElement.style.setProperty("--accent", "#12352e");  // Nodd-grøn
   renderPartners(); renderList(); renderPartner();
 }
@@ -215,7 +230,7 @@ $("newForm").addEventListener("submit", async (e) => {
 
 async function selectTenant(id) {
   try { T = await api("GET", "/api/admin/tenants/" + id); } catch (err) { toast(err.message, true); return; }
-  P = null; location.hash = "t" + id; showView("tenant");
+  P = null; location.hash = "t" + id; showView("tenant"); remember("t", id); updateSwitcher();
   if (tab === "sub" && !can("subscription")) tab = "people";
   renderList(); renderPartners(); renderAll(); setTab(tab); loadPreview(true);
 }
@@ -236,6 +251,11 @@ function renderHead() {
   $("edLogo").innerHTML = T.logo_url ? '<img src="' + esc(T.logo_url) + '" alt="">' : "<span>" + esc(initials(T.name)) + "</span>";
   const url = location.origin + T.kiosk_url;
   $("kioskUrl").textContent = url; $("openKiosk").href = T.kiosk_url;
+  const sc = T.screen || {}, el = $("scrStatus");
+  el.className = "scr " + (sc.online ? "on" : sc.seen_at ? "off" : "");
+  el.innerHTML = "<i></i>" + (sc.online ? "Skærmen er online" : sc.seen_at ? "Skærm offline siden " + fmt(sc.seen_at) : "Skærm ikke set endnu");
+  el.title = "Skærmen melder sig hvert minut, når den står på startskærmen.";
+  updateSwitcher();
 }
 // ---------- sprog på skærmen ----------
 const LANG_HINTS = {
@@ -470,11 +490,81 @@ async function loadLog() {
   if (!T) return;
   try {
     const [v, n] = await Promise.all([api("GET", "/api/admin/tenants/" + T.id + "/visits"), api("GET", "/api/admin/tenants/" + T.id + "/notifications")]);
-    $("visitRows").innerHTML = v.map((x) => "<tr><td class=n>" + fmt(x.checked_in_at) + "</td><td>" + esc(x.guest_name) + "</td><td class=n>" + esc(x.guest_phone) + "</td><td>" + esc(x.guest_company) + "</td><td>" + esc(x.host_name) + "</td><td class=n>" + (x.checked_out_at ? fmt(x.checked_out_at).split(" ").pop() : "") + "</td></tr>").join("") || '<tr><td colspan="6" class="muted">Ingen besøg endnu.</td></tr>';
+    VISITS = v; $("delBar").hidden = true;
+    $("visitRows").innerHTML = v.map((x) => '<tr data-vid="' + x.id + '"><td class=n>' + fmt(x.checked_in_at) + "</td><td>" + esc(x.guest_name) + "</td><td class=n>" + esc(x.guest_phone) + "</td><td>" + esc(x.guest_company) + "</td><td>" + esc(x.host_name) + "</td><td class=n>" + (x.checked_out_at ? fmt(x.checked_out_at).split(" ").pop() : "") +
+      '</td><td><button class="ib del" type="button" data-delvisit aria-label="Slet besøget fra ' + esc(x.guest_name) + '">' + I.x + "</button></td></tr>").join("") || '<tr><td colspan="7" class="muted">Ingen besøg endnu.</td></tr>';
     $("noteRows").innerHTML = n.map((x) => "<tr><td class=n>" + fmt(x.created_at) + "</td><td>" + (x.channel === "sms" ? "SMS" : "E-mail") + "</td><td>" + esc(x.recipient) + '</td><td><span class="pill ' + esc(x.status) + '">' + esc(x.status) + "</span>" + (x.error ? '<div class="small" style="color:var(--bad)">' + esc(x.error) + "</div>" : "") + '</td><td><div class="body">' + esc(x.subject ? x.subject + "\n\n" + x.body : x.body) + "</div></td></tr>").join("") || '<tr><td colspan="5" class="muted">Ingen beskeder endnu.</td></tr>';
   } catch (err) { toast(err.message, true); }
 }
 $("refreshLog").addEventListener("click", loadLog);
+let VISITS = [];
+$("visitRows").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-delvisit]"); if (!b) return;
+  const v = VISITS.find((x) => x.id === +b.closest("[data-vid]").dataset.vid); if (!v) return;
+  const bar = $("delBar");
+  bar.innerHTML = "<span class=grow>Slet besøget fra <b>" + esc(v.guest_name || "ukendt gæst") + "</b>" + (v.guest_phone ? " (" + esc(v.guest_phone) + ")" : "") + "? Det kan ikke fortrydes.</span>" +
+    '<button class="btn bad sm" type="button" data-del-one>Kun dette besøg</button><button class="btn bad sm" type="button" data-del-all>Alle besøg fra gæsten</button><button class="btn ghost sm" type="button" data-del-no>Annullér</button>';
+  bar.hidden = false; bar.dataset.vid = v.id; bar.scrollIntoView({ block: "nearest" });
+});
+$("delBar").addEventListener("click", async (e) => {
+  const bar = $("delBar"); const all = !!e.target.closest("[data-del-all]");
+  if (e.target.closest("[data-del-no]")) { bar.hidden = true; return; }
+  if (!all && !e.target.closest("[data-del-one]")) return;
+  try {
+    const r = await api("DELETE", "/api/admin/tenants/" + T.id + "/visits/" + bar.dataset.vid + (all ? "?everything=true" : ""));
+    toast(r.deleted === 1 ? "1 besøg er slettet" : r.deleted + " besøg er slettet"); loadLog();
+  } catch (err) { toast(err.message, true); }
+});
+
+// ---------- kundeskifter (Ctrl/⌘ K) ----------
+function recent() { try { return JSON.parse(localStorage.getItem("nodd-recent") || "[]"); } catch (e) { return []; } }
+function remember(kind, id) {
+  const r = recent().filter((x) => !(x[0] === kind && x[1] === id)); r.unshift([kind, id]);
+  try { localStorage.setItem("nodd-recent", JSON.stringify(r.slice(0, 6))); } catch (e) {}
+}
+const logoBox = (t) => '<span class="sw-logo">' + (t.logo_url ? '<img src="' + esc(t.logo_url) + '" alt="">' : '<i style="background:' + esc(t.color) + '"></i>') + "</span>";
+function updateSwitcher() {
+  if (T) { $("swLogo").outerHTML = logoBox(T).replace('class="sw-logo"', 'class="sw-logo" id="swLogo"'); $("swName").textContent = T.name; }
+  else if (P) { $("swLogo").outerHTML = '<span class="sw-logo" id="swLogo"><b style="font-size:.7rem">' + esc(initials(P.name)) + "</b></span>"; $("swName").textContent = P.name; }
+}
+let palSel = 0, palItems = [];
+function palRender() {
+  const q = $("palQ").value.trim().toLowerCase();
+  const tItem = (t) => ({ kind: "t", id: t.id, html: logoBox(t) + "<span class=grow><b>" + esc(t.name) + "</b><small>" + t.host_count + " personer" + (t.partner_name ? " · " + esc(t.partner_name) : "") + tenantTags(t) + "</small></span>" });
+  const pItem = (x) => ({ kind: "p", id: x.id, html: '<span class="tl p">' + esc(initials(x.name)) + "</span><span class=grow><b>" + esc(x.name) + "</b><small>Partner · " + x.tenant_count + (x.tenant_count === 1 ? " firma" : " firmaer") + "</small></span>" });
+  const match = (s) => !q || s.toLowerCase().includes(q);
+  const groups = [];
+  if (!q) {
+    const rec = recent().map(([k, id]) => k === "t" ? tenants.find((t) => t.id === id) && tItem(tenants.find((t) => t.id === id)) : partners.find((x) => x.id === id) && pItem(partners.find((x) => x.id === id))).filter(Boolean).slice(0, 5);
+    if (rec.length) groups.push(["Senest åbnet", rec]);
+  }
+  const ps = partners.filter((x) => match(x.name)).map(pItem);
+  if (ps.length) groups.push([ME.role === "platform" ? "Partnere" : "Partner", ps]);
+  const ts = tenants.filter((t) => match(t.name) || match(t.partner_name || "")).map(tItem);
+  if (ts.length) groups.push([ME.role === "platform" ? "Kunder" : "Firmaer", ts]);
+  palItems = groups.flatMap((g) => g[1]);
+  palSel = Math.min(palSel, Math.max(0, palItems.length - 1));
+  let i = 0;
+  $("palList").innerHTML = groups.map(([label, items]) => '<div class="grp">' + label + "</div>" + items.map((it) =>
+    '<button class="pal-item" type="button" role="option" data-i="' + (i++) + '" aria-selected="' + (i - 1 === palSel) + '">' + it.html + "</button>").join("")).join("") ||
+    '<p class="pal-empty">Ingen kunder matcher "' + esc(q) + '".</p>';
+  const cur = $("palList").querySelector('[aria-selected="true"]'); if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+function palOpen() { if (ME.role === "tenant") return; $("palette").hidden = false; $("palQ").value = ""; palSel = 0; palRender(); $("palQ").focus(); }
+function palClose() { $("palette").hidden = true; }
+function palGo(i) { const it = palItems[i]; if (!it) return; palClose(); it.kind === "t" ? selectTenant(it.id) : selectPartner(it.id); }
+$("switchBtn").addEventListener("click", palOpen);
+$("palQ").addEventListener("input", () => { palSel = 0; palRender(); });
+$("palList").addEventListener("click", (e) => { const b = e.target.closest("[data-i]"); if (b) palGo(+b.dataset.i); });
+$("palette").addEventListener("click", (e) => { if (e.target === $("palette")) palClose(); });
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && !$("appView").hidden) { e.preventDefault(); $("palette").hidden ? palOpen() : palClose(); return; }
+  if ($("palette").hidden) return;
+  if (e.key === "Escape") palClose();
+  else if (e.key === "ArrowDown") { e.preventDefault(); palSel = Math.min(palSel + 1, palItems.length - 1); palRender(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); palSel = Math.max(palSel - 1, 0); palRender(); }
+  else if (e.key === "Enter") { e.preventDefault(); palGo(palSel); }
+});
 
 // ---------- users (adgang) ----------
 const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";

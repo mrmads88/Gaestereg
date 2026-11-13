@@ -66,7 +66,7 @@ let CFG = null, cur = "loading", visit = {}, lastAct = Date.now(), homeT, cfgSig
 // ---------- config ----------
 async function loadConfig() {
   try {
-    const r = await fetch(API + "/config", { cache: "no-store" });
+    const r = await fetch(API + "/config" + (PREVIEW ? "?pv=1" : ""), { cache: "no-store" });
     if (r.status === 404) { CFG = null; show("error"); return; }
     if (!r.ok) throw new Error(r.status);
     const cfg = await r.json();
