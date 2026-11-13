@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
-from . import routes_access, routes_admin, routes_import, routes_kiosk, routes_reply
+from . import routes_access, routes_admin, routes_import, routes_invite, routes_kiosk, routes_reply
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -52,6 +52,9 @@ app.include_router(routes_admin.router)
 app.include_router(routes_import.router)
 app.include_router(routes_reply.page)
 app.include_router(routes_reply.api)
+app.include_router(routes_invite.admin)
+app.include_router(routes_invite.public)
+app.include_router(routes_invite.pages)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")

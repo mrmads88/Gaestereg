@@ -314,3 +314,8 @@ td .ib{width:30px;height:30px}
 .hours .day.closed .t{opacity:.35;pointer-events:none}
 @media (max-width:520px){.hours .day{grid-template-columns:1fr auto}.hours .day .t{grid-column:1/-1}}
 .tag.pkg{background:var(--accent-soft);color:var(--accent)}
+
+/* forventede gæster */
+.code6{font:500 .95rem var(--f-mono);letter-spacing:.12em;background:var(--bg);border-radius:7px;padding:2px 7px}
+.pill.pending{background:#e1f4ea;color:var(--ok)} .pill.used{background:var(--key);color:var(--soft)} .pill.cancelled{background:#fde8e6;color:var(--bad)}
+td .acts{display:flex;gap:6px;flex-wrap:wrap}

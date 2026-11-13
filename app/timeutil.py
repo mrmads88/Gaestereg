@@ -32,3 +32,25 @@ def start_of_local_day_utc(now: datetime | None = None) -> datetime:
 
 def days_ago_utc(days: int) -> datetime:
     return (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
+
+
+def from_local(value: str) -> datetime:
+    """'2026-11-14T10:30' i lokal tid -> naiv UTC, som databasen gemmer."""
+    d = datetime.fromisoformat(value)
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=TZ)
+    return d.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def local_day_label(dt: datetime) -> str:
+    """Fx 'i dag', 'i morgen' eller 'fredag 14. november'."""
+    d = to_local(dt)
+    today = datetime.now(TZ).date()
+    if d.date() == today:
+        return "i dag"
+    if d.date() == today + timedelta(days=1):
+        return "i morgen"
+    days = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"]
+    months = ["januar", "februar", "marts", "april", "maj", "juni", "juli", "august", "september", "oktober",
+              "november", "december"]
+    return f"{days[d.weekday()]} {d.day}. {months[d.month - 1]}"

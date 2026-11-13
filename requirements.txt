@@ -9,6 +9,7 @@ pillow==11.2.1
 tzdata==2025.2
 alembic==1.16.1
 openpyxl==3.1.5
+segno==1.6.1
 # Azure SQL. Kræver "ODBC Driver 18 for SQL Server", som er installeret i App Service (Linux, Python).
 # Bruges kun, når DATABASE_URL starter med mssql+pyodbc://. Lokalt og i tests bruges SQLite.
 pyodbc==5.2.0

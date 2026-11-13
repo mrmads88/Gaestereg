@@ -9,6 +9,8 @@ const first = (n) => String(n || "").split(" ")[0];
 
 const TOKEN = decodeURIComponent(location.pathname.split("/").filter(Boolean).pop() || "");
 const PREVIEW = new URLSearchParams(location.search).has("preview");
+// ?m=1: gæstens egen telefon (fra QR-plakaten ved døren). Telefonens eget tastatur, ingen print.
+const MOBILE = new URLSearchParams(location.search).has("m");
 const API = "/api/kiosk/" + encodeURIComponent(TOKEN);
 
 const T = {
@@ -37,6 +39,9 @@ const T = {
     closedToday: "Lukket i dag", replyWait: "Venter på svar fra {h}", reply_now: "{h} er på vej ud til dig",
     reply_5: "{h} kommer om 5 minutter", reply_10: "{h} kommer om 10 minutter",
     reply_reception: "Receptionen tager imod dig", guestsHi: "Velkommen, {n}", and: "og",
+    haveCode: "Jeg har en kode", codeQ: "Tast din kode", codeLead: "Du har fået den på SMS eller mail.",
+    scan: "Scan QR-kode", scanStop: "Stop kamera", codeBad: "Koden passer ikke. Tjek den, eller vælg personen i stedet.",
+    clear: "Ryd",
   },
   en: {
     wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin",
@@ -63,6 +68,9 @@ const T = {
     closedToday: "Closed today", replyWait: "Waiting for {h} to reply", reply_now: "{h} is on the way to meet you",
     reply_5: "{h} will be here in 5 minutes", reply_10: "{h} will be here in 10 minutes",
     reply_reception: "Reception will help you", guestsHi: "Welcome, {n}", and: "and",
+    haveCode: "I have a code", codeQ: "Enter your code", codeLead: "You received it by text message or email.",
+    scan: "Scan QR code", scanStop: "Stop camera", codeBad: "That code doesn't match. Check it, or choose the person instead.",
+    clear: "Clear",
   },
 };
 let lang = "da";
@@ -100,7 +108,7 @@ let CFG = null, cur = "loading", visit = {}, lastAct = Date.now(), homeT, cfgSig
 // ---------- config ----------
 async function loadConfig() {
   try {
-    const r = await fetch(API + "/config" + (PREVIEW ? "?pv=1" : ""), { cache: "no-store" });
+    const r = await fetch(API + "/config" + (PREVIEW ? "?pv=1" : MOBILE ? "?m=1" : ""), { cache: "no-store" });
     if (r.status === 404) { CFG = null; show("error"); return; }
     if (!r.ok) throw new Error(r.status);
     const cfg = await r.json();
@@ -245,6 +253,8 @@ function show(id, push) {
   if (id === "pkg") renderPkg();
   if (id === "pkg2") { renderPkgChosen(); $("pCompany").value = ""; $("pName").value = ""; }
   if (id === "closed") renderClosed();
+  if (id === "code") { codeVal = ""; renderCode(); $("codeErr").hidden = true; $("scanBtn").hidden = !canScan(); }
+  if (id !== "code") stopScan();
   if (id !== "done") stopReplyPoll();
 }
 document.addEventListener("click", (e) => {
@@ -289,7 +299,10 @@ function prepName() {
   $("flCompany").hidden = !CFG.ask_company;
   $("nameOpt").hidden = CFG.name_required;
   $("phoneOpt").hidden = CFG.phone_required;
-  if (!visit.name) { $("fName").value = ""; $("fPhone").value = ""; $("fCompany").value = ""; }
+  if (visit.prefill) {
+    const pf = visit.prefill; visit.prefill = null;
+    $("fName").value = pf.guest_name || ""; $("fPhone").value = pf.guest_phone || ""; $("fCompany").value = pf.guest_company || "";
+  } else if (!visit.name) { $("fName").value = ""; $("fPhone").value = ""; $("fCompany").value = ""; }
   validate(); updateBadge();
 }
 function digits(s) { return (s || "").replace(/\D/g, ""); }
@@ -307,7 +320,8 @@ $("nameForm").addEventListener("submit", async (e) => {
   busy = true; $("checkinBtn").disabled = true;
   const body = { host_id: visit.host ? visit.host.id : null, guest_name: $("fName").value.trim(),
     guest_phone: CFG.ask_phone ? $("fPhone").value.trim() : "", guest_company: CFG.ask_company ? $("fCompany").value.trim() : "", preview: PREVIEW,
-    extra_guests: CFG.group_checkin ? extras.map((x) => x.trim()).filter(Boolean) : [], accept_terms: !!(CFG.terms_enabled && $("termsOk").checked) };
+    extra_guests: CFG.group_checkin ? extras.map((x) => x.trim()).filter(Boolean) : [], accept_terms: !!(CFG.terms_enabled && $("termsOk").checked),
+    invitation_code: visit.invite || "" };
   try {
     const r = await fetch(API + "/checkin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await r.json().catch(() => ({}));
@@ -317,7 +331,7 @@ $("nameForm").addEventListener("submit", async (e) => {
     const names = guests.map((x) => first(x.name)).filter(Boolean);
     $("doneTitle").textContent = names.length > 1 ? t("guestsHi").replace("{n}", names.slice(0, -1).join(", ") + " " + t("and") + " " + names[names.length - 1]) : t("hi") + (names[0] ? ", " + names[0] : "");
     $("doneSub").textContent = visit.host ? t("notified").replace("{h}", first(visit.host.name)) : t("notifiedRec");
-    $("printNote").hidden = !CFG.print_badge;
+    $("printNote").hidden = !CFG.print_badge || MOBILE;
     $("wifiBox").hidden = !CFG.wifi_name; $("wifiName").textContent = CFG.wifi_name || ""; $("wifiPw").textContent = CFG.wifi_password || "–";
     const badges = guests.map((x) => ({ name: x.name, company: visit.company, host: visit.host ? visit.host.name : "", time: visit.in, no: x.badge_no }));
     $("inlineBadge").innerHTML = badgeHTML(badges[0], false);
@@ -327,7 +341,7 @@ $("nameForm").addEventListener("submit", async (e) => {
     $("doneTimer").style.setProperty("--d", ms / 1000 + "s");
     show("done"); restartTimer("doneTimer");
     if (waitReply) startReplyPoll(); else $("replyLine").hidden = true;
-    if (CFG.print_badge && !PREVIEW) printBadge(badges);
+    if (CFG.print_badge && !PREVIEW && !MOBILE) printBadge(badges);
     clearTimeout(homeT); homeT = setTimeout(() => { if (cur === "done") home(); }, ms);
   } catch (err) {
     toast(t("errNet"), true);
@@ -389,6 +403,60 @@ $("pkgForm").addEventListener("submit", async (e) => {
   } catch (err) { toast(t("errNet"), true); } finally { busy = false; $("pkgSend").disabled = false; }
 });
 
+// ---------- kode fra en invitation ----------
+let codeVal = "", codeBusy = false;
+function renderCode() {
+  $("codeBoxes").innerHTML = [0, 1, 2, 3, 4, 5].map((i) => '<span class="' + (i < codeVal.length ? "on" : i === codeVal.length ? "cur" : "") + '">' + (codeVal[i] || "") + "</span>").join("");
+  $("codePad").innerHTML = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "⌫"].map((k) =>
+    '<button type="button" data-ck="' + k + '"' + (k === "clear" ? ' class="fn"' : k === "⌫" ? ' class="fn" aria-label="Slet"' : "") + ">" + (k === "clear" ? t("clear") : k) + "</button>").join("");
+}
+async function submitCode(code) {
+  if (codeBusy) return; codeBusy = true; $("codeErr").hidden = true;
+  try {
+    const r = await fetch(API + "/code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      $("codeErr").textContent = r.status === 429 && typeof d.detail === "string" ? d.detail : t("codeBad"); $("codeErr").hidden = false;
+      $("codeBoxes").classList.remove("shake"); void $("codeBoxes").offsetWidth; $("codeBoxes").classList.add("shake");
+      codeVal = ""; renderCode(); return;
+    }
+    const host = d.host_id ? CFG.hosts.find((h) => h.id === d.host_id) || null : null;
+    visit = { host, in: hhmm(new Date()), invite: d.code, prefill: d };
+    stopScan(); show("name");
+  } catch (e) { toast(t("errNet"), true); } finally { codeBusy = false; }
+}
+$("codePad").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ck]"); if (!b) return;
+  const k = b.dataset.ck;
+  if (k === "⌫") codeVal = codeVal.slice(0, -1); else if (k === "clear") codeVal = ""; else if (codeVal.length < 6) codeVal += k;
+  renderCode();
+  if (codeVal.length === 6) submitCode(codeVal);
+});
+// Kamera: kun hvor browseren har en indbygget QR-læser (BarcodeDetector, fx Chrome på Android og ChromeOS).
+let scanStream = null, scanT = null;
+const canScan = () => "BarcodeDetector" in window && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+function stopScan() {
+  clearInterval(scanT); scanT = null;
+  if (scanStream) { scanStream.getTracks().forEach((tr) => tr.stop()); scanStream = null; }
+  $("scanBox").hidden = true; $("scanBtn").querySelector("span").textContent = t("scan");
+}
+$("scanBtn").addEventListener("click", async () => {
+  if (scanStream) return stopScan();
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: MOBILE ? "environment" : "user" } });
+    const v = $("scanVideo"); v.srcObject = scanStream; await v.play();
+    $("scanBox").hidden = false; $("scanBtn").querySelector("span").textContent = t("scanStop");
+    const det = new window.BarcodeDetector({ formats: ["qr_code"] });
+    scanT = setInterval(async () => {
+      try {
+        const found = await det.detect(v);
+        const digits = found.length ? found[0].rawValue.replace(/\D/g, "") : "";
+        if (digits.length === 6) { codeVal = digits; renderCode(); stopScan(); submitCode(digits); }
+      } catch (e) {}
+    }, 400);
+  } catch (e) { stopScan(); toast(t("codeLead"), true); }
+});
+
 // ---------- check out ----------
 async function renderOut() {
   $("outRows").innerHTML = "";
@@ -422,7 +490,7 @@ function printBadge(list) {
 const ROWS = [["1","2","3","4","5","6","7","8","9","0"],["q","w","e","r","t","y","u","i","o","p","å"],["a","s","d","f","g","h","j","k","l","æ","ø"],["⇧","z","x","c","v","b","n","m","-","⌫"],["@",".","space","OK"]];
 const NUM = [["1","2","3"],["4","5","6"],["7","8","9"],["+","0","⌫"],["OK"]];
 let shift = true, activeIn = null;
-const useOsk = () => !matchMedia("(hover: hover) and (pointer: fine)").matches || PREVIEW || new URLSearchParams(location.search).has("osk");
+const useOsk = () => !MOBILE && (!matchMedia("(hover: hover) and (pointer: fine)").matches || PREVIEW || new URLSearchParams(location.search).has("osk"));
 function renderOsk() {
   const num = activeIn && activeIn.hasAttribute("data-num");
   $("osk").classList.toggle("num", !!num);
