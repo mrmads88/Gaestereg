@@ -106,6 +106,7 @@
           <p class="muted small">Antal gæster pr. måned. Kan fx bruges til at fakturere lejerne. Tallene gemmes uden navne, så de bliver, selv om besøgene slettes.</p>
           <div class="tablewrap" id="pStats"></div>
         </div>
+        <div class="stack" id="pRooms"></div>
         <div class="card">
           <h3>Importér firmaer og personer</h3>
           <div id="pImport"></div>
@@ -136,6 +137,7 @@
           <button role="tab" type="button" data-tab="flow" aria-selected="false">Gæsteflow</button>
           <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
           <button role="tab" type="button" data-tab="exp" aria-selected="false">Forventede gæster</button>
+          <button role="tab" type="button" data-tab="rooms" aria-selected="false">Lokaler</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
           <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
           <button role="tab" type="button" data-tab="sub" aria-selected="false" id="subTab" hidden>Abonnement</button>
@@ -360,6 +362,9 @@
           </div>
         </section>
 
+        <!-- ROOMS -->
+        <section class="tab" id="tab-rooms" hidden><div class="stack" id="tRooms"></div></section>
+
         <!-- ACCESS -->
         <section class="tab" id="tab-access" hidden>
           <div class="note warnbox" id="ssWarn" hidden></div>
@@ -433,6 +438,7 @@
 </div>
 <div class="toast" id="toast" hidden></div>
 <script src="/static/langs.js"></script>
+<script src="/static/admin-rooms.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

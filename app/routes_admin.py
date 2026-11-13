@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
-from .models import Host, Invitation, Notification, Partner, Tenant, User, Visit, VisitStat, new_token, utcnow
+from .models import (Booking, Host, Invitation, Notification, Partner, Room, Tenant, User, Visit, VisitStat, new_token,
+                     utcnow)
 from .notify import build_messages, deliver
 from .schemas import (HostIn, HostUpdate, Reorder, SubscriptionIn, TenantCreate, TenantUpdate, host_admin,
                       tenant_admin, tenant_languages)
@@ -123,6 +124,8 @@ def delete_tenant(tid: int, db: Session = Depends(get_db), p: Principal = Depend
     # Rækker, der peger på personerne, skal væk før personerne (ORM'en sletter personerne før kunden).
     db.query(Invitation).filter(Invitation.tenant_id == tid).delete()
     db.query(VisitStat).filter(VisitStat.tenant_id == tid).delete()
+    db.query(Booking).filter(Booking.tenant_id == tid).delete()  # også i husets lokaler
+    files += [r.photo_path for r in db.query(Room).filter(Room.tenant_id == tid)]  # lokaler slettes af databasen
     db.query(Notification).filter(Notification.tenant_id == tid).delete()
     db.query(Visit).filter(Visit.tenant_id == tid).delete()
     db.query(User).filter(User.tenant_id == tid).delete()

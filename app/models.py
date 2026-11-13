@@ -38,6 +38,8 @@ class Partner(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     evac_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # evakueringslink
+    # Hvad lokaleskærme viser om møder: title | organizer | busy. Tom = standard (busy). Se rooms.privacy_for.
+    meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))
 
     tenants: Mapped[list["Tenant"]] = relationship(back_populates="partner")
 
@@ -89,6 +91,7 @@ class Tenant(Base):
 
     # kontorhotel (fase 4): denne skærm viser alle partnerens firmaer, og gæsten vælger firma først
     house_screen: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))  # se Partner
     evac_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # evakueringslink
 
     # gæsteoplevelse (fase 2)
@@ -237,4 +240,48 @@ class VisitStat(Base):
     month: Mapped[str] = mapped_column(Unicode(7))  # "2026-11", lokal tid
     kind: Mapped[str] = mapped_column(Unicode(10))  # guest | delivery
     count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Room(Base):
+    """Et mødelokale. Hører enten til et firma (tenant_id) eller til huset (partner_id), så alle husets firmaer
+    kan booke det. Lokaleskærmen ved døren identificeres af screen_token."""
+    __tablename__ = "rooms"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    location: Mapped[str] = mapped_column(Unicode(120), default="")
+    description: Mapped[str] = mapped_column(Unicode(500), default="")
+    capacity: Mapped[int] = mapped_column(Integer, default=0)
+    photo_path: Mapped[str] = mapped_column(Unicode(200), default="")
+    setups: Mapped[str] = mapped_column(UnicodeText, default="[]")      # JSON-liste, fx ["U-bord", "Biograf"]
+    equipment: Mapped[str] = mapped_column(UnicodeText, default="[]")   # JSON-liste, fx ["Skærm", "Whiteboard"]
+    privacy: Mapped[str] = mapped_column(Unicode(10), default="")       # lokaleskærmens egen indstilling, tom = arv
+    screen_token: Mapped[str] = mapped_column(Unicode(40), unique=True, index=True, default=new_token)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Booking(Base):
+    """En booking af et lokale. tenant_id er det bookende firma (ingen FK: lokalet kan høre til huset, og SQL Server
+    tillader kun én kaskadevej). delete_tenant sletter firmaets bookinger i koden."""
+    __tablename__ = "bookings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    room_id: Mapped[int] = mapped_column(ForeignKey("rooms.id", ondelete="CASCADE"), index=True)
+    tenant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    host_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    title: Mapped[str] = mapped_column(Unicode(200), default="")
+    organizer: Mapped[str] = mapped_column(Unicode(120), default="")
+    start_at: Mapped[datetime] = mapped_column(DateTime, index=True)  # UTC
+    end_at: Mapped[datetime] = mapped_column(DateTime)
+    attendees: Mapped[int] = mapped_column(Integer, default=0)
+    setup: Mapped[str] = mapped_column(Unicode(60), default="")
+    equipment: Mapped[str] = mapped_column(UnicodeText, default="[]")
+    note: Mapped[str] = mapped_column(Unicode(500), default="")
+    status: Mapped[str] = mapped_column(Unicode(12), default="confirmed")  # confirmed | cancelled
+    source: Mapped[str] = mapped_column(Unicode(10), default="admin")      # admin | link | screen
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

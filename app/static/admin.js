@@ -201,6 +201,8 @@ async function renderPartner(keepImport) {
   $("pLink").hidden = true;
   if (!keepImport) renderImport($("pImport"), { partner_id: P.id, withFirm: true });
   loadHouse("p", "/api/admin/partners/" + P.id, true);
+  if (!keepImport) window.NoddRooms.mount($("pRooms"), { scope: { partner_id: P.id }, api, toast, esc, privacy: P.meeting_privacy,
+    firms: tenants.filter((t) => t.partner_id === P.id), onPrivacy: (v) => patchPartner({ meeting_privacy: v }) });
   renderUsers($("pUsers"), await api("GET", "/api/admin/partners/" + P.id + "/users").catch(() => []));
 }
 $("pTenants").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
@@ -386,6 +388,7 @@ function setTab(name) {
   if (name === "log") loadLog();
   if (name === "access") loadAccess();
   if (name === "exp") loadExpected();
+  if (name === "rooms") loadRooms();
 }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
 
@@ -679,6 +682,13 @@ $("hostLinks").addEventListener("click", async (e) => {
     try { copy((await api("POST", "/api/admin/hosts/" + id + "/invite-link")).url); toast("Nyt link lavet og kopieret. Det gamle virker ikke længere."); } catch (err) { toast(err.message, true); }
   }
 });
+
+// ---------- mødelokaler ----------
+function loadRooms() {
+  if (!T) return;
+  window.NoddRooms.mount($("tRooms"), { scope: { tenant_id: T.id }, api, toast, esc, privacy: T.meeting_privacy,
+    onPrivacy: (v) => patchTenant({ meeting_privacy: v }) });
+}
 
 // ---------- users (adgang) ----------
 const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";

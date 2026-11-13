@@ -56,6 +56,7 @@ class TenantUpdate(BaseModel):
     escalate_minutes: int | None = Field(None, ge=0, le=120)
     teams_webhook: str | None = Field(None, max_length=1000)
     house_screen: bool | None = None
+    meeting_privacy: Literal["", "title", "organizer", "busy"] | None = None
     languages: list[str] | None = Field(None, min_length=1, max_length=len(SUPPORTED_LANGS))
     lang_default: str | None = None
     lang_mode: Literal["toggle", "first", "off"] | None = None
@@ -232,6 +233,47 @@ class PartnerIn(BaseModel):
 class PartnerUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=120)
     active: bool | None = None
+    meeting_privacy: Literal["", "title", "organizer", "busy"] | None = None
+
+
+class RoomIn(BaseModel):
+    tenant_id: int | None = None   # lokalet hører til et firma
+    partner_id: int | None = None  # ... eller til huset
+    name: str = Field(min_length=1, max_length=120)
+    location: str = Field("", max_length=120)
+    description: str = Field("", max_length=500)
+    capacity: int = Field(0, ge=0, le=1000)
+    setups: list[str] = Field(default_factory=list, max_length=20)
+    equipment: list[str] = Field(default_factory=list, max_length=30)
+    privacy: Literal["", "title", "organizer", "busy"] = ""
+
+
+class RoomUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=120)
+    location: str | None = Field(None, max_length=120)
+    description: str | None = Field(None, max_length=500)
+    capacity: int | None = Field(None, ge=0, le=1000)
+    setups: list[str] | None = Field(None, max_length=20)
+    equipment: list[str] | None = Field(None, max_length=30)
+    privacy: Literal["", "title", "organizer", "busy"] | None = None
+    active: bool | None = None
+
+
+class BookingIn(BaseModel):
+    room_id: int
+    tenant_id: int | None = None  # det bookende firma (admin). Via værtens link er det værtens firma.
+    title: str = Field("", max_length=200)
+    organizer: str = Field("", max_length=120)
+    start: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")  # lokal tid
+    end: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
+    attendees: int = Field(0, ge=0, le=1000)
+    setup: str = Field("", max_length=60)
+    equipment: list[str] = Field(default_factory=list, max_length=30)
+    note: str = Field("", max_length=500)
+
+
+class QuickBookIn(BaseModel):
+    minutes: Literal[15, 30, 60]
 
 
 class SubscriptionIn(BaseModel):
@@ -265,7 +307,7 @@ TENANT_FIELDS = [
     "reception_email", "reception_phone", "print_badge", "badge_size", "idle_seconds", "retention_days",
     "lang_default", "lang_mode", "wifi_name", "wifi_password", "delivery_enabled", "delivery_email", "delivery_phone",
     "delivery_note", "closed_text", "group_checkin", "terms_enabled", "terms_title", "terms_text", "host_reply",
-    "escalate_minutes", "teams_webhook", "house_screen",
+    "escalate_minutes", "teams_webhook", "house_screen", "meeting_privacy",
     "sms_sender", "sms_template", "email_subject", "email_template",
 ]
 
@@ -346,5 +388,6 @@ def user_out(u: User) -> dict:
 
 def partner_out(p: Partner, tenant_count: int = 0, user_count: int = 0) -> dict:
     return {"id": p.id, "name": p.name, "active": p.active, "tenant_count": tenant_count,
+            "meeting_privacy": p.meeting_privacy,
             "user_count": user_count, "created_at": local_iso(p.created_at)}
 

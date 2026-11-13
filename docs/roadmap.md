@@ -37,6 +37,17 @@ Alt skal kunne køre gratis i dev. Prod opgraderes først, når der er en betale
 - Besøgsstatistik gemmes som anonyme tællere pr. firma pr. måned (`visit_stats`), så den overlever, at besøgene slettes efter 30 dage.
 
 ## Fase 5: Mødelokaler og forplejning
+**5a (lokaler, booking og lokaleskærm) er bygget.** Mangler: 5b forplejning (menu, priser, køkkenets ordreliste),
+modul-til/fra under Abonnement og LED-test på en rigtig mødelokale-tablet.
+
+Bygget i 5a:
+- Lokaler hos firmaet eller huset (`Room`), bookinger (`Booking`), fanen "Lokaler" i admin og et kort på husets side.
+- Værtens bookingside `/b/<token>` (samme personlige link som invitationerne): dage, lokalekort med billeder, tidslinje og en
+  skuffe med titel, tid, deltagere, opstilling og udstyr.
+- Lokaleskærmen `/room/<token>`: grøn/orange/rød, ur, igangværende og næste møde, "Book nu" 15/30/60 min. LED via
+  `window.NoddLED.setColor`, `Android.setLed` eller Fully Kiosk. Svarer fra hukommelsen, så databasen kan sove.
+- Diskretion i tre lag (skærm → firma → hus), standard "kun optaget". Husets admins ser firmaernes møder som skærmen gør.
+
 Moduler pr. kunde (Gæster, Lokaler, Forplejning), som slås til under Abonnement.
 Lokaler og køkken kan høre til huset (partneren), så alle firmaer i et kontorhotel kan booke de samme lokaler.
 

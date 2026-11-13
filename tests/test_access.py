@@ -181,3 +181,18 @@ def test_invite_email_has_logo_button_and_plain_text():
     assert "https://nodd.example/admin#invite=abc" in text and "Hej Ny <Kollega>" in text
     assert 'src="https://nodd.example/static/brand/nodd-lockup.png"' in page
     assert "Ny &lt;Kollega&gt;" in page and "<Kollega>" not in page
+
+
+def test_rooms_of_other_firms_and_houses_are_hidden(setup, platform):
+    other = platform.post("/api/admin/tenants", json={"name": "Fremmed firma"}).json()
+    room = platform.post("/api/admin/rooms", json={"tenant_id": other["id"], "name": "Fremmed lokale"}).json()
+    pa = setup["pa"]  # partner-admin for et andet hus
+    assert pa.get(f"/api/admin/rooms?tenant_id={other['id']}").status_code == 404
+    assert pa.get(f"/api/admin/bookings?tenant_id={other['id']}").status_code == 404
+    assert pa.patch(f"/api/admin/rooms/{room['id']}", json={"name": "x"}).status_code == 404
+    assert pa.delete(f"/api/admin/rooms/{room['id']}").status_code == 404
+    assert pa.post(f"/api/admin/rooms/{room['id']}/screen-link").status_code == 404
+    assert pa.post("/api/admin/bookings", json={"room_id": room["id"], "tenant_id": other["id"],
+                                                "start": "2030-01-01T10:00", "end": "2030-01-01T11:00"}).status_code == 404
+    assert new_client().get(f"/api/admin/rooms?tenant_id={other['id']}").status_code == 401
+    platform.delete(f"/api/admin/tenants/{other['id']}")

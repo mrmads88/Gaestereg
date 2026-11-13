@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f6b45">
+<title>Lokale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Lokaleskærmen ved døren. Grøn = ledigt, rød = optaget. Kan styre tabletens LED-lys, hvis den har et
+   (window.NoddLED.setColor eller en Android-bro), ellers er hele skærmen farven. White-label: ingen Nodd. */
+:root{--free:#0f7a4f;--free-2:#0b5e3d;--busy:#b4232c;--busy-2:#8a1820;--soon:#b86a00;--soon-2:#8f5200;
+  --ink:#fff;--soft:rgb(255 255 255 / .78);--glass:rgb(255 255 255 / .12);--glass-2:rgb(255 255 255 / .2);
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;color:var(--ink);font:clamp(15px,1.6vw,22px)/1.35 var(--f-body);-webkit-font-smoothing:antialiased;
+  background:linear-gradient(160deg,var(--c1),var(--c2));transition:background .6s;overflow:hidden;
+  --c1:var(--free);--c2:var(--free-2);user-select:none;-webkit-user-select:none}
+body.busy{--c1:var(--busy);--c2:var(--busy-2)}
+body.soon{--c1:var(--soon);--c2:var(--soon-2)}
+.wrap{height:100%;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(16px,3vw,48px);
+  padding:max(clamp(18px,3.5vw,56px),env(safe-area-inset-top)) max(clamp(18px,3.5vw,56px),env(safe-area-inset-right)) clamp(18px,3.5vw,56px) max(clamp(18px,3.5vw,56px),env(safe-area-inset-left))}
+.main{display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;gap:14px;min-height:44px}
+.top img{max-height:44px;max-width:180px;object-fit:contain;filter:brightness(0) invert(1);opacity:.92}
+.top .firm{font-weight:700;opacity:.9}
+.room{font:800 clamp(2rem,5.2vw,5rem)/1 var(--f-display);letter-spacing:-.02em;margin:clamp(14px,3vh,40px) 0 6px;overflow-wrap:anywhere}
+.where{color:var(--soft);font-weight:600}
+.state{margin-top:auto}
+.badge{display:inline-flex;align-items:center;gap:12px;font:800 clamp(2.4rem,7vw,7rem)/1 var(--f-display);letter-spacing:-.02em}
+.dot{width:.42em;height:.42em;border-radius:50%;background:#fff;box-shadow:0 0 0 .14em rgb(255 255 255 / .3)}
+body:not(.busy) .dot{animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 .3em rgb(255 255 255 / .05)}}
+.until{font-size:clamp(1.1rem,2.2vw,2rem);font-weight:600;margin-top:10px;color:var(--soft)}
+.now{margin-top:clamp(14px,2.5vh,28px);background:var(--glass);border-radius:22px;padding:clamp(14px,2vw,24px)}
+.now .t{font:700 clamp(1.3rem,2.6vw,2.2rem)/1.15 var(--f-display);overflow-wrap:anywhere}
+.now .m{color:var(--soft);margin-top:6px}
+.bar{height:8px;border-radius:8px;background:var(--glass-2);overflow:hidden;margin-top:14px}
+.bar i{display:block;height:100%;background:#fff;width:0;transition:width 1s linear}
+.book{display:flex;gap:12px;flex-wrap:wrap;margin-top:clamp(14px,2.5vh,28px);align-items:center}
+.book span{font-weight:700;margin-right:4px}
+.book button{font:700 clamp(1rem,1.8vw,1.5rem) var(--f-body);color:var(--c2);background:#fff;border:0;border-radius:999px;
+  padding:.7em 1.2em;min-height:56px;cursor:pointer;box-shadow:0 6px 18px rgb(0 0 0 / .18);touch-action:manipulation}
+.book button:active{transform:scale(.97)}
+.book button:disabled{opacity:.5}
+.side{display:flex;flex-direction:column;min-width:0;background:rgb(0 0 0 / .14);border-radius:28px;padding:clamp(16px,2.2vw,30px)}
+.clock{font:600 clamp(2.4rem,5.5vw,5.4rem)/1 var(--f-mono);letter-spacing:-.03em}
+.date{color:var(--soft);font-weight:600;margin-top:6px}
+.list{margin-top:clamp(16px,3vh,32px);display:flex;flex-direction:column;gap:10px;overflow:hidden;flex:1}
+.list h2{font:700 .8rem var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin:0 0 2px}
+.item{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;background:var(--glass);border-radius:16px;padding:12px 14px}
+.item .tm{font:500 .95rem var(--f-mono);white-space:nowrap;padding-top:2px}
+.item .tt{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .who{grid-column:2;color:var(--soft);font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item.cur{background:var(--glass-2)}
+.empty{color:var(--soft);padding:12px 0}
+.foot{margin-top:12px;font:500 .75rem var(--f-mono);color:var(--soft);display:flex;justify-content:space-between;gap:8px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#fff;color:#14171d;border-radius:999px;
+  padding:12px 22px;font-weight:700;box-shadow:0 10px 30px rgb(0 0 0 / .25)}
+.err{height:100%;display:grid;place-items:center;text-align:center;padding:24px;background:#22262e}
+@media (orientation:portrait),(max-width:760px){
+  body{overflow:auto}
+  .wrap{grid-template-columns:1fr;height:auto;min-height:100%}
+  .wrap{align-content:start}
+  .side{flex-direction:row;flex-wrap:wrap;align-items:baseline;align-content:flex-start;gap:6px 16px}
+  .side .list{flex:none;flex-basis:100%;order:3}
+  .side .foot{flex-basis:100%;order:4}
+  .state{margin-top:clamp(24px,5vh,56px)}
+  .room{margin-top:clamp(18px,4vh,40px)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap" id="app" hidden>
+  <section class="main">
+    <div class="top"><img id="logo" alt="" hidden><span class="firm" id="firm"></span></div>
+    <div class="room" id="room"></div>
+    <div class="where" id="where"></div>
+    <div class="state">
+      <div class="badge"><span class="dot"></span><span id="status">Ledigt</span></div>
+      <div class="until" id="until"></div>
+      <div class="now" id="now" hidden><div class="t" id="nowTitle"></div><div class="m" id="nowMeta"></div><div class="bar"><i id="bar"></i></div></div>
+      <div class="book" id="book" hidden><span>Book nu:</span>
+        <button type="button" data-min="15">15 min</button><button type="button" data-min="30">30 min</button><button type="button" data-min="60">1 time</button>
+      </div>
+    </div>
+  </section>
+  <aside class="side">
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+    <div class="list" id="list"></div>
+    <div class="foot"><span id="cap"></span><span id="sync"></span></div>
+  </aside>
+</div>
+<div class="err" id="err" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const token = decodeURIComponent(location.pathname.split("/").pop());
+  const pad = (n) => String(n).padStart(2, "0");
+  const hm = (d) => pad(d.getHours()) + ":" + pad(d.getMinutes());
+  let data = null, lastOk = 0, lastColor = "";
+
+  // LED-lys: tablets med lysbjælke (fx mødelokale-tablets) kan få farven via en bro fra deres kiosk-app.
+  function led(color) {
+    if (color === lastColor) return;
+    lastColor = color;
+    const hex = { free: "#00ff00", busy: "#ff0000", soon: "#ffa000" }[color];
+    try {
+      if (window.NoddLED && typeof window.NoddLED.setColor === "function") window.NoddLED.setColor(hex, color);
+      else if (window.Android && typeof window.Android.setLed === "function") window.Android.setLed(hex);
+      else if (window.fully && typeof window.fully.setLedColor === "function") window.fully.setLedColor(hex);
+    } catch (e) { /* skærmens farve er nok */ }
+    document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--c1").trim() || "#0f7a4f";
+  }
+
+  function bookings() {
+    return (data ? data.bookings : []).map((b) => ({ ...b, s: new Date(b.start), e: new Date(b.end) }));
+  }
+
+  function line(b) {
+    return [b.organizer, b.firm].filter(Boolean).join(" · ");
+  }
+
+  function render() {
+    if (!data) return;
+    const now = new Date();
+    $("clock").textContent = hm(now);
+    const dl = now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+    $("date").textContent = dl.charAt(0).toUpperCase() + dl.slice(1);
+    const all = bookings().filter((b) => b.e > now);
+    const cur = all.find((b) => b.s <= now && b.e > now);
+    const next = all.find((b) => b.s > now);
+    const soon = !cur && next && (next.s - now) <= 10 * 60000;
+    document.body.classList.toggle("busy", !!cur);
+    document.body.classList.toggle("soon", !!soon);
+    led(cur ? "busy" : soon ? "soon" : "free");
+
+    if (cur) {
+      // Møder, der følger lige efter hinanden, tæller som ét langt "optaget".
+      let end = cur.e;
+      for (const b of all) if (b.s <= end && b.e > end) end = b.e;
+      $("status").textContent = "Optaget";
+      $("until").textContent = "Ledigt kl. " + hm(end);
+      $("now").hidden = false;
+      $("nowTitle").textContent = cur.title === "Optaget" ? "Møde i gang" : cur.title;
+      $("nowMeta").textContent = [hm(cur.s) + "–" + hm(cur.e), line(cur)].filter(Boolean).join(" · ");
+      $("bar").style.width = Math.min(100, 100 * (now - cur.s) / (cur.e - cur.s)) + "%";
+    } else {
+      $("status").textContent = soon ? "Ledigt lidt endnu" : "Ledigt";
+      const sameDay = next && next.s.toDateString() === now.toDateString();
+      $("until").textContent = next && sameDay ? "Ledigt til " + hm(next.s) + " (" + mins(next.s - now) + ")" : "Ledigt resten af dagen";
+      $("now").hidden = !next || !sameDay;
+      if (next && sameDay) {
+        $("nowTitle").textContent = next.title === "Optaget" ? "Næste møde" : "Næste: " + next.title;
+        $("nowMeta").textContent = [hm(next.s) + "–" + hm(next.e), line(next)].filter(Boolean).join(" · ");
+        $("bar").style.width = "0";
+      }
+    }
+    const free = cur ? 0 : next ? (next.s - now) / 60000 : 999;
+    $("book").hidden = !!cur || free < 10;
+    $("book").querySelectorAll("button").forEach((b) => { b.disabled = free < 10; });
+
+    const today = all.filter((b) => b.s.toDateString() === now.toDateString());
+    const tomorrow = all.filter((b) => b.s.toDateString() !== now.toDateString()).slice(0, 3);
+    const item = (b) => '<div class="item' + (b === cur ? " cur" : "") + '"><span class="tm">' + hm(b.s) + "–" + hm(b.e) +
+      '</span><span class="tt">' + esc(b.title) + "</span>" + (line(b) ? '<span class="who">' + esc(line(b)) + "</span>" : "") + "</div>";
+    $("list").innerHTML = "<h2>I dag</h2>" + (today.length ? today.slice(0, 6).map(item).join("") : '<div class="empty">Ingen flere møder i dag</div>') +
+      (tomorrow.length ? "<h2>I morgen</h2>" + tomorrow.map(item).join("") : "");
+    const stale = Date.now() - lastOk > 5 * 60000;
+    $("sync").textContent = stale ? "Ingen forbindelse" : "";
+  }
+
+  function mins(ms) {
+    const m = Math.round(ms / 60000);
+    if (m < 60) return m + " min";
+    const h = Math.floor(m / 60), r = m % 60;
+    return h + " t" + (r ? " " + r + " min" : "");
+  }
+
+  async function load() {
+    try {
+      const r = await fetch("/api/room/" + encodeURIComponent(token) + "/state", { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) {
+        $("app").hidden = true; $("err").hidden = false;
+        $("err").innerHTML = "<div><h1>Lokaleskærmen er ikke sat op</h1><p>" + esc(j.detail || "") + "</p></div>";
+        return;
+      }
+      data = j; lastOk = Date.now();
+      $("err").hidden = true; $("app").hidden = false;
+      document.title = j.room.name;
+      $("room").textContent = j.room.name;
+      $("where").textContent = j.room.location;
+      $("firm").textContent = j.brand.logo_url ? "" : j.brand.name;
+      $("logo").hidden = !j.brand.logo_url;
+      if (j.brand.logo_url && $("logo").getAttribute("src") !== j.brand.logo_url) $("logo").src = j.brand.logo_url;
+      $("cap").textContent = j.room.capacity ? "Plads til " + j.room.capacity : "";
+      render();
+    } catch (e) { render(); }
+  }
+
+  let toastT;
+  function toast(msg) {
+    $("toast").textContent = msg; $("toast").hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { $("toast").hidden = true; }, 4000);
+  }
+
+  $("book").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-min]"); if (!btn) return;
+    $("book").querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    try {
+      const r = await fetch("/api/room/" + encodeURIComponent(token) + "/book", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ minutes: +btn.dataset.min }) });
+      const j = await r.json();
+      toast(r.ok ? "Booket til kl. " + hm(new Date(j.end)) : (j.detail || "Det gik ikke. Prøv igen"));
+    } catch (err) { toast("Ingen forbindelse. Prøv igen"); }
+    await load();
+  });
+
+  load();
+  setInterval(load, 30000);
+  setInterval(render, 5000);
+  // Skærmen skal ikke gå i dvale, hvis browseren kan forhindre det.
+  if (navigator.wakeLock) {
+    const lock = () => navigator.wakeLock.request("screen").catch(() => {});
+    lock(); document.addEventListener("visibilitychange", () => { if (!document.hidden) lock(); });
+  }
+})();
+</script>
+</body>
+</html>

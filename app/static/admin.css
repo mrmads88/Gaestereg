@@ -326,3 +326,20 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
 .stats td:first-child,.stats th:first-child{text-align:left}
 .stats tfoot td{font-weight:700;border-top:2px solid var(--rule)}
 .tag.rec{background:#fff4dd;color:var(--warn)}
+
+/* ---------- mødelokaler ---------- */
+.stack{display:flex;flex-direction:column;gap:14px}
+.card.inset{box-shadow:none;background:#fbfbfa}
+.fld select,.rm-day{width:100%;min-height:42px;border:1px solid var(--rule);border-radius:10px;padding:8px 12px;background:#fbfbfa}
+.rm-day{width:auto;min-height:32px;padding:4px 10px}
+.rm-book{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--rule);border-radius:14px;background:#fbfbfa}
+.rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.rm-card{border:1px solid var(--rule);border-radius:16px;overflow:hidden;background:var(--card);display:flex;flex-direction:column}
+.rm-card.off{opacity:.6}
+.rm-ph{aspect-ratio:16/8;background:linear-gradient(135deg,color-mix(in oklab,var(--accent) 80%,#fff),var(--accent));display:grid;place-items:center}
+.rm-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.rm-ph span{color:#fff;font:700 2rem var(--f-display);opacity:.9}
+.rm-b{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.rm-b b{font-family:var(--f-display);font-size:1.05rem}
+.rm-photo img{height:56px;width:100px;object-fit:cover;border-radius:10px;display:block}
+.tag.house{background:#e8eefc;color:#2a4fa0}

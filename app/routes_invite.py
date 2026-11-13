@@ -14,7 +14,7 @@ from sqlalchemy import and_, or_, select, true
 from sqlalchemy.orm import Session
 
 from . import invitations as inv_mod
-from . import ratelimit
+from . import ratelimit, rooms
 from .auth import Principal, current
 from .db import get_db
 from .media import media_url
@@ -171,8 +171,9 @@ def host_info(token: str, request: Request, db: Session = Depends(get_db)):
     t = db.get(Tenant, h.tenant_id)
     upcoming = db.scalars(select(Invitation).where(
         Invitation.host_id == h.id, Invitation.status == "pending",
-        Invitation.expected_at >= utcnow() - timedelta(hours=12)).order_by(Invitation.expected_at).limit(50))
+        Invitation.expected_at >= utcnow() - timedelta(hours=12)).order_by(Invitation.expected_at).limit(50)).all()
     return {"host": h.name, "tenant": t.name, "color": t.color, "logo_url": media_url(t.logo_path),
+            "has_rooms": bool(rooms.rooms_for_tenant(db, t)),
             "upcoming": [{**inv_mod.out(x, _base(request)), "when": f"{local_day_label(x.expected_at)} kl. "
                           f"{local_hhmm(x.expected_at)}"} for x in upcoming]}
 
