@@ -1,9 +1,11 @@
+import re
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 from .media import media_url
-from .models import Host, Tenant
+from .models import Host, Partner, Tenant, User
 from .timeutil import local_iso
 
 HEX = r"^#[0-9a-fA-F]{6}$"
@@ -11,6 +13,7 @@ HEX = r"^#[0-9a-fA-F]{6}$"
 
 class TenantCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    partner_id: int | None = None  # kun platform. Partner-admins får altid deres egen partner.
 
 
 class TenantUpdate(BaseModel):
@@ -78,7 +81,59 @@ class CheckinIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    password: str
+    email: str = Field("", max_length=200)  # tom = platform-admin med ADMIN_PASSWORD
+    password: str = Field(max_length=200)
+
+
+def _email(v: str) -> str:
+    v = (v or "").strip().lower()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", v):
+        raise ValueError("Skriv en gyldig e-mailadresse")
+    return v
+
+
+class UserIn(BaseModel):
+    email: str = Field(max_length=200)
+    name: str = Field("", max_length=120)
+
+    @field_validator("email")
+    @classmethod
+    def _e(cls, v):
+        return _email(v)
+
+
+class AcceptIn(BaseModel):
+    token: str = Field(max_length=500)
+    password: str = Field(max_length=200)
+
+    @field_validator("password")
+    @classmethod
+    def _pw(cls, v):
+        if len(v) < 10:
+            raise ValueError("Adgangskoden skal være mindst 10 tegn")
+        return v
+
+
+class ForgotIn(BaseModel):
+    email: str = Field(max_length=200)
+
+
+class PartnerIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
+class PartnerUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=120)
+    active: bool | None = None
+
+
+class SubscriptionIn(BaseModel):
+    partner_id: int | None = None
+    sub_yearly_price: int | None = Field(None, ge=0, le=10_000_000)
+    self_service: bool | None = None
+    self_service_monthly_price: int | None = Field(None, ge=0, le=1_000_000)
+    sub_paid_until: date | None = None
+    sub_note: str | None = Field(None, max_length=500)
 
 
 # ---------- serializers ----------
@@ -105,8 +160,18 @@ TENANT_FIELDS = [
 ]
 
 
-def tenant_admin(t: Tenant, with_hosts: bool = True) -> dict:
+SUBSCRIPTION_FIELDS = ["sub_yearly_price", "self_service", "self_service_monthly_price", "sub_note"]
+
+
+def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False) -> dict:
     d = {f: getattr(t, f) for f in TENANT_FIELDS}
+    d["partner_id"] = t.partner_id
+    d["partner_name"] = t.partner.name if t.partner else ""
+    d["self_service"] = t.self_service  # så kunde- og partner-admins kan se, om kunde-login virker
+    if platform:
+        d["subscription"] = {f: getattr(t, f) for f in SUBSCRIPTION_FIELDS}
+        d["subscription"]["sub_paid_until"] = t.sub_paid_until.isoformat() if t.sub_paid_until else None
+        d["subscription"]["partner_id"] = t.partner_id
     d["logo_url"] = media_url(t.logo_path)
     d["background_url"] = media_url(t.background_path)
     d["kiosk_url"] = f"/k/{t.kiosk_token}"
@@ -128,3 +193,16 @@ def tenant_public(t: Tenant) -> dict:
         "idle_seconds": t.idle_seconds, "retention_days": t.retention_days,
         "hosts": [host_public(h, t.show_photos) for h in t.hosts if h.active],
     }
+
+
+def user_out(u: User) -> dict:
+    return {"id": u.id, "email": u.email, "name": u.name, "role": u.role, "active": u.active,
+            "partner_id": u.partner_id, "tenant_id": u.tenant_id,
+            "pending": not u.password_hash,  # har ikke valgt adgangskode endnu
+            "last_login_at": local_iso(u.last_login_at)}
+
+
+def partner_out(p: Partner, tenant_count: int = 0, user_count: int = 0) -> dict:
+    return {"id": p.id, "name": p.name, "active": p.active, "tenant_count": tenant_count,
+            "user_count": user_count, "created_at": local_iso(p.created_at)}
+

@@ -21,7 +21,23 @@ _SVG_BAD = re.compile(r"<script|<foreignObject|\son[a-z]+\s*=|javascript:|<ifram
 
 
 async def save_image(file: UploadFile, kind: str) -> str:
-    data = await file.read()
+    return store_image(await file.read(), kind)
+
+
+def check_image(data: bytes) -> None:
+    """Tjek at data kan læses som et billede, uden at gemme noget (bruges ved forhåndsvisning af import)."""
+    if not data:
+        raise HTTPException(400, "Filen er tom")
+    if len(data) > MAX_BYTES:
+        raise HTTPException(400, "Billedet er for stort. Maks 10 MB")
+    try:
+        Image.open(io.BytesIO(data)).verify()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(400, "Filen kunne ikke læses som et billede. Brug PNG eller JPG")
+
+
+def store_image(data: bytes, kind: str) -> str:
+    """Valider, skaler og gem et billede. Returnerer filnavnet under DATA_DIR/media."""
     if not data:
         raise HTTPException(400, "Filen er tom")
     if len(data) > MAX_BYTES:

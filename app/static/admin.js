@@ -4,7 +4,9 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const initials = (n) => String(n || "?").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
-let tenants = [], T = null, STATUS = null, tab = "people", lastField = null;
+let tenants = [], partners = [], T = null, P = null, STATUS = null, ME = null, tab = "people", lastField = null;
+const can = (k) => !!(ME && ME.can[k]);
+const today = () => new Date().toISOString().slice(0, 10);
 
 // ---------- api ----------
 async function api(method, url, body, isForm) {
@@ -29,44 +31,183 @@ let savedT;
 function saved() { const s = $("saved"); s.hidden = false; clearTimeout(savedT); savedT = setTimeout(() => (s.hidden = true), 1600); }
 
 // ---------- login ----------
-function showLogin() { $("appView").hidden = true; $("loginView").hidden = false; $("pw").focus(); }
+let platformLogin = false;
+function showCard(id) { ["loginForm", "forgotForm", "inviteForm"].forEach((x) => ($(x).hidden = x !== id)); }
+function showLogin(msg) {
+  $("appView").hidden = true; $("loginView").hidden = false; showCard("loginForm");
+  $("loginErr").textContent = msg || ""; $("loginErr").hidden = !msg;
+  (platformLogin ? $("pw") : $("loginEmail")).focus();
+}
+function setPlatformLogin(on) {
+  platformLogin = on; $("emailFld").hidden = on;
+  $("platformBtn").textContent = on ? "Log ind med e-mail" : "Leverandør-login";
+  $("loginLead").textContent = on ? "Leverandør: log ind med din adgangskode." : "Log ind for at rette jeres skærm, personer og beskeder.";
+}
+$("platformBtn").addEventListener("click", () => { setPlatformLogin(!platformLogin); showLogin(); });
 $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("loginErr").hidden = true;
-  try { await api("POST", "/api/admin/login", { password: $("pw").value }); $("pw").value = ""; boot(); }
+  const body = { email: platformLogin ? "" : $("loginEmail").value.trim(), password: $("pw").value };
+  if (!platformLogin && !body.email) { $("loginErr").textContent = "Skriv din e-mail"; $("loginErr").hidden = false; return; }
+  try { await api("POST", "/api/admin/login", body); $("pw").value = ""; boot(); }
   catch (err) { $("loginErr").textContent = err.message; $("loginErr").hidden = false; }
 });
-$("logout").addEventListener("click", async () => { await api("POST", "/api/admin/logout").catch(() => {}); showLogin(); });
+$("forgotBtn").addEventListener("click", () => { showCard("forgotForm"); $("forgotMsg").hidden = true; $("forgotEmail").value = $("loginEmail").value; $("forgotEmail").focus(); });
+document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => { history.replaceState(null, "", "/admin"); showLogin(); }));
+$("forgotForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { const r = await api("POST", "/api/admin/forgot", { email: $("forgotEmail").value.trim() }); $("forgotMsg").textContent = r.message; $("forgotMsg").hidden = false; }
+  catch (err) { toast(err.message, true); }
+});
+$("logout").addEventListener("click", async () => { await api("POST", "/api/admin/logout").catch(() => {}); location.hash = ""; showLogin(); });
+
+// invitation / ny adgangskode: /admin#invite=<token>
+let inviteToken = null;
+async function showInvite(token) {
+  inviteToken = token;
+  $("appView").hidden = true; $("loginView").hidden = false; showCard("inviteForm"); $("inviteErr").hidden = true;
+  try {
+    const info = await api("GET", "/api/admin/invite/" + encodeURIComponent(token));
+    $("inviteTitle").textContent = info.new ? "Velkommen" + (info.name ? ", " + info.name.split(" ")[0] : "") : "Ny adgangskode";
+    $("inviteLead").textContent = (info.new ? "Vælg en adgangskode til " : "Vælg en ny adgangskode til ") + info.email + ". Fremover logger du ind med din e-mail og den.";
+    $("loginEmail").value = info.email; $("invPw").focus();
+  } catch (err) { $("inviteTitle").textContent = "Linket virker ikke"; $("inviteLead").textContent = err.message; $("inviteForm").querySelectorAll("label,button[type=submit]").forEach((x) => (x.hidden = true)); }
+}
+$("inviteForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("inviteErr").hidden = true;
+  if ($("invPw").value !== $("invPw2").value) { $("inviteErr").textContent = "De to adgangskoder er ikke ens"; $("inviteErr").hidden = false; return; }
+  try {
+    await api("POST", "/api/admin/invite/accept", { token: inviteToken, password: $("invPw").value });
+    $("invPw").value = $("invPw2").value = ""; history.replaceState(null, "", "/admin"); boot();
+  } catch (err) { $("inviteErr").textContent = err.message; $("inviteErr").hidden = false; }
+});
 
 async function boot() {
-  try { STATUS = await api("GET", "/api/admin/status"); } catch (e) { return; }
+  const m = location.hash.match(/^#invite=(.+)$/);
+  if (m) return showInvite(decodeURIComponent(m[1]));
+  try { [STATUS, ME] = await Promise.all([api("GET", "/api/admin/status"), api("GET", "/api/admin/me")]); }
+  catch (e) { if (!/Log ind/.test(e.message)) showLogin(e.message); return; }
   $("loginView").hidden = true; $("appView").hidden = false;
+  setupRole();
   const env = STATUS.env;
   $("envPill").textContent = env === "prod" ? "Produktion" : env === "dev" ? "Dev" : "Lokal";
   $("envPill").className = "envpill " + env;
   const warn = [];
   if (STATUS.notify_mode !== "live") warn.push("Testtilstand: SMS og e-mails bliver logget under Besøg, men ikke sendt.");
-  if (STATUS.default_password) warn.push("Standard-adgangskoden bruges. Sæt ADMIN_PASSWORD.");
+  if (STATUS.default_password && ME.role === "platform") warn.push("Standard-adgangskoden bruges. Sæt ADMIN_PASSWORD.");
   $("banner").textContent = warn.join(" "); $("banner").hidden = !warn.length;
-  await loadTenants();
-  const want = +(location.hash.replace("#t", "")) || (tenants[0] && tenants[0].id);
-  if (want) selectTenant(want);
+  await Promise.all([loadTenants(), loadPartners()]);
+  const h = location.hash.match(/^#([tp])(\d+)$/);
+  if (h && h[1] === "p") return selectPartner(+h[2]);
+  if (h && h[1] === "t") return selectTenant(+h[2]);
+  if (ME.role === "partner" && ME.partner) return selectPartner(ME.partner.id);
+  if (tenants[0]) selectTenant(tenants[0].id);
+}
+
+// Hvad man ser, afhænger af rollen.
+function setupRole() {
+  const r = ME.role;
+  $("who").textContent = r === "platform" ? "Leverandør" : (ME.name || ME.email) + (ME.partner ? " · " + ME.partner.name : "");
+  document.querySelector(".cols").classList.toggle("solo", r === "tenant");
+  $("partnerSec").hidden = r === "tenant";
+  $("newPartner").hidden = !can("partners");
+  $("partnerLbl").textContent = r === "platform" ? "Partnere" : "Partner";
+  $("tenantLbl").textContent = r === "platform" ? "Kunder" : "Firmaer";
+  $("newTenant").hidden = !can("create_tenant");
+  $("newTenant").textContent = r === "platform" ? "+ Ny kunde" : "+ Nyt firma";
+  $("newName").placeholder = r === "platform" ? "Kundens navn, fx Junckers" : "Firmaets navn";
+  $("subTab").hidden = !can("subscription");
+  $("activeFld").hidden = !can("toggle_active");
+  $("delRow").hidden = !can("delete_tenant");
+  $("pSettings").hidden = $("pDanger").hidden = !can("partners");
 }
 
 // ---------- tenant list ----------
 async function loadTenants() { tenants = await api("GET", "/api/admin/tenants"); renderList(); }
-function renderList() {
-  $("tList").innerHTML = tenants.map((t) =>
-    '<button class="titem" type="button" data-id="' + t.id + '" aria-current="' + (T && T.id === t.id) + '"><span class="tl">' +
-    (t.logo_url ? '<img src="' + esc(t.logo_url) + '" alt="">' : '<i style="background:' + esc(t.color) + '"></i>') +
-    '</span><span class="grow"><b>' + esc(t.name) + "</b><small>" + t.host_count + " personer" + (t.active ? "" : ' · <span class="off">slået fra</span>') + "</small></span></button>"
-  ).join("") || '<p class="muted small">Ingen kunder endnu.</p>';
+function tenantTags(t) {
+  let out = "";
+  if (!t.active) out += '<span class="tag off">slået fra</span>';
+  if (can("subscription")) {
+    if (t.self_service) out += '<span class="tag ss">selvbetjening</span>';
+    const until = t.subscription && t.subscription.sub_paid_until;
+    if (until && until < today()) out += '<span class="tag exp">udløbet</span>';
+  }
+  return out;
 }
+function renderList() {
+  const q = ($("tFilter").value || "").trim().toLowerCase();
+  $("tFilter").hidden = tenants.length < 8;
+  const shown = tenants.filter((t) => !q || t.name.toLowerCase().includes(q) || (t.partner_name || "").toLowerCase().includes(q));
+  $("tList").innerHTML = shown.map((t) =>
+    '<button class="titem" type="button" data-id="' + t.id + '" aria-current="' + (!!T && T.id === t.id && !P) + '"><span class="tl">' +
+    (t.logo_url ? '<img src="' + esc(t.logo_url) + '" alt="">' : '<i style="background:' + esc(t.color) + '"></i>') +
+    '</span><span class="grow"><b>' + esc(t.name) + "</b><small>" + t.host_count + " personer" +
+    (ME.role === "platform" && t.partner_name ? " · " + esc(t.partner_name) : "") + tenantTags(t) + "</small></span></button>"
+  ).join("") || '<p class="muted small">' + (q ? "Ingen match." : ME.role === "platform" ? "Ingen kunder endnu." : "Ingen firmaer endnu.") + "</p>";
+}
+$("tFilter").addEventListener("input", renderList);
+
+// ---------- partners ----------
+async function loadPartners() { partners = ME.role === "tenant" ? [] : await api("GET", "/api/admin/partners"); renderPartners(); }
+function renderPartners() {
+  $("pList").innerHTML = partners.map((x) =>
+    '<button class="titem" type="button" data-pid="' + x.id + '" aria-current="' + (!!P && P.id === x.id) + '"><span class="tl p">' + esc(initials(x.name)) +
+    '</span><span class="grow"><b>' + esc(x.name) + "</b><small>" + x.tenant_count + (x.tenant_count === 1 ? " firma" : " firmaer") + (x.active ? "" : '<span class="tag off">slået fra</span>') + "</small></span></button>"
+  ).join("") || '<p class="muted small">Ingen partnere endnu. Fx et kontorhotel, der administrerer flere firmaer.</p>';
+}
+$("pList").addEventListener("click", (e) => { const b = e.target.closest("[data-pid]"); if (b) selectPartner(+b.dataset.pid); });
+$("newPartner").addEventListener("click", () => { $("newPartnerForm").hidden = !$("newPartnerForm").hidden; if (!$("newPartnerForm").hidden) $("newPartnerName").focus(); });
+$("newPartnerForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const name = $("newPartnerName").value.trim(); if (!name) return;
+  try { const x = await api("POST", "/api/admin/partners", { name }); $("newPartnerName").value = ""; $("newPartnerForm").hidden = true; await loadPartners(); selectPartner(x.id); toast(name + " er oprettet. Invitér en administrator."); }
+  catch (err) { toast(err.message, true); }
+});
+
+function showView(v) { $("noTenant").hidden = true; $("editor").hidden = v !== "tenant"; $("partnerView").hidden = v !== "partner"; $("pv").hidden = v !== "tenant"; }
+async function selectPartner(id) {
+  P = partners.find((x) => x.id === id);
+  if (!P) { await loadPartners(); P = partners.find((x) => x.id === id); }
+  if (!P) return;
+  T = null; location.hash = "p" + id; showView("partner");
+  document.documentElement.style.setProperty("--accent", "#1f3a5a");
+  renderPartners(); renderList(); renderPartner();
+}
+async function renderPartner(keepImport) {
+  $("pName").textContent = P.name; $("pvInitials").textContent = initials(P.name);
+  const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+  $("pSub").textContent = plural(P.tenant_count, "firma", "firmaer") + " · " + plural(P.user_count, "administrator", "administratorer");
+  $("pNameIn").value = P.name; $("pActive").checked = P.active;
+  document.querySelectorAll(".pn").forEach((x) => (x.textContent = P.name));
+  const mine = tenants.filter((t) => t.partner_id === P.id);
+  $("pCount").textContent = mine.length + " i alt";
+  $("pTenants").innerHTML = mine.map((t) => '<button type="button" data-id="' + t.id + '"><span class="tl">' + (t.logo_url ? '<img src="' + esc(t.logo_url) + '" alt="">' : "") +
+    '</span><span class="grow"><b>' + esc(t.name) + '</b><small class="muted">' + t.host_count + " personer" + tenantTags(t) + "</small></span></button>").join("") ||
+    '<p class="muted">Ingen firmaer endnu. Opret dem ét ad gangen i listen til venstre, eller importér dem alle fra et Excel-ark ovenfor.</p>';
+  $("pLink").hidden = true;
+  if (!keepImport) renderImport($("pImport"), { partner_id: P.id, withFirm: true });
+  renderUsers($("pUsers"), await api("GET", "/api/admin/partners/" + P.id + "/users").catch(() => []));
+}
+$("pTenants").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
+async function patchPartner(data) {
+  try { const x = await api("PATCH", "/api/admin/partners/" + P.id, data); Object.assign(P, x); saved(); renderPartners(); renderPartner(); }
+  catch (err) { toast(err.message, true); }
+}
+$("pNameIn").addEventListener("change", (e) => { const v = e.target.value.trim(); if (v) patchPartner({ name: v }); });
+$("pActive").addEventListener("change", (e) => patchPartner({ active: e.target.checked }));
+$("delPartner").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen for at slette " + P.name; setTimeout(() => { delete b.dataset.sure; b.textContent = "Slet partner"; }, 4000); return; }
+  delete b.dataset.sure; b.textContent = "Slet partner";
+  try { await api("DELETE", "/api/admin/partners/" + P.id); toast(P.name + " er slettet"); P = null; location.hash = ""; await loadPartners(); $("partnerView").hidden = true; $("noTenant").hidden = false; }
+  catch (err) { toast(err.message, true); }
+});
+$("pInvite").addEventListener("submit", (e) => invite(e, "/api/admin/partners/" + P.id + "/users", $("pLink"), () => renderPartner()));
 $("tList").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
 $("newTenant").addEventListener("click", () => { $("newForm").hidden = !$("newForm").hidden; if (!$("newForm").hidden) $("newName").focus(); });
 $("newForm").addEventListener("submit", async (e) => {
   e.preventDefault(); const name = $("newName").value.trim(); if (!name) return;
   try {
-    const t = await api("POST", "/api/admin/tenants", { name });
+    const t = await api("POST", "/api/admin/tenants", { name, partner_id: ME.role === "platform" && P ? P.id : null });
+    if (P) await loadPartners();
     $("newName").value = ""; $("newForm").hidden = true;
     await loadTenants(); selectTenant(t.id); setTab("look"); toast(name + " er oprettet. Upload logoet og tilføj personer.");
   } catch (err) { toast(err.message, true); }
@@ -74,14 +215,21 @@ $("newForm").addEventListener("submit", async (e) => {
 
 async function selectTenant(id) {
   try { T = await api("GET", "/api/admin/tenants/" + id); } catch (err) { toast(err.message, true); return; }
-  location.hash = "t" + id;
-  $("noTenant").hidden = true; $("editor").hidden = false; $("pv").hidden = false;
-  renderList(); renderAll(); loadPreview(true);
+  P = null; location.hash = "t" + id; showView("tenant");
+  if (tab === "sub" && !can("subscription")) tab = "people";
+  renderList(); renderPartners(); renderAll(); setTab(tab); loadPreview(true);
 }
 function upsertList() { const i = tenants.findIndex((x) => x.id === T.id); if (i > -1) tenants[i] = Object.assign({}, T, { host_count: T.hosts.length }); renderList(); }
 
 // ---------- render editor ----------
-function renderAll() { renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); if (tab === "log") loadLog(); }
+function renderAll() {
+  renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
+  document.querySelectorAll(".tn").forEach((x) => (x.textContent = T.name));
+  renderImport($("tImport"), { tenant_id: T.id, withFirm: false });
+  $("tLink").hidden = true;
+  if (tab === "log") loadLog();
+  if (tab === "access") loadAccess();
+}
 function renderHead() {
   document.documentElement.style.setProperty("--accent", T.color);
   $("edName").textContent = T.name;
@@ -173,6 +321,7 @@ function setTab(name) {
   document.querySelectorAll("#tabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === name));
   document.querySelectorAll("#editor .tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "log") loadLog();
+  if (name === "access") loadAccess();
 }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
 
@@ -304,6 +453,132 @@ async function loadLog() {
   } catch (err) { toast(err.message, true); }
 }
 $("refreshLog").addEventListener("click", loadLog);
+
+// ---------- users (adgang) ----------
+const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";
+function renderUsers(box, users) {
+  const myEmail = ME.email;
+  box.innerHTML = users.map((u) => '<div class="urow" data-uid="' + u.id + '"><span class="av">' + esc(initials(u.name || u.email)) + '</span><span class="grow"><b>' +
+    esc(u.name || u.email) + "</b><small>" + (u.name ? esc(u.email) + " · " : "") +
+    (u.pending ? '<span class="pend">Har ikke valgt adgangskode endnu</span>' : u.last_login_at ? "Sidst logget ind " + fmtDay(u.last_login_at) : "Ikke logget ind endnu") + "</small></span>" +
+    '<button class="btn ghost sm" type="button" data-link>' + (u.pending ? "Nyt invitationslink" : "Link til ny adgangskode") + "</button>" +
+    (u.email === myEmail ? "" : '<button class="btn ghost sm" type="button" data-rm>Fjern</button>') + "</div>").join("") ||
+    '<p class="muted small">Ingen administratorer endnu.</p>';
+}
+function showLink(box, res, what) {
+  const sent = res.emailed ? "Linket er sendt til " + res.user.email + "." : "Send linket til " + res.user.email + " (fx på mail eller Teams).";
+  box.innerHTML = "<b>" + esc(what) + "</b><span class=small>" + esc(sent) + " Det virker i 7 dage og kan kun bruges én gang.</span><code>" + esc(res.invite_url) + '</code><div><button class="btn ghost sm" type="button">Kopiér link</button></div>';
+  box.hidden = false;
+  box.querySelector("button").addEventListener("click", () => (navigator.clipboard ? navigator.clipboard.writeText(res.invite_url) : Promise.reject()).then(() => toast("Link kopieret"), () => toast("Markér linket og kopiér med Ctrl+C", true)));
+}
+async function invite(e, url, linkBox, after) {
+  e.preventDefault(); const f = e.target;
+  try {
+    const res = await api("POST", url, { email: f.email.value.trim(), name: f.name.value.trim() });
+    f.reset(); showLink(linkBox, res, (res.user.name || res.user.email) + " er inviteret"); await after(); linkBox.hidden = false;
+  } catch (err) { toast(err.message, true); }
+}
+async function userAction(e, linkBox, after) {
+  const row = e.target.closest("[data-uid]"); if (!row) return; const uid = row.dataset.uid; let b;
+  if ((b = e.target.closest("[data-link]"))) {
+    try { const res = await api("POST", "/api/admin/users/" + uid + "/link"); showLink(linkBox, res, "Nyt link til " + (res.user.name || res.user.email)); toast("Det gamle link virker ikke længere"); }
+    catch (err) { toast(err.message, true); }
+  } else if ((b = e.target.closest("[data-rm]"))) {
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Fjern"; }, 3500); return; }
+    try { await api("DELETE", "/api/admin/users/" + uid); toast("Fjernet"); await after(); } catch (err) { toast(err.message, true); }
+  }
+}
+$("pUsers").addEventListener("click", (e) => userAction(e, $("pLink"), () => renderPartner().then(() => loadPartners())));
+$("tUsers").addEventListener("click", (e) => userAction(e, $("tLink"), loadAccess));
+$("tInvite").addEventListener("submit", (e) => invite(e, "/api/admin/tenants/" + T.id + "/users", $("tLink"), loadAccess));
+async function loadAccess() {
+  if (!T) return;
+  const w = $("ssWarn");
+  w.hidden = !!T.self_service;
+  w.textContent = ME.role === "platform" ? "Selvbetjening er ikke slået til for " + T.name + ". Administratorerne kan først logge ind, når du slår det til under Abonnement."
+    : "Selvbetjening er ikke slået til for " + T.name + ". Administratorerne kan først logge ind, når den er aktiveret. Kontakt din leverandør.";
+  try { renderUsers($("tUsers"), await api("GET", "/api/admin/tenants/" + T.id + "/users")); } catch (err) { toast(err.message, true); }
+}
+
+// ---------- abonnement (kun platform) ----------
+function renderSub() {
+  if (!can("subscription") || !T.subscription) return;
+  const S = T.subscription;
+  $("subPartner").innerHTML = '<option value="">Ingen (direkte kunde)</option>' + partners.map((x) => '<option value="' + x.id + '">' + esc(x.name) + "</option>").join("");
+  document.querySelectorAll("[data-s]").forEach((el) => {
+    const v = S[el.dataset.s];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v;
+  });
+  const year = (S.sub_yearly_price || 0) + (S.self_service ? (S.self_service_monthly_price || 0) * 12 : 0);
+  const until = S.sub_paid_until;
+  $("subSummary").textContent = "I alt " + year.toLocaleString("da-DK") + " kr. pr. år" +
+    (until ? (until < today() ? ". Udløb " : ". Betalt til ") + new Date(until).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }) + "." : ". Ingen betalingsdato sat.");
+}
+document.querySelectorAll("[data-s]").forEach((el) => el.addEventListener("change", async () => {
+  const k = el.dataset.s;
+  let v = el.type === "checkbox" ? el.checked : el.value;
+  if (el.type === "number") v = v === "" ? 0 : parseInt(v, 10);
+  if (k === "partner_id") v = v === "" ? null : +v;
+  if (k === "sub_paid_until" && v === "") v = null;
+  try {
+    T = Object.assign(T, await api("PATCH", "/api/admin/tenants/" + T.id + "/subscription", { [k]: v }));
+    saved(); renderSub(); upsertList(); if (k === "partner_id") { await loadTenants(); await loadPartners(); }
+    if (k === "self_service" && tab === "access") loadAccess();
+  } catch (err) { toast(err.message, true); renderSub(); }
+}));
+
+// ---------- import ----------
+function renderImport(box, opt) {
+  const tpl = "/api/admin/import/template?firma=" + (opt.withFirm ? "1" : "0");
+  box.innerHTML = '<div class="imp"><ol>' +
+    '<li>Hent skabelonen og udfyld én række pr. person' + (opt.withFirm ? ", med firmaets navn i første kolonne. Nye firmaer oprettes automatisk." : ".") + "</li>" +
+    "<li>Billeder: sæt dem ind i arket ud for personen, eller læg arket og billederne i én ZIP-fil.</li>" +
+    "<li>Upload filen. Du ser først en forhåndsvisning. Intet gemmes, før du trykker Importér.</li></ol>" +
+    '<div class="row"><a class="btn ghost sm" href="' + tpl + '" download>Hent skabelon (Excel)</a>' +
+    '<label class="btn pri sm file">Vælg fil<input type="file" accept=".xlsx,.csv,.zip" aria-label="Vælg Excel-, CSV- eller ZIP-fil"></label></div>' +
+    '<div class="impres"></div></div>';
+  let file = null;
+  const res = box.querySelector(".impres");
+  const send = async (dry) => {
+    const fd = new FormData(); fd.append("file", file); fd.append("dry_run", dry ? "true" : "false");
+    if (opt.tenant_id) fd.append("tenant_id", opt.tenant_id);
+    if (opt.partner_id && ME.role === "platform") fd.append("partner_id", opt.partner_id);
+    return api("POST", "/api/admin/import", fd, true);
+  };
+  box.querySelector("input[type=file]").addEventListener("change", async (e) => {
+    file = e.target.files && e.target.files[0]; e.target.value = ""; if (!file) return;
+    res.innerHTML = '<p class="muted">Læser ' + esc(file.name) + " …</p>";
+    try { showResult(await send(true)); } catch (err) { res.innerHTML = '<p class="err">' + esc(err.message) + "</p>"; }
+  });
+  function showResult(r) {
+    const n = r.people_new + r.people_updated;
+    const sum = [];
+    if (opt.withFirm) sum.push("<span><b>" + r.firms_new.length + "</b>nye firmaer</span>");
+    sum.push("<span><b>" + r.people_new + "</b>nye personer</span>", "<span><b>" + r.people_updated + "</b>opdateres</span>", "<span><b>" + r.photos + "</b>billeder</span>");
+    if (r.errors.length) sum.push('<span style="color:var(--bad)"><b>' + r.errors.length + "</b>" + (r.errors.length === 1 ? "række springes" : "rækker springes") + " over</span>");
+    res.innerHTML = (r.dry_run ? "<h3>Forhåndsvisning af " + esc(file.name) + "</h3>" : "<h3>Importeret</h3>") +
+      '<div class="impsum">' + sum.join("") + "</div>" +
+      (r.firms_new.length ? '<p class="small">Nye firmaer: ' + r.firms_new.map(esc).join(", ") + "</p>" : "") +
+      (r.errors.length ? '<ul class="implist err">' + r.errors.map((x) => "<li>Række " + x.row + ": " + esc(x.message) + "</li>").join("") + "</ul>" : "") +
+      (r.warnings.length ? '<ul class="implist warn">' + r.warnings.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : "") +
+      (r.rows.length ? '<div class="tablewrap"><table><thead><tr><th>Række</th>' + (opt.withFirm ? "<th>Firma</th>" : "") + "<th>Navn</th><th></th><th>Billede</th></tr></thead><tbody>" +
+        r.rows.slice(0, 200).map((x) => "<tr><td class=n>" + x.row + "</td>" + (opt.withFirm ? "<td>" + esc(x.firm) + "</td>" : "") + "<td>" + esc(x.name) + '</td><td class="act-' + x.action + '">' + (x.action === "ny" ? "Ny" : "Opdateres") + "</td><td>" + (x.photo ? "Ja" : "") + "</td></tr>").join("") +
+        "</tbody></table></div>" : "") +
+      (r.dry_run && n ? '<div class="row"><button class="btn pri" type="button" data-go>Importér ' + n + " personer</button><button class=\"btn ghost\" type=button data-cancel>Annullér</button></div>" : "");
+    const go = res.querySelector("[data-go]");
+    if (go) go.addEventListener("click", async () => {
+      go.disabled = true; go.textContent = "Importerer …";
+      try {
+        const done = await send(false); showResult(done);
+        toast(done.people_new + " personer oprettet og " + done.people_updated + " opdateret");
+        await loadTenants(); if (P) { await loadPartners(); P = partners.find((x) => x.id === P.id) || P; renderPartners(); renderPartner(true); }
+        if (T && opt.tenant_id) { T = await api("GET", "/api/admin/tenants/" + T.id); renderHosts(); upsertList(); loadPreview(); }
+      } catch (err) { toast(err.message, true); go.disabled = false; go.textContent = "Prøv igen"; }
+    });
+    const cancel = res.querySelector("[data-cancel]");
+    if (cancel) cancel.addEventListener("click", () => { res.innerHTML = ""; file = null; });
+  }
+}
 
 // ---------- preview ----------
 let pvToken = null, pvT;
