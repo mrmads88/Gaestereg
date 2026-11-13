@@ -170,3 +170,14 @@ def test_partner_cannot_be_deleted_with_firms_and_inactive_partner_is_locked_out
     partners = platform.get("/api/admin/partners").json()
     p = next(x for x in partners if x["id"] == pid)
     assert p["tenant_count"] == 1 and p["user_count"] == 1
+
+
+def test_invite_email_has_logo_button_and_plain_text():
+    from app.models import User
+    from app.routes_access import link_email
+    u = User(email="ny@firma.dk", name="Ny <Kollega>")
+    subject, text, page = link_email(u, "https://nodd.example/admin#invite=abc", "invite")
+    assert subject == "Du er inviteret til Nodd"
+    assert "https://nodd.example/admin#invite=abc" in text and "Hej Ny <Kollega>" in text
+    assert 'src="https://nodd.example/static/brand/nodd-lockup.png"' in page
+    assert "Ny &lt;Kollega&gt;" in page and "<Kollega>" not in page

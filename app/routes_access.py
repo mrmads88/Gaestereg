@@ -1,4 +1,5 @@
 """Login, admin-brugere, partnere og invitationslinks."""
+import html
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
@@ -20,7 +21,7 @@ log = logging.getLogger("gaestereg.access")
 public = APIRouter(prefix="/api/admin", tags=["adgang"])
 router = APIRouter(prefix="/api/admin", tags=["adgang"], dependencies=[Depends(current)])
 
-PRODUCT = "Gæsteregistrering"
+PRODUCT = "Nodd"
 
 
 def _set_cookie(response: Response, value: str) -> None:
@@ -103,18 +104,39 @@ def _invite_url(request: Request, u: User) -> str:
     return f"{str(request.base_url).rstrip('/')}/admin#invite={invite_token(u)}"
 
 
-def _send_link(u: User, url: str, kind: str) -> None:
+def link_email(u: User, url: str, kind: str) -> tuple[str, str, str]:
+    """Emne, tekst og HTML til en invitation eller et link til ny adgangskode."""
+    hello = f"Hej {u.name}" if u.name else "Hej"
     if kind == "invite":
         subject = f"Du er inviteret til {PRODUCT}"
-        body = (f"Hej {u.name or ''}\n\n"
-                f"Du er inviteret som administrator i {PRODUCT}. Vælg din adgangskode her:\n\n{url}\n\n"
-                "Linket virker i 7 dage.")
+        lead = f"Du er inviteret som administrator i {PRODUCT}. Vælg din adgangskode for at komme i gang."
+        button = "Vælg adgangskode"
+        after = "Linket virker i 7 dage og kun én gang. Bagefter logger du ind med din e-mail og adgangskoden."
     else:
         subject = f"Ny adgangskode til {PRODUCT}"
-        body = (f"Hej {u.name or ''}\n\nVælg en ny adgangskode her:\n\n{url}\n\n"
-                "Linket virker i 7 dage. Har du ikke bedt om det, kan du se bort fra denne e-mail.")
+        lead = "Du har bedt om en ny adgangskode. Vælg den her."
+        button = "Vælg ny adgangskode"
+        after = "Linket virker i 7 dage og kun én gang. Har du ikke bedt om det, kan du se bort fra denne e-mail."
+    text = f"{hello}\n\n{lead}\n\n{url}\n\n{after}\n\n{PRODUCT}"
+    base = url.split("/admin", 1)[0]
+    e = html.escape
+    page = f"""<!doctype html><html lang="da"><body style="margin:0;padding:24px 12px;background:#f4f2ea;font-family:Helvetica,Arial,sans-serif;color:#16191d">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px">
+<tr><td style="padding:28px 28px 8px"><img src="{e(base)}/static/brand/nodd-lockup.png" width="160" height="45" alt="{PRODUCT}" style="display:block;border:0"></td></tr>
+<tr><td style="padding:12px 28px 0;font-size:16px;line-height:1.55"><p style="margin:0 0 12px">{e(hello)}</p><p style="margin:0 0 22px">{e(lead)}</p>
+<a href="{e(url)}" style="display:inline-block;background:#12352e;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">{e(button)}</a>
+<p style="margin:22px 0 0;font-size:13px;color:#5b616b">{e(after)}</p>
+<p style="margin:14px 0 0;font-size:12px;color:#5b616b;word-break:break-all">Virker knappen ikke, så kopiér linket: {e(url)}</p></td></tr>
+<tr><td style="padding:24px 28px 28px;font-size:12px;color:#5b616b">{PRODUCT}</td></tr>
+</table></td></tr></table></body></html>"""
+    return subject, text, page
+
+
+def _send_link(u: User, url: str, kind: str) -> None:
+    subject, text, page = link_email(u, url, kind)
     try:
-        send_email(u.email, subject, body.replace("Hej \n", "Hej\n"), PRODUCT)
+        send_email(u.email, subject, text, PRODUCT, html=page)
     except Exception as e:  # noqa: BLE001
         log.warning("Kunne ikke sende %s til %s: %s", kind, u.email, e)
 

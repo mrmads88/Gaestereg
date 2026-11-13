@@ -168,7 +168,7 @@ async function selectPartner(id) {
   if (!P) { await loadPartners(); P = partners.find((x) => x.id === id); }
   if (!P) return;
   T = null; location.hash = "p" + id; showView("partner");
-  document.documentElement.style.setProperty("--accent", "#1f3a5a");
+  document.documentElement.style.setProperty("--accent", "#12352e");  // Nodd-grøn
   renderPartners(); renderList(); renderPartner();
 }
 async function renderPartner(keepImport) {

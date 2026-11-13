@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-White-label gæsteregistrering til receptioner. Mads sælger løsningen til kunder og partnere, der får deres eget logo, farver og personer. Første del af en større platform (POS, booking, kantine).
+**Nodd**: white-label gæsteregistrering til receptioner. Mads sælger løsningen til kunder og partnere, der får deres eget logo, farver og personer. Første del af en større platform (POS, booking, kantine).
 
 ## Kommandoer
 
@@ -28,7 +28,7 @@ White-label gæsteregistrering til receptioner. Mads sælger løsningen til kund
 - Kun platform må se og rette abonnement (`/tenants/{id}/subscription`), slette firmaer og oprette partnere. Kunde-admins må ikke slå skærmen fra (`active`).
 - Import (`importer.py`): Excel, CSV eller ZIP med ark og billeder. Kører i én transaktion, og forhåndsvisningen (`dry_run`) rulles tilbage.
 - Beskeder sendes som FastAPI BackgroundTasks i `notify.py`. Alle forsøg gemmes i `Notification` med status `test`/`sendt`/`fejl`.
-- Frontend er vanilla JS uden build-step i `app/static/`. Kiosk og admin deler fonte (Bricolage Grotesque, Hanken Grotesk, IBM Plex Mono).
+- Frontend er vanilla JS uden build-step i `app/static/`. Nodd-logoet ligger i `app/static/brand` og laves af `tools/brand.py` og `tools/brand_png.js`. Admin bruger Nodd-grøn `#12352e`, indtil en kunde vælges. Skærmen (kiosk) er white-label og viser ikke Nodd. Kiosk og admin deler fonte (Bricolage Grotesque, Hanken Grotesk, IBM Plex Mono).
 
 ## Regler
 

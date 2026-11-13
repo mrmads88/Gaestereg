@@ -1,4 +1,8 @@
-# Gæsteregistrering
+<img src="app/static/brand/nodd-lockup.svg" alt="Nodd" height="56">
+
+# Nodd
+
+Gæsteregistrering til receptioner.
 
 Touch-skærm til receptionen, som du kan sætte op og brande pr. kunde.
 
@@ -93,3 +97,8 @@ docs/azure.md       opsætning af dev og prod i Azure
 - `production` → udrulles automatisk til **prod** (sættes op senere)
 
 Se [docs/azure.md](docs/azure.md) for opsætning af Azure og GitHub.
+
+## Logo
+
+Ordmærket "Nikket" (o'et er et hoved, der nikker) og symbolet "Gæstekortet" i paletten Messing: grøn `#12352e`, messing `#c99a3e` og papir `#f4f2ea`. Filerne ligger i `app/static/brand`. De tegnes af `tools/brand.py` (SVG), og PNG-ikonerne laves af `tools/brand_png.js`. Ret geometrien eller farverne dér, ikke i filerne.
+
