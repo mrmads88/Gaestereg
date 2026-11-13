@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Din kode</title>
+<link rel="icon" href="/static/brand/nodd-icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Hanken+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Gæstens side med kode og QR-kode. Vises på telefonen ved skærmen i receptionen. --brand = kundens farve. */
+:root{--brand:#12352e;--ink:#14171d;--soft:#5d6470;--paper:#f4f5f2;--card:#fff;--rule:#e2e4e0;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--brand);color:var(--ink);font:17px/1.45 var(--f-body);-webkit-font-smoothing:antialiased;min-height:100vh;
+  padding:max(20px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px))}
+main{max-width:420px;margin:0 auto;background:var(--card);border-radius:24px;overflow:hidden;box-shadow:0 20px 50px -20px rgb(0 0 0 / .5)}
+.top{padding:20px 22px;display:flex;justify-content:center;border-bottom:1px solid var(--rule)}
+.top img{max-height:44px;max-width:220px;object-fit:contain}
+.top b{font-family:var(--f-display);font-size:1.3rem}
+.body{padding:22px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+h1{font-family:var(--f-display);font-size:1.7rem;margin:0;letter-spacing:-.02em;line-height:1.1}
+.sub{color:var(--soft);margin:0}
+.qr{width:min(260px,70vw);aspect-ratio:1}
+.qr svg{width:100%;height:auto;display:block}
+.code{font:500 2.4rem var(--f-mono);letter-spacing:.2em;background:var(--paper);border-radius:14px;padding:8px 18px 8px 26px}
+.how{font-size:.95rem;color:var(--soft);margin:0}
+.state{background:var(--paper);border-radius:14px;padding:12px 16px;font-weight:600}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="top" id="logo"></div>
+  <div class="body">
+    <h1 id="title">Din kode</h1>
+    <p class="sub" id="sub"></p>
+    <div class="qr" id="qr"></div>
+    <div class="code" id="code"></div>
+    <p class="how" id="how">Tryk "Jeg har en kode" på skærmen i receptionen, og vis QR-koden eller tast koden.</p>
+    <p class="state" id="state" hidden></p>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const token = decodeURIComponent(location.pathname.split("/").pop());
+  fetch("/api/guest/" + encodeURIComponent(token), { cache: "no-store" }).then(async (r) => {
+    const j = await r.json();
+    if (!r.ok) { $("title").textContent = "Linket virker ikke"; $("sub").textContent = j.detail || ""; $("how").hidden = true; return; }
+    document.documentElement.style.setProperty("--brand", j.color || "#12352e");
+    if (j.logo_url) { const i = new Image(); i.src = j.logo_url; i.alt = j.tenant; $("logo").appendChild(i); }
+    else { const b = document.createElement("b"); b.textContent = j.tenant; $("logo").appendChild(b); }
+    $("title").textContent = "Velkommen" + (j.guest ? ", " + j.guest : "");
+    $("sub").textContent = j.host + " venter dig " + j.when + ".";
+    $("qr").innerHTML = j.qr;  // SVG fra serveren (segno), kun koden
+    $("code").textContent = j.code;
+    if (j.status !== "pending") {
+      $("state").textContent = j.status === "used" ? "Du er allerede tjekket ind." : "Invitationen er annulleret.";
+      $("state").hidden = false; $("qr").hidden = true; $("code").hidden = true; $("how").hidden = true;
+    }
+  });
+})();
+</script>
+</body>
+</html>

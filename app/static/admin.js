@@ -244,13 +244,14 @@ function renderAll() {
   $("tLink").hidden = true;
   if (tab === "log") loadLog();
   if (tab === "access") loadAccess();
+  if (tab === "exp") loadExpected();
 }
 function renderHead() {
   document.documentElement.style.setProperty("--accent", T.color);
   $("edName").textContent = T.name;
   $("edLogo").innerHTML = T.logo_url ? '<img src="' + esc(T.logo_url) + '" alt="">' : "<span>" + esc(initials(T.name)) + "</span>";
   const url = location.origin + T.kiosk_url;
-  $("kioskUrl").textContent = url; $("openKiosk").href = T.kiosk_url;
+  $("kioskUrl").textContent = url; $("openKiosk").href = T.kiosk_url; $("openPoster").href = "/api/admin/tenants/" + T.id + "/poster";
   const sc = T.screen || {}, el = $("scrStatus");
   el.className = "scr " + (sc.online ? "on" : sc.seen_at ? "off" : "");
   el.innerHTML = "<i></i>" + (sc.online ? "Skærmen er online" : sc.seen_at ? "Skærm offline siden " + fmt(sc.seen_at) : "Skærm ikke set endnu");
@@ -381,6 +382,7 @@ function setTab(name) {
   document.querySelectorAll("#editor .tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "log") loadLog();
   if (name === "access") loadAccess();
+  if (name === "exp") loadExpected();
 }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
 
@@ -582,6 +584,60 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowDown") { e.preventDefault(); palSel = Math.min(palSel + 1, palItems.length - 1); palRender(); }
   else if (e.key === "ArrowUp") { e.preventDefault(); palSel = Math.max(palSel - 1, 0); palRender(); }
   else if (e.key === "Enter") { e.preventDefault(); palGo(palSel); }
+});
+
+// ---------- forventede gæster ----------
+const STATUS_DA = { pending: "Venter", used: "Tjekket ind", cancelled: "Annulleret" };
+// Standard: næste hele time i dag. Efter kl. 22 i morgen kl. 9.
+function nextSlot() {
+  const d = new Date(), p = (n) => (n < 10 ? "0" : "") + n;
+  if (d.getHours() >= 22) { d.setDate(d.getDate() + 1); d.setHours(9, 0); } else d.setHours(d.getHours() + 1, 0);
+  return [d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()), p(d.getHours()) + ":00"];
+}
+const today2 = () => { const d = new Date(), p = (n) => (n < 10 ? "0" : "") + n; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
+async function loadExpected() {
+  if (!T) return;
+  const f = $("expForm");
+  $("expHost").innerHTML = '<option value="">Receptionen</option>' + T.hosts.filter((h) => h.active).map((h) => '<option value="' + h.id + '">' + esc(h.name) + "</option>").join("");
+  if (!f.date.value) { const [d, tm] = nextSlot(); f.date.value = d; f.time.value = tm; f.date.min = today2(); }
+  try {
+    const list = await api("GET", "/api/admin/tenants/" + T.id + "/invitations" + ($("expAll").checked ? "?all=true" : ""));
+    $("expRows").innerHTML = list.map((x) => '<tr data-iid="' + x.id + '"><td class=n>' + fmt(x.expected_at) + "</td><td>" + esc(x.guest_name) + (x.guest_company ? '<div class="small muted">' + esc(x.guest_company) + "</div>" : "") +
+      '</td><td>' + esc(x.host_name) + '<div class="small muted">af ' + esc(x.created_by) + '</div></td><td><span class="code6">' + esc(x.code) + '</span></td><td><span class="pill ' + x.status + '">' + STATUS_DA[x.status] + "</span></td><td><div class=acts>" +
+      (x.status === "pending" ? '<button class="btn ghost sm" type="button" data-resend>Send igen</button><a class="btn ghost sm" target="_blank" rel="noopener" href="' + esc(x.guest_url) + '">Gæstens side</a><button class="btn ghost sm" type="button" data-cancel>Annullér</button>' : "") +
+      "</div></td></tr>").join("") || '<tr><td colspan="6" class="muted">Ingen forventede gæster.</td></tr>';
+  } catch (err) { toast(err.message, true); }
+  $("hostLinks").innerHTML = T.hosts.map((h) => '<div class="urow" data-hl="' + h.id + '"><span class="av">' + esc(initials(h.name)) + '</span><span class="grow"><b>' + esc(h.name) + "</b><small>" + esc(h.email || h.phone || "") + '</small></span><button class="btn ghost sm" type="button" data-copylink>Kopiér link</button><button class="btn ghost sm" type="button" data-newlink>Lav nyt link</button></div>').join("") ||
+    '<p class="muted small">Tilføj personer først.</p>';
+}
+$("expAll").addEventListener("change", loadExpected);
+$("expForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const f = e.target;
+  const body = { host_id: f.host_id.value ? +f.host_id.value : null, guest_name: f.guest_name.value.trim(), guest_phone: f.guest_phone.value.trim(),
+    guest_email: f.guest_email.value.trim(), guest_company: f.guest_company.value.trim(), expected_at: f.date.value + "T" + f.time.value, send: f.send.checked };
+  try {
+    const r = await api("POST", "/api/admin/tenants/" + T.id + "/invitations", body);
+    toast(r.guest_name + " er inviteret med koden " + r.code + (body.send ? "" : ". Koden er ikke sendt."));
+    ["guest_name", "guest_phone", "guest_email", "guest_company"].forEach((k) => (f[k].value = ""));
+    loadExpected();
+  } catch (err) { toast(err.message, true); }
+});
+$("expRows").addEventListener("click", async (e) => {
+  const row = e.target.closest("[data-iid]"); if (!row) return; const id = row.dataset.iid; let b;
+  if (e.target.closest("[data-resend]")) { try { await api("POST", "/api/admin/invitations/" + id + "/send"); toast("Koden er sendt igen"); } catch (err) { toast(err.message, true); } }
+  else if ((b = e.target.closest("[data-cancel]"))) {
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Annullér"; }, 3000); return; }
+    try { await api("DELETE", "/api/admin/invitations/" + id); toast("Invitationen er annulleret"); loadExpected(); } catch (err) { toast(err.message, true); }
+  }
+});
+$("hostLinks").addEventListener("click", async (e) => {
+  const row = e.target.closest("[data-hl]"); if (!row) return; const id = row.dataset.hl; let b;
+  const copy = (url) => (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast("Link kopieret"), () => toast(url));
+  if (e.target.closest("[data-copylink]")) { try { copy((await api("GET", "/api/admin/hosts/" + id + "/invite-link")).url); } catch (err) { toast(err.message, true); } }
+  else if ((b = e.target.closest("[data-newlink]"))) {
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Lav nyt link"; }, 3000); return; }
+    try { copy((await api("POST", "/api/admin/hosts/" + id + "/invite-link")).url); toast("Nyt link lavet og kopieret. Det gamle virker ikke længere."); } catch (err) { toast(err.message, true); }
+  }
 });
 
 // ---------- users (adgang) ----------

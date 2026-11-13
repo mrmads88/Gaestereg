@@ -139,6 +139,7 @@ class CheckinIn(BaseModel):
     guest_phone: str = Field("", max_length=40)
     guest_company: str = Field("", max_length=120)
     extra_guests: list[str] = Field(default_factory=list, max_length=9)  # flere gæster til samme møde
+    invitation_code: str = Field("", max_length=20)  # gæsten tjekkede ind med en kode fra en invitation
     accept_terms: bool = False
     preview: bool = False
 
@@ -156,6 +157,25 @@ class DeliveryIn(BaseModel):
     courier_company: str = Field("", max_length=120)
     courier_name: str = Field("", max_length=120)
     preview: bool = False
+
+
+class InvitationIn(BaseModel):
+    host_id: int | None = None
+    guest_name: str = Field(min_length=1, max_length=120)
+    guest_phone: str = Field("", max_length=40)
+    guest_email: str = Field("", max_length=200)
+    guest_company: str = Field("", max_length=120)
+    expected_at: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")  # lokal tid, fx 2026-11-14T10:30
+    send: bool = True
+
+    @field_validator("guest_email")
+    @classmethod
+    def _mail(cls, v):
+        return _email(v) if v.strip() else ""
+
+
+class CodeIn(BaseModel):
+    code: str = Field(max_length=20)
 
 
 class ReplyIn(BaseModel):

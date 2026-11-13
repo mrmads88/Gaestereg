@@ -22,10 +22,12 @@ Alt skal kunne køre gratis i dev. Prod opgraderes først, når der er en betale
 - Teams-besked ud over SMS (Workflows-webhook pr. firma).
 - Svarlinket gør SMS'en ca. 50 tegn længere (ofte 2 SMS'er). Kan senere forkortes med et kortere token.
 
-## Fase 3: Forhåndsregistrering
+## Fase 3: Forhåndsregistrering (udrullet)
 - Værten inviterer en gæst. Gæsten får SMS/mail med QR-kode og kode.
 - Check-ind ved skærmen med QR (kamera) eller kode.
-- Check-ind på gæstens egen telefon via QR på døren (billig pakke uden tablet).
+- Check-ind på gæstens egen telefon via QR på døren (billig pakke uden tablet). Plakat til A4 under "QR til døren".
+- Værter uden login har et personligt invitationslink (`/i/<token>`), som kan laves om.
+- Kamera-scanning bruger browserens indbyggede QR-læser (BarcodeDetector), som findes i Chrome på Android og ChromeOS. Andre steder tastes koden.
 
 ## Fase 4: Kontorhotel
 - Fælles skærm til hele huset: gæsten vælger firma og derefter person. Styres af partneren.

@@ -48,7 +48,8 @@
       <section class="screen gut" id="s-start" hidden>
         <div class="head">
           <div><h2 class="q" data-t="qHost"></h2><p class="lead" data-t="leadHost"></p></div>
-          <div class="headbtns"><button class="outbtn" type="button" data-go="pkg" id="pkgBtn" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg><span data-t="pkg"></span></button>
+          <div class="headbtns"><button class="outbtn" type="button" data-go="code" id="codeBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8h3v3H7zM14 8h3M14 11h3M7 15h3M14 14h3v3h-3z"/></svg><span data-t="haveCode"></span></button>
+          <button class="outbtn" type="button" data-go="pkg" id="pkgBtn" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg><span data-t="pkg"></span></button>
           <button class="outbtn" type="button" data-go="out"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg><span data-t="checkOut"></span></button></div>
         </div>
         <label class="search" id="searchWrap" hidden><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input class="osk-in" id="search" autocomplete="off" aria-label="Søg"></label>
@@ -86,6 +87,18 @@
           <div class="inline-badge" id="inlineBadge"></div>
           <button class="ghost" type="button" data-home data-t="finish"></button>
           <div class="timer" id="doneTimer"><i></i></div>
+        </div>
+      </section>
+
+      <section class="screen gut narrowc" id="s-code" hidden>
+        <button class="back" type="button" data-back><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span data-t="back"></span></button>
+        <div><span class="eyebrow" data-t="haveCode"></span><h2 class="q" data-t="codeQ"></h2><p class="lead" data-t="codeLead"></p></div>
+        <div class="codewrap">
+          <div class="codeboxes mono" id="codeBoxes" aria-live="polite"></div>
+          <p class="codeerr" id="codeErr" hidden></p>
+          <div class="codepad" id="codePad"></div>
+          <button class="ghost scanbtn" type="button" id="scanBtn" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8h3v3H7zM14 8h3M14 11h3M7 15h3M14 14h3v3h-3z"/></svg><span data-t="scan"></span></button>
+          <div class="scanbox" id="scanBox" hidden><video id="scanVideo" playsinline muted></video></div>
         </div>
       </section>
 

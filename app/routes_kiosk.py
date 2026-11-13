@@ -7,12 +7,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from . import presence, replies
+from . import invitations, presence, ratelimit, replies
 from .config import settings
 from .db import SessionLocal, get_db
-from .models import Host, Notification, Tenant, Visit, utcnow
+from .models import Host, Invitation, Notification, Tenant, Visit, utcnow
 from .notify import escalate, notify_visit
-from .schemas import CheckinIn, DeliveryIn, tenant_public
+from .schemas import CheckinIn, CodeIn, DeliveryIn, tenant_public
 from .timeutil import days_ago_utc, local_hhmm, start_of_local_day_utc
 
 router = APIRouter(prefix="/api/kiosk", tags=["kiosk"])
@@ -33,6 +33,7 @@ def purge_old(db: Session, tenant: Tenant) -> int:
     db.execute(delete(Notification).where(Notification.visit_id.in_(select(Visit.id).where(*old))))
     n = db.execute(delete(Visit).where(*old)).rowcount
     db.execute(delete(Notification).where(Notification.tenant_id == tenant.id, Notification.created_at < cutoff))
+    db.execute(delete(Invitation).where(Invitation.tenant_id == tenant.id, Invitation.expected_at < cutoff))
     db.commit()
     return n
 
@@ -56,8 +57,8 @@ def clear_config_cache() -> None:
 
 
 @router.get("/{token}/config")
-def config(token: str, pv: bool = False):
-    if not pv:  # forhåndsvisningen i admin tæller ikke som en skærm
+def config(token: str, pv: bool = False, m: bool = False):
+    if not pv and not m:  # forhåndsvisningen i admin og gæsters telefoner tæller ikke som en skærm
         presence.mark(token)
     hit = _config_cache.get(token)
     if hit and time.monotonic() - hit[0] < settings.kiosk_cache_seconds:
@@ -104,6 +105,7 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, 
                 "time": local_hhmm(utcnow()), "preview": True,
                 "guests": [{"name": n, "badge_no": "G-0000"} for n in [name] + extra]}
 
+    invitation = invitations.find_by_code(db, t, body.invitation_code) if body.invitation_code else None
     group = uuid.uuid4().hex[:12] if extra else ""
     visits = []
     for i, n in enumerate([name] + extra):
@@ -113,6 +115,10 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, 
     db.add_all(visits)
     db.commit()
     v = visits[0]
+    if invitation is not None:
+        invitation.status = "used"
+        invitation.visit_id = v.id
+        db.commit()
     base = str(request.base_url)
     bg.add_task(notify_visit, v.id, base)
     if host is not None:
@@ -122,6 +128,22 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, 
     return {"visit_id": v.id, "badge_no": f"G-{v.id:04d}", "guest_name": name, "host_name": host_name,
             "time": local_hhmm(v.checked_in_at), "preview": False,
             "guests": [{"name": x.guest_name, "badge_no": f"G-{x.id:04d}"} for x in visits]}
+
+
+@router.post("/{token}/code")
+def code_lookup(token: str, body: CodeIn, db: Session = Depends(get_db)):
+    """Gæsten taster eller scanner sin kode. Svarer med det, skærmen skal udfylde på forhånd."""
+    presence.mark(token)
+    key = "kiosk-code:" + token
+    ratelimit.check(key, 15, 600)  # højst 15 forkerte koder på 10 minutter pr. skærm
+    t = tenant_by_token(token, db)
+    inv = invitations.find_by_code(db, t, body.code)
+    if inv is None:
+        ratelimit.hit(key)
+        raise HTTPException(404, "Koden passer ikke. Tjek den, eller vælg personen i stedet.")
+    host = db.get(Host, inv.host_id) if inv.host_id else None
+    return {"code": inv.code, "host_id": host.id if host and host.active else None, "host_name": inv.host_name,
+            "guest_name": inv.guest_name, "guest_phone": inv.guest_phone, "guest_company": inv.guest_company}
 
 
 @router.post("/{token}/delivery")

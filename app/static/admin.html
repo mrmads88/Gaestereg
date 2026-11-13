@@ -115,7 +115,8 @@
           <div class="ed-title"><h1 id="edName"></h1>
             <div class="link-row"><span class="lbl">Skærmlink</span><code id="kioskUrl"></code>
               <button class="btn ghost sm" type="button" id="copyLink">Kopiér</button>
-              <a class="btn ghost sm" id="openKiosk" target="_blank" rel="noopener">Åbn skærm</a><span class="scr" id="scrStatus"></span></div>
+              <a class="btn ghost sm" id="openKiosk" target="_blank" rel="noopener">Åbn skærm</a>
+              <a class="btn ghost sm" id="openPoster" target="_blank" rel="noopener" title="QR-kode til døren: gæsten tjekker ind på sin egen telefon">QR til døren</a><span class="scr" id="scrStatus"></span></div>
           </div>
         </div>
 
@@ -124,6 +125,7 @@
           <button role="tab" type="button" data-tab="look" aria-selected="false">Udseende</button>
           <button role="tab" type="button" data-tab="flow" aria-selected="false">Gæsteflow</button>
           <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
+          <button role="tab" type="button" data-tab="exp" aria-selected="false">Forventede gæster</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
           <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
           <button role="tab" type="button" data-tab="sub" aria-selected="false" id="subTab" hidden>Abonnement</button>
@@ -311,6 +313,36 @@
             <div class="chips" id="chips"></div>
             <h3 style="margin-top:18px">Eksempel på SMS</h3>
             <pre class="sample" id="sample"></pre>
+          </div>
+        </section>
+
+        <!-- EXPECTED GUESTS -->
+        <section class="tab" id="tab-exp" hidden>
+          <form class="card" id="expForm" autocomplete="off">
+            <h3>Invitér en gæst</h3>
+            <p class="muted small">Gæsten får en kode og en QR-kode på SMS og/eller mail. Ved skærmen trykker de "Jeg har en kode", og så er de tjekket ind på få sekunder.</p>
+            <div class="g2">
+              <label class="fld"><span>Gæstens navn</span><input name="guest_name" required maxlength="120"></label>
+              <label class="fld"><span>Skal besøge</span><select name="host_id" id="expHost"></select></label>
+            </div>
+            <div class="g2">
+              <label class="fld"><span>Mobil</span><input name="guest_phone" type="tel" maxlength="40"></label>
+              <label class="fld"><span>E-mail</span><input name="guest_email" type="email" maxlength="200"></label>
+            </div>
+            <div class="g2">
+              <label class="fld"><span>Firma (valgfrit)</span><input name="guest_company" maxlength="120"></label>
+              <div class="g2"><label class="fld"><span>Dato</span><input name="date" type="date" required></label><label class="fld"><span>Tid</span><input name="time" type="time" required></label></div>
+            </div>
+            <div class="row"><label class="check"><input type="checkbox" name="send" checked> Send kode til gæsten nu</label><span class="grow"></span><button class="btn pri" type="submit">Invitér</button></div>
+          </form>
+          <div class="card">
+            <div class="row"><h3 class="grow">Forventede gæster</h3><label class="check"><input type="checkbox" id="expAll"> Vis også brugte og annullerede (30 dage)</label></div>
+            <div class="tablewrap"><table><thead><tr><th>Hvornår</th><th>Gæst</th><th>Besøger</th><th>Kode</th><th>Status</th><th></th></tr></thead><tbody id="expRows"></tbody></table></div>
+          </div>
+          <div class="card">
+            <h3>Personernes egne invitationslinks</h3>
+            <p class="muted small">Hver person har et personligt link, hvor de selv kan invitere deres gæster uden at logge ind. Send linket til personen, så kan de gemme det som bogmærke. Lav et nyt link, hvis det er kommet i forkerte hænder.</p>
+            <div class="users" id="hostLinks"></div>
           </div>
         </section>
 

@@ -130,6 +130,8 @@ class Host(Base):
     notify_email: Mapped[bool] = mapped_column(Boolean, default=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # Tælles op, når værtens personlige invitationslink laves om, så det gamle holder op med at virke.
+    link_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
     tenant: Mapped[Tenant] = relationship(back_populates="hosts")
 
@@ -193,4 +195,24 @@ class User(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Invitation(Base):
+    """En forventet gæst. Gæsten får en kode og en QR-kode og tjekker ind med den på skærmen."""
+    __tablename__ = "invitations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    host_id: Mapped[int | None] = mapped_column(ForeignKey("hosts.id"), nullable=True)  # nulstilles af delete_host
+    host_name: Mapped[str] = mapped_column(Unicode(120), default="")
+    guest_name: Mapped[str] = mapped_column(Unicode(120), default="")
+    guest_phone: Mapped[str] = mapped_column(Unicode(40), default="")
+    guest_email: Mapped[str] = mapped_column(Unicode(200), default="")
+    guest_company: Mapped[str] = mapped_column(Unicode(120), default="")
+    expected_at: Mapped[datetime] = mapped_column(DateTime, index=True)  # UTC
+    code: Mapped[str] = mapped_column(Unicode(6), index=True)
+    status: Mapped[str] = mapped_column(Unicode(12), default="pending")  # pending | used | cancelled
+    visit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # ingen FK: undgår ekstra kaskadeveje
+    created_by: Mapped[str] = mapped_column(Unicode(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

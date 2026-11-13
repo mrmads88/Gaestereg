@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
-from .models import Host, Notification, Partner, Tenant, User, Visit, new_token, utcnow
+from .models import Host, Invitation, Notification, Partner, Tenant, User, Visit, new_token, utcnow
 from .notify import build_messages, deliver
 from .schemas import (HostIn, HostUpdate, Reorder, SubscriptionIn, TenantCreate, TenantUpdate, host_admin,
                       tenant_admin, tenant_languages)
@@ -115,6 +115,8 @@ def update_subscription(tid: int, body: SubscriptionIn, db: Session = Depends(ge
 def delete_tenant(tid: int, db: Session = Depends(get_db), p: Principal = Depends(require_platform)):
     t = get_tenant_for(db, tid, p)
     files = [t.logo_path, t.background_path] + [h.photo_path for h in t.hosts]
+    # Rækker, der peger på personerne, skal væk før personerne (ORM'en sletter personerne før kunden).
+    db.query(Invitation).filter(Invitation.tenant_id == tid).delete()
     db.query(Notification).filter(Notification.tenant_id == tid).delete()
     db.query(Visit).filter(Visit.tenant_id == tid).delete()
     db.query(User).filter(User.tenant_id == tid).delete()
@@ -191,6 +193,7 @@ def delete_host(hid: int, db: Session = Depends(get_db), p: Principal = Depends(
     photo = h.photo_path
     # Besøg beholder værtens navn (host_name), men mister koblingen til personen.
     db.execute(update(Visit).where(Visit.host_id == h.id).values(host_id=None))
+    db.execute(update(Invitation).where(Invitation.host_id == h.id).values(host_id=None))
     db.delete(h)
     db.commit()
     delete_media(photo)
