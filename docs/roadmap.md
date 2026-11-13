@@ -29,11 +29,12 @@ Alt skal kunne køre gratis i dev. Prod opgraderes først, når der er en betale
 - Værter uden login har et personligt invitationslink (`/i/<token>`), som kan laves om.
 - Kamera-scanning bruger browserens indbyggede QR-læser (BarcodeDetector), som findes i Chrome på Android og ChromeOS. Andre steder tastes koden.
 
-## Fase 4: Kontorhotel
+## Fase 4: Kontorhotel (udrullet)
 - Fælles skærm til hele huset: gæsten vælger firma og derefter person. Styres af partneren.
 - "Hvem er i huset" og evakueringsliste på tværs af firmaer, med én knap på telefonen.
 - Besøgsstatistik pr. firma pr. måned (kan bruges til at fakturere lejerne).
-- Faste gæster (håndværkere osv.) genkendes på mobilnummer.
+- Faste gæster (håndværkere osv.) får en kode, der kan bruges igen indtil en dato. Ikke genkendelse på mobilnummer: så kunne alle ved skærmen se, hvem et nummer tilhører.
+- Besøgsstatistik gemmes som anonyme tællere pr. firma pr. måned (`visit_stats`), så den overlever, at besøgene slettes efter 30 dage.
 
 ## Fase 5: Mødelokaler og forplejning
 Moduler pr. kunde (Gæster, Lokaler, Forplejning), som slås til under Abonnement.

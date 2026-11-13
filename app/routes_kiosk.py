@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from . import invitations, presence, ratelimit, replies
+from . import house, invitations, presence, ratelimit, replies
 from .config import settings
 from .db import SessionLocal, get_db
 from .models import Host, Invitation, Notification, Tenant, Visit, utcnow
@@ -64,7 +64,8 @@ def config(token: str, pv: bool = False, m: bool = False):
     if hit and time.monotonic() - hit[0] < settings.kiosk_cache_seconds:
         return hit[1]
     with SessionLocal() as db:
-        data = tenant_public(tenant_by_token(token, db))
+        t = tenant_by_token(token, db)
+        data = tenant_public(t, house.firms_of(db, t))
     _config_cache[token] = (time.monotonic(), data)
     return data
 
@@ -86,12 +87,15 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, 
     if not t.ask_company:
         company = ""
 
+    # Husets skærm: gæsten valgte et firma. Besøget lander hos firmaet, og firmaets beskeder bruges.
+    # Skærmens egne indstillinger (navn, mobil, husregler, flere gæster) gælder stadig.
+    firm = house.firm_for(db, t, body.firm_id)
     host = None
     if body.host_id is not None:
         host = db.get(Host, body.host_id)
-        if host is None or host.tenant_id != t.id or not host.active:
+        if host is None or host.tenant_id != firm.id or not host.active:
             raise HTTPException(404, "Personen findes ikke længere. Vælg igen")
-    elif not t.allow_unknown_host:
+    elif not firm.allow_unknown_host:
         raise HTTPException(422, "Vælg hvem du skal besøge")
 
     if t.terms_enabled and not body.accept_terms:
@@ -105,26 +109,27 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, 
                 "time": local_hhmm(utcnow()), "preview": True,
                 "guests": [{"name": n, "badge_no": "G-0000"} for n in [name] + extra]}
 
-    invitation = invitations.find_by_code(db, t, body.invitation_code) if body.invitation_code else None
+    invitation = (invitations.find_by_code(db, house.tenant_ids_on_screen(db, t), body.invitation_code)
+                  if body.invitation_code else None)
     group = uuid.uuid4().hex[:12] if extra else ""
     visits = []
     for i, n in enumerate([name] + extra):
-        visits.append(Visit(tenant_id=t.id, host_id=host.id if host else None, host_name=host_name,
+        visits.append(Visit(tenant_id=firm.id, host_id=host.id if host else None, host_name=host_name,
                             guest_name=n, guest_phone=phone if i == 0 else "", guest_company=company,
                             group_ref=group, terms_accepted=bool(t.terms_enabled and body.accept_terms)))
     db.add_all(visits)
+    house.bump(db, firm.id, "guest", utcnow(), len(visits))
     db.commit()
     v = visits[0]
     if invitation is not None:
-        invitation.status = "used"
-        invitation.visit_id = v.id
+        invitations.mark_used(invitation, v.id)
         db.commit()
     base = str(request.base_url)
     bg.add_task(notify_visit, v.id, base)
     if host is not None:
         replies.register(v.id, token)
-        replies.schedule(v.id, t.escalate_minutes, escalate)
-    purge_old(db, t)
+        replies.schedule(v.id, firm.escalate_minutes, escalate)
+    purge_old(db, firm)
     return {"visit_id": v.id, "badge_no": f"G-{v.id:04d}", "guest_name": name, "host_name": host_name,
             "time": local_hhmm(v.checked_in_at), "preview": False,
             "guests": [{"name": x.guest_name, "badge_no": f"G-{x.id:04d}"} for x in visits]}
@@ -137,12 +142,13 @@ def code_lookup(token: str, body: CodeIn, db: Session = Depends(get_db)):
     key = "kiosk-code:" + token
     ratelimit.check(key, 15, 600)  # højst 15 forkerte koder på 10 minutter pr. skærm
     t = tenant_by_token(token, db)
-    inv = invitations.find_by_code(db, t, body.code)
+    inv = invitations.find_by_code(db, house.tenant_ids_on_screen(db, t), body.code)
     if inv is None:
         ratelimit.hit(key)
         raise HTTPException(404, "Koden passer ikke. Tjek den, eller vælg personen i stedet.")
     host = db.get(Host, inv.host_id) if inv.host_id else None
-    return {"code": inv.code, "host_id": host.id if host and host.active else None, "host_name": inv.host_name,
+    return {"code": inv.code, "firm_id": inv.tenant_id if t.house_screen else None,
+            "host_id": host.id if host and host.active else None, "host_name": inv.host_name,
             "guest_name": inv.guest_name, "guest_phone": inv.guest_phone, "guest_company": inv.guest_company}
 
 
@@ -153,18 +159,20 @@ def delivery(token: str, body: DeliveryIn, bg: BackgroundTasks, db: Session = De
     t = tenant_by_token(token, db)
     if not t.delivery_enabled:
         raise HTTPException(404, "Pakkemodtagelse er ikke slået til")
+    firm = house.firm_for(db, t, body.firm_id)
     host = None
     if body.host_id is not None:
         host = db.get(Host, body.host_id)
-        if host is None or host.tenant_id != t.id or not host.active:
+        if host is None or host.tenant_id != firm.id or not host.active:
             raise HTTPException(404, "Personen findes ikke længere. Vælg igen")
-    to = host.name if host else "Godsmodtagelsen"
+    to = host.name if host else (firm.name if firm.id != t.id else "Godsmodtagelsen")
     if body.preview:
         return {"ok": True, "to": to, "preview": True}
-    v = Visit(tenant_id=t.id, kind="delivery", host_id=host.id if host else None, host_name=to,
+    v = Visit(tenant_id=firm.id, kind="delivery", host_id=host.id if host else None, host_name=to,
               guest_name=" ".join(body.courier_name.split()), guest_company=" ".join(body.courier_company.split()),
               checked_out_at=utcnow())
     db.add(v)
+    house.bump(db, firm.id, "delivery", utcnow())
     db.commit()
     bg.add_task(notify_visit, v.id)
     return {"ok": True, "to": to, "preview": False}
@@ -182,11 +190,7 @@ def inside(token: str, db: Session = Depends(get_db)):
     presence.mark(token)
     """Guests checked in today and not yet out. Short names only, since the screen is public."""
     t = tenant_by_token(token, db)
-    rows = db.scalars(
-        select(Visit).where(Visit.tenant_id == t.id, Visit.kind == "guest", Visit.checked_out_at.is_(None),
-                            Visit.checked_in_at >= start_of_local_day_utc())
-        .order_by(Visit.checked_in_at.desc())
-    )
+    rows = reversed(house.inside(db, house.tenant_ids_on_screen(db, t)))
     return [{"id": v.id, "name": short_name(v.guest_name or "Gæst"), "host_name": v.host_name,
              "time": local_hhmm(v.checked_in_at)} for v in rows]
 
@@ -196,7 +200,7 @@ def checkout(token: str, visit_id: int, db: Session = Depends(get_db)):
     presence.mark(token)
     t = tenant_by_token(token, db)
     v = db.get(Visit, visit_id)
-    if v is None or v.tenant_id != t.id:
+    if v is None or v.tenant_id not in house.tenant_ids_on_screen(db, t):
         raise HTTPException(404, "Besøget findes ikke")
     if v.checked_out_at is None:
         v.checked_out_at = utcnow()

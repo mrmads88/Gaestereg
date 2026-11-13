@@ -319,3 +319,10 @@ td .ib{width:30px;height:30px}
 .code6{font:500 .95rem var(--f-mono);letter-spacing:.12em;background:var(--bg);border-radius:7px;padding:2px 7px}
 .pill.pending{background:#e1f4ea;color:var(--ok)} .pill.used{background:var(--key);color:var(--soft)} .pill.cancelled{background:#fde8e6;color:var(--bad)}
 td .acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* kontorhotel */
+.stats{min-width:0}
+.stats td,.stats th{text-align:right;font-variant-numeric:tabular-nums}
+.stats td:first-child,.stats th:first-child{text-align:left}
+.stats tfoot td{font-weight:700;border-top:2px solid var(--rule)}
+.tag.rec{background:#fff4dd;color:var(--warn)}

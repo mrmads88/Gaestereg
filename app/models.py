@@ -2,7 +2,8 @@ import secrets
 from datetime import date, datetime, timezone
 
 # Unicode/UnicodeText bliver NVARCHAR på SQL Server (æøå og emoji) og VARCHAR/TEXT på SQLite.
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Unicode, UnicodeText, text
+from sqlalchemy import (Boolean, Date, DateTime, ForeignKey, Integer, Unicode, UnicodeText, UniqueConstraint,
+                        text)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -35,6 +36,8 @@ class Partner(Base):
     name: Mapped[str] = mapped_column(Unicode(120))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+    evac_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # evakueringslink
 
     tenants: Mapped[list["Tenant"]] = relationship(back_populates="partner")
 
@@ -83,6 +86,10 @@ class Tenant(Base):
     sms_template: Mapped[str] = mapped_column(UnicodeText, default=DEFAULT_SMS)
     email_subject: Mapped[str] = mapped_column(Unicode(200), default=DEFAULT_MAIL_SUBJECT)
     email_template: Mapped[str] = mapped_column(UnicodeText, default=DEFAULT_MAIL_BODY)
+
+    # kontorhotel (fase 4): denne skærm viser alle partnerens firmaer, og gæsten vælger firma først
+    house_screen: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    evac_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # evakueringslink
 
     # gæsteoplevelse (fase 2)
     wifi_name: Mapped[str] = mapped_column(Unicode(64), default="", server_default=text("''"))
@@ -212,7 +219,22 @@ class Invitation(Base):
     expected_at: Mapped[datetime] = mapped_column(DateTime, index=True)  # UTC
     code: Mapped[str] = mapped_column(Unicode(6), index=True)
     status: Mapped[str] = mapped_column(Unicode(12), default="pending")  # pending | used | cancelled
+    # Fast gæst (håndværker, rengøring): koden kan bruges igen og igen indtil valid_until.
+    recurring: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     visit_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # ingen FK: undgår ekstra kaskadeveje
     created_by: Mapped[str] = mapped_column(Unicode(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class VisitStat(Base):
+    """Antal besøg pr. firma pr. måned. Uden personoplysninger, så tallene kan gemmes efter besøgene er slettet."""
+    __tablename__ = "visit_stats"
+    __table_args__ = (UniqueConstraint("tenant_id", "month", "kind", name="uq_visit_stats"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    month: Mapped[str] = mapped_column(Unicode(7))  # "2026-11", lokal tid
+    kind: Mapped[str] = mapped_column(Unicode(10))  # guest | delivery
+    count: Mapped[int] = mapped_column(Integer, default=0)
 

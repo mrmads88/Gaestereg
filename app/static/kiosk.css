@@ -310,3 +310,10 @@ main{flex:1;min-height:0;position:relative}
 .scanbox{width:min(360px,100%);aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:#000}
 .scanbox video{width:100%;height:100%;object-fit:cover}
 @media (max-width:420px){.codeboxes span{width:46px;height:60px;font-size:1.8rem}.codepad{grid-template-columns:repeat(3,80px)}}
+
+/* Fase 4: husets skærm */
+.host.firm .pic{background:#fff;padding:10% 14%;aspect-ratio:16/9;border-bottom:1px solid var(--rule)}
+.host.firm .pic .ini{font-size:2rem}
+.host.firm .pic img{object-fit:contain}
+.hosts.compact .host.firm .pic{padding:8px;border-radius:14px;background:#fff;border:1px solid var(--rule)}
+.firmname{display:block;color:var(--brand-ink);font-weight:700;font-size:.85rem;margin-top:2px}

@@ -73,7 +73,8 @@ def create(db: Session, t: Tenant, host: Host | None, data: dict, created_by: st
                      guest_name=" ".join(data["guest_name"].split()), guest_phone=data.get("guest_phone", "").strip(),
                      guest_email=data.get("guest_email", "").strip().lower(),
                      guest_company=" ".join(data.get("guest_company", "").split()),
-                     expected_at=data["expected_at"], code=new_code(db, t.id), created_by=created_by)
+                     expected_at=data["expected_at"], code=new_code(db, t.id), created_by=created_by,
+                     recurring=bool(data.get("recurring")), valid_until=data.get("valid_until_utc"))
     db.add(inv)
     db.commit()
     return inv
@@ -84,6 +85,20 @@ def guest_messages(inv: Invitation, t: Tenant, base_url: str) -> list[Notificati
     host_first = inv.host_name.split(" ")[0]
     when = f"{local_day_label(inv.expected_at)} kl. {local_hhmm(inv.expected_at)}"
     link = f"{base_url.rstrip('/')}/g/{guest_token(inv)}" if base_url else ""
+    if inv.recurring:
+        until = f" til og med {local_day_label(inv.valid_until)}" if inv.valid_until else ""
+        sms = (f"Hej {first}. Du er registreret som fast gæst hos {t.name}{until}. "
+               f"Tjek ind med koden {inv.code} på skærmen i receptionen hver gang." + (f" QR-kode: {link}" if link else ""))
+        body = (f"Hej {first}\n\nDu er registreret som fast gæst hos {t.name}{until}.\n\n"
+                f"Tjek ind på skærmen i receptionen med koden {inv.code} hver gang, eller vis QR-koden her:\n{link}\n\n"
+                f"Venlig hilsen\n{t.name}")
+        out = []
+        if inv.guest_phone:
+            out.append(Notification(tenant_id=t.id, channel="sms", recipient=inv.guest_phone, body=sms))
+        if inv.guest_email and valid_email(inv.guest_email):
+            out.append(Notification(tenant_id=t.id, channel="email", recipient=inv.guest_email,
+                                    subject=f"Din kode som fast gæst hos {t.name}", body=body))
+        return out
     sms = (f"Hej {first}. Du er ventet hos {t.name} {when} af {host_first}. "
            f"Tjek ind med koden {inv.code} på skærmen i receptionen." + (f" QR-kode: {link}" if link else ""))
     body = (f"Hej {first}\n\n{host_first} venter dig hos {t.name} {when}.\n\n"
@@ -120,15 +135,31 @@ def send_to_guest(invitation_id: int, base_url: str) -> None:
 
 # ---------- check-in ----------
 
-def find_by_code(db: Session, t: Tenant, code: str) -> Invitation | None:
-    """En ventende invitation med koden, forventet fra i går til i morgen (så en gæst kan komme lidt skævt)."""
+def find_by_code(db: Session, tenant_ids: list[int], code: str) -> Invitation | None:
+    """En ventende invitation med koden hos et af firmaerne (husets skærm dækker flere).
+
+    Almindelig gæst: koden virker fra 36 timer før til 36 timer efter det forventede tidspunkt.
+    Fast gæst: koden virker fra det forventede tidspunkt til og med valid_until.
+    """
     code = "".join(c for c in code if c.isdigit())
-    if len(code) != 6:
+    if len(code) != 6 or not tenant_ids:
         return None
     now = utcnow()
-    return db.scalar(select(Invitation).where(
-        Invitation.tenant_id == t.id, Invitation.code == code, Invitation.status == "pending",
-        Invitation.expected_at >= now - timedelta(hours=36), Invitation.expected_at <= now + timedelta(hours=36)))
+    for inv in db.scalars(select(Invitation).where(Invitation.tenant_id.in_(tenant_ids), Invitation.code == code,
+                                                   Invitation.status == "pending")):
+        if inv.recurring:
+            if inv.expected_at - timedelta(hours=36) <= now and (inv.valid_until is None or now <= inv.valid_until):
+                return inv
+        elif inv.expected_at - timedelta(hours=36) <= now <= inv.expected_at + timedelta(hours=36):
+            return inv
+    return None
+
+
+def mark_used(inv: Invitation, visit_id: int) -> None:
+    """En almindelig invitation bruges én gang. En fast gæsts kode bliver ved med at virke."""
+    inv.visit_id = visit_id
+    if not inv.recurring:
+        inv.status = "used"
 
 
 def out(inv: Invitation, base_url: str = "") -> dict:
@@ -136,5 +167,6 @@ def out(inv: Invitation, base_url: str = "") -> dict:
     return {"id": inv.id, "host_id": inv.host_id, "host_name": inv.host_name, "guest_name": inv.guest_name,
             "guest_phone": inv.guest_phone, "guest_email": inv.guest_email, "guest_company": inv.guest_company,
             "expected_at": local_iso(inv.expected_at), "code": inv.code, "status": inv.status,
+            "recurring": inv.recurring, "valid_until": local_iso(inv.valid_until) if inv.valid_until else None,
             "created_by": inv.created_by,
             "guest_url": f"{base_url.rstrip('/')}/g/{guest_token(inv)}" if base_url else ""}

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
-from .models import Host, Invitation, Notification, Partner, Tenant, User, Visit, new_token, utcnow
+from .models import Host, Invitation, Notification, Partner, Tenant, User, Visit, VisitStat, new_token, utcnow
 from .notify import build_messages, deliver
 from .schemas import (HostIn, HostUpdate, Reorder, SubscriptionIn, TenantCreate, TenantUpdate, host_admin,
                       tenant_admin, tenant_languages)
@@ -81,6 +81,11 @@ def update_tenant(tid: int, body: TenantUpdate, db: Session = Depends(get_db), p
     data = body.model_dump(exclude_unset=True)
     if "active" in data and p.role == "tenant":
         raise HTTPException(403, "Kontakt din leverandør for at slå skærmen fra eller til")
+    if data.get("house_screen") is not None:
+        if p.role == "tenant":
+            raise HTTPException(403, "Kun partneren kan gøre en skærm til husets skærm")
+        if data["house_screen"] and t.partner_id is None:
+            raise HTTPException(422, "Husets skærm skal høre til en partner, fx et kontorhotel")
     if "languages" in data:
         data["languages"] = ",".join(data["languages"])
     if "opening_hours" in data:
@@ -117,6 +122,7 @@ def delete_tenant(tid: int, db: Session = Depends(get_db), p: Principal = Depend
     files = [t.logo_path, t.background_path] + [h.photo_path for h in t.hosts]
     # Rækker, der peger på personerne, skal væk før personerne (ORM'en sletter personerne før kunden).
     db.query(Invitation).filter(Invitation.tenant_id == tid).delete()
+    db.query(VisitStat).filter(VisitStat.tenant_id == tid).delete()
     db.query(Notification).filter(Notification.tenant_id == tid).delete()
     db.query(Visit).filter(Visit.tenant_id == tid).delete()
     db.query(User).filter(User.tenant_id == tid).delete()

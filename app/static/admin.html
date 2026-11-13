@@ -97,6 +97,16 @@
           <div class="linkbox" id="pLink" hidden></div>
         </div>
         <div class="card">
+          <div class="row"><h3 class="grow">Hvem er i huset <span class="muted" id="pInsideN"></span></h3><a class="btn ghost sm" id="pEvacOpen" target="_blank" rel="noopener">Evakueringsliste</a><button class="btn ghost sm" type="button" id="pEvacCopy">Kopiér link</button><button class="btn ghost sm" type="button" id="pEvacNew">Lav nyt link</button></div>
+          <p class="muted small">Alle gæster i huset lige nu, på tværs af firmaer. Evakueringslisten virker på telefonen uden login. Lav et nyt link, hvis det er kommet i forkerte hænder.</p>
+          <div class="tablewrap"><table><thead><tr><th>Ind</th><th>Gæst</th><th>Mobil</th><th>Firma</th><th>Besøger</th></tr></thead><tbody id="pInside"></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="row"><h3 class="grow">Besøg pr. firma pr. måned</h3><a class="btn ghost sm" id="pStatsCsv">Hent som Excel (CSV)</a></div>
+          <p class="muted small">Antal gæster pr. måned. Kan fx bruges til at fakturere lejerne. Tallene gemmes uden navne, så de bliver, selv om besøgene slettes.</p>
+          <div class="tablewrap" id="pStats"></div>
+        </div>
+        <div class="card">
           <h3>Importér firmaer og personer</h3>
           <div id="pImport"></div>
         </div>
@@ -169,6 +179,8 @@
               <div class="fld"><span>Brandfarve</span><div class="colorrow"><input type="color" data-f="color" id="colorPick" aria-label="Brandfarve"><input id="colorHex" maxlength="7" class="mono" aria-label="Farvekode"></div></div>
               <div class="fld" id="activeFld"><span>Skærmen er</span><label class="switch"><input type="checkbox" data-f="active"><i></i><em>Aktiv</em></label></div>
             </div>
+            <div class="fld" id="houseFld"><span>Husets skærm</span><label class="switch"><input type="checkbox" data-f="house_screen"><i></i><em>Vis alle partnerens firmaer på denne skærm</em></label>
+              <small class="hint">Til lobbyen i et kontorhotel: gæsten vælger først firma og derefter person. Besøget lander hos det valgte firma, og firmaets egne beskeder bruges.</small></div>
           </div>
           <div class="card">
             <h3>Logo</h3>
@@ -333,6 +345,8 @@
               <label class="fld"><span>Firma (valgfrit)</span><input name="guest_company" maxlength="120"></label>
               <div class="g2"><label class="fld"><span>Dato</span><input name="date" type="date" required></label><label class="fld"><span>Tid</span><input name="time" type="time" required></label></div>
             </div>
+            <div class="row"><label class="check"><input type="checkbox" name="recurring" id="expRec"> Fast gæst (fx håndværker eller rengøring): samme kode kan bruges hver gang</label></div>
+            <label class="fld" id="expUntilFld" hidden><span>Koden virker til og med</span><input name="valid_until" type="date"></label>
             <div class="row"><label class="check"><input type="checkbox" name="send" checked> Send kode til gæsten nu</label><span class="grow"></span><button class="btn pri" type="submit">Invitér</button></div>
           </form>
           <div class="card">
@@ -380,6 +394,15 @@
 
         <!-- LOG -->
         <section class="tab" id="tab-log" hidden>
+          <div class="card">
+            <div class="row"><h3 class="grow">I huset nu <span class="muted" id="tInsideN"></span></h3><a class="btn ghost sm" id="tEvacOpen" target="_blank" rel="noopener">Evakueringsliste</a><button class="btn ghost sm" type="button" id="tEvacCopy">Kopiér link</button><button class="btn ghost sm" type="button" id="tEvacNew">Lav nyt link</button></div>
+            <p class="muted small">Gæster tjekket ind i dag og ikke tjekket ud. Evakueringslisten virker på telefonen uden login, så brandvagten kan krydse folk af ved mødestedet.</p>
+            <div class="tablewrap"><table><thead><tr><th>Ind</th><th>Gæst</th><th>Mobil</th><th>Firma</th><th>Besøger</th></tr></thead><tbody id="tInside"></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="row"><h3 class="grow">Besøg pr. måned</h3><a class="btn ghost sm" id="tStatsCsv">Hent som Excel (CSV)</a></div>
+            <div class="tablewrap" id="tStats"></div>
+          </div>
           <div class="card">
             <div class="row"><h3 class="grow">Besøg de sidste 14 dage</h3><button class="btn ghost sm" type="button" id="refreshLog">Opdatér</button></div>
             <p class="muted small">Beder en gæst om at få sine oplysninger slettet, så tryk på krydset ud for besøget. Du kan slette ét besøg eller alle besøg fra samme gæst (samme mobilnummer).</p>
