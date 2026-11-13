@@ -51,7 +51,8 @@
 <!-- APP -->
 <div id="appView" class="shell" hidden>
   <header class="top">
-    <div class="top-l"><img class="lockup" src="/static/brand/nodd-lockup.svg" alt="Nodd" width="104" height="29"><span class="envpill" id="envPill"></span></div>
+    <div class="top-l"><img class="lockup" src="/static/brand/nodd-lockup.svg" alt="Nodd" width="104" height="29"><span class="envpill" id="envPill"></span>
+      <button class="switcher" type="button" id="switchBtn" hidden aria-haspopup="dialog"><span class="sw-logo" id="swLogo"></span><span class="sw-name" id="swName">Vælg kunde</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><kbd id="swKbd">Ctrl K</kbd></button></div>
     <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
   </header>
   <div class="banner" id="banner" hidden></div>
@@ -114,7 +115,7 @@
           <div class="ed-title"><h1 id="edName"></h1>
             <div class="link-row"><span class="lbl">Skærmlink</span><code id="kioskUrl"></code>
               <button class="btn ghost sm" type="button" id="copyLink">Kopiér</button>
-              <a class="btn ghost sm" id="openKiosk" target="_blank" rel="noopener">Åbn skærm</a></div>
+              <a class="btn ghost sm" id="openKiosk" target="_blank" rel="noopener">Åbn skærm</a><span class="scr" id="scrStatus"></span></div>
           </div>
         </div>
 
@@ -302,7 +303,9 @@
         <section class="tab" id="tab-log" hidden>
           <div class="card">
             <div class="row"><h3 class="grow">Besøg de sidste 14 dage</h3><button class="btn ghost sm" type="button" id="refreshLog">Opdatér</button></div>
-            <div class="tablewrap"><table><thead><tr><th>Tid</th><th>Gæst</th><th>Mobil</th><th>Firma</th><th>Besøger</th><th>Ud</th></tr></thead><tbody id="visitRows"></tbody></table></div>
+            <p class="muted small">Beder en gæst om at få sine oplysninger slettet, så tryk på krydset ud for besøget. Du kan slette ét besøg eller alle besøg fra samme gæst (samme mobilnummer).</p>
+            <div class="delbar" id="delBar" hidden></div>
+            <div class="tablewrap"><table><thead><tr><th>Tid</th><th>Gæst</th><th>Mobil</th><th>Firma</th><th>Besøger</th><th>Ud</th><th><span class="sr">Slet</span></th></tr></thead><tbody id="visitRows"></tbody></table></div>
           </div>
           <div class="card">
             <h3>Sendte beskeder</h3>
@@ -317,6 +320,13 @@
       <div class="pv-frame" id="pvFrame"><iframe id="pvIframe" title="Forhåndsvisning af skærmen"></iframe></div>
       <p class="muted small">Du kan trykke dig igennem her. Intet bliver gemt eller sendt.</p>
     </aside>
+  </div>
+</div>
+<div class="palette" id="palette" hidden role="dialog" aria-modal="true" aria-label="Skift kunde">
+  <div class="pal-box">
+    <input id="palQ" type="search" placeholder="Søg kunde eller partner" autocomplete="off" aria-label="Søg kunde eller partner" aria-controls="palList">
+    <div class="pal-list" id="palList" role="listbox"></div>
+    <div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> vælg</span><span><kbd>Enter</kbd> åbn</span><span><kbd>Esc</kbd> luk</span></div>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>

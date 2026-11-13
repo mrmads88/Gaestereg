@@ -6,8 +6,8 @@ En kunde, man ikke må se, giver 404, så man ikke kan gætte sig til, hvilke ku
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session, selectinload
 
 from .auth import Principal, current, require_platform
 from .db import get_db
@@ -40,12 +40,17 @@ def default_sender(name: str) -> str:
 
 @router.get("/tenants")
 def list_tenants(db: Session = Depends(get_db), p: Principal = Depends(current)):
-    q = select(Tenant).order_by(func.lower(Tenant.name))
+    # To forespørgsler i alt, uanset antal kunder: kunderne (med partner) og antal personer pr. kunde.
+    q = select(Tenant).options(selectinload(Tenant.partner)).order_by(func.lower(Tenant.name))
+    counts = select(Host.tenant_id, func.count()).group_by(Host.tenant_id)
     if p.role == "partner":
         q = q.where(Tenant.partner_id == p.partner_id)
+        counts = counts.where(Host.tenant_id.in_(select(Tenant.id).where(Tenant.partner_id == p.partner_id)))
     elif p.role == "tenant":
         q = q.where(Tenant.id == p.tenant_id)
-    return [_out(t, p, with_hosts=False) for t in db.scalars(q)]
+        counts = counts.where(Host.tenant_id == p.tenant_id)
+    n = dict(db.execute(counts).all())
+    return [tenant_admin(t, with_hosts=False, platform=p.is_platform, host_count=n.get(t.id, 0)) for t in db.scalars(q)]
 
 
 @router.post("/tenants")
@@ -252,6 +257,28 @@ def visits(tid: int, days: int = 14, db: Session = Depends(get_db), p: Principal
              "guest_company": v.guest_company, "host_name": v.host_name,
              "checked_in_at": local_iso(v.checked_in_at), "checked_out_at": local_iso(v.checked_out_at)}
             for v in rows]
+
+
+@router.delete("/tenants/{tid}/visits/{vid}")
+def delete_visit(tid: int, vid: int, everything: bool = False, db: Session = Depends(get_db),
+                 p: Principal = Depends(current)):
+    """Slet et besøg og dets beskeder. Med everything=true slettes alle besøg fra samme gæst (GDPR-anmodning):
+    samme mobilnummer, eller samme navn hvis der ikke er et nummer."""
+    get_tenant_for(db, tid, p)
+    v = db.get(Visit, vid)
+    if v is None or v.tenant_id != tid:
+        raise HTTPException(404, "Besøget findes ikke")
+    ids = [v.id]
+    if everything:
+        def key(x: Visit) -> str:
+            digits = "".join(c for c in x.guest_phone if c.isdigit())[-8:]
+            return "tlf:" + digits if digits else "navn:" + " ".join(x.guest_name.split()).casefold()
+        k = key(v)
+        ids = [x.id for x in db.scalars(select(Visit).where(Visit.tenant_id == tid)) if key(x) == k]
+    db.execute(delete(Notification).where(Notification.visit_id.in_(ids)))
+    db.execute(delete(Visit).where(Visit.id.in_(ids)))
+    db.commit()
+    return {"deleted": len(ids)}
 
 
 @router.get("/tenants/{tid}/notifications")

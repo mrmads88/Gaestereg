@@ -10,6 +10,31 @@ from .config import settings
 
 MAX_BYTES = 10 * 1024 * 1024
 
+
+class LocalStorage:
+    """Billeder som filer i DATA_DIR/media. Skal billederne senere i Azure Blob Storage, laves en klasse med
+    de samme fire metoder, og `storage` herunder skiftes. Resten af koden bruger kun dem."""
+
+    def __init__(self, root):
+        self.root = root
+
+    def save(self, name: str, data: bytes) -> None:
+        (self.root / name).write_bytes(data)
+
+    def delete(self, name: str) -> None:
+        p = self.root / name
+        if p.exists():
+            p.unlink()
+
+    def exists(self, name: str) -> bool:
+        return (self.root / name).exists()
+
+    def path(self, name: str):
+        return self.root / name
+
+
+storage = LocalStorage(settings.media_dir)
+
 # kind -> (max side px, output format, square crop)
 PROFILES = {
     "logo": (1200, "PNG", False),
@@ -49,7 +74,7 @@ def store_image(data: bytes, kind: str) -> str:
         if _SVG_BAD.search(text):
             raise HTTPException(400, "SVG-filen indeholder scripts og kan ikke bruges")
         name = f"{uuid.uuid4().hex}.svg"
-        (settings.media_dir / name).write_bytes(data)
+        storage.save(name, data)
         return name
 
     try:
@@ -74,16 +99,14 @@ def store_image(data: bytes, kind: str) -> str:
         img.convert("RGB").save(buf, "JPEG", quality=84, optimize=True, progressive=True)
         ext = "jpg"
     name = f"{uuid.uuid4().hex}.{ext}"
-    (settings.media_dir / name).write_bytes(buf.getvalue())
+    storage.save(name, buf.getvalue())
     return name
 
 
 def delete_media(name: str) -> None:
     if not name or "/" in name or "\\" in name:
         return
-    p = settings.media_dir / name
-    if p.exists():
-        p.unlink()
+    storage.delete(name)
 
 
 def media_url(name: str) -> str:
