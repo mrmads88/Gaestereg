@@ -162,7 +162,29 @@ Senere: lyd på skærmene, skabeloner pr. hus.
 - Privatlivsside for gæster (dansk/engelsk) med link fra skærmen.
 - Go-live-trin i `docs/azure.md` (B1, betalt SQL, domæne, beskyttelse af `production`).
 
+## To-trins-login (bygget)
+- Kodeapp (Microsoft/Google Authenticator) og 10 engangskoder. Påkrævet for leverandøren og husene i prod
+  (`MFA_REQUIRED`), frivilligt for kunde-admins under "Sikkerhed".
+- Administratorer kan nulstille en brugers to-trins-login ("Nulstil to-trins" under Adgang). Leverandøren har en
+  nødknap (`ADMIN_MFA_RESET`).
+- Et link til ny adgangskode springer ikke andet trin over. Til/fra logger andre sessioner ud.
+
+## Nodd som platform: de næste moduler
+Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét sted.
+
+1. **CRM (kun leverandøren).** Kunder, huse, pakker og fakturaer findes allerede. Nyt: kontaktpersoner, noter,
+   opfølgninger med dato, salgsmuligheder (pipeline: kontakt, demo, tilbud, vundet/tabt), en tidslinje pr. kunde
+   (fakturaer, logins, besøgstal) og emner, der endnu ikke er kunder. Påmindelser på mail.
+2. **Tidsregistrering for medarbejdere (modul, kunderne kan købe).** Siden 1. juli 2024 skal arbejdsgivere i
+   Danmark registrere medarbejdernes arbejdstid. Medarbejdere stempler ind og ud på receptionsskærmen eller
+   telefonen. Ugeoversigt, godkendelse af lederen, eksport. Medarbejdere, der er stemplet ind, kommer med på
+   evakueringslisten.
+3. **Integrationer i stedet for egen bogføring og løn.** Bogføringsloven kræver anmeldte, godkendte systemer, og
+   løn kræver indberetning til eIndkomst, ATP, ferie og pension. Derfor: fakturaer sendes til e-conomic, Dinero
+   eller Billy, og timer eksporteres til Danløn eller Salary.
+4. Andre moduler, der passer: adgangskort og nøgler, gæsteparkering, helpdesk til huset (fejlmeldinger), skabe,
+   kantine/POS.
+
 ## Venter på prod / en kunde
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).
-- Databehandleraftale, som kunden accepterer ved første login. Mekanismen er nem, men teksten skal være juridisk godkendt.
-- To-trins-login for partnere.
+- Juridisk godkendelse af databehandleraftalens tekst (`DPA_FINAL=1`).

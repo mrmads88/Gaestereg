@@ -486,3 +486,13 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .ready-list li span{font-weight:800;width:16px}
 .ready-list li.ok span{color:var(--ok)}
 .ready-list li.no span{color:var(--bad)}
+/* to-trins-login */
+.mfa-box{width:min(560px,100%)}
+.mfa-need{background:#fff4dd;border:1px solid #f0dfb8;border-radius:10px;padding:10px 14px;font-weight:600;margin:0 0 10px}
+.mfa-steps{margin:8px 0 14px;padding-left:20px;line-height:1.7}
+.mfa-qr{display:flex;gap:18px;align-items:center;margin:6px 0 12px;flex-wrap:wrap}
+.mfa-qr svg{flex:none;border:1px solid var(--rule);border-radius:10px;padding:6px;background:#fff}
+.mfa-qr>div{flex:1;min-width:180px}
+.mfa-secret{display:block;font:500 .95rem/1.5 var(--f-mono);word-break:break-all;background:var(--key);color:var(--ink);border-radius:8px;padding:8px 10px}
+.mfa-codes{columns:2;margin:8px 0 12px;padding-left:24px;font:500 1rem/1.9 var(--f-mono)}
+.mfa-on{color:var(--ok);font-weight:700}

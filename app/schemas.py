@@ -194,6 +194,15 @@ class ReplyIn(BaseModel):
     answer: Literal["now", "5", "10", "reception"]
 
 
+class MfaLoginIn(BaseModel):
+    ticket: str = Field(max_length=300)
+    code: str = Field(max_length=20)
+
+
+class MfaCodeIn(BaseModel):
+    code: str = Field(max_length=20)
+
+
 class LoginIn(BaseModel):
     email: str = Field("", max_length=200)  # tom = platform-admin med ADMIN_PASSWORD
     password: str = Field(max_length=200)
@@ -423,6 +432,7 @@ def tenant_public(t: Tenant, firms: list[Tenant] | None = None) -> dict:
 
 def user_out(u: User) -> dict:
     return {"id": u.id, "email": u.email, "name": u.name, "role": u.role, "active": u.active,
+            "mfa": u.mfa_enabled_at is not None and bool(u.mfa_secret),
             "partner_id": u.partner_id, "tenant_id": u.tenant_id,
             "pending": not u.password_hash,  # har ikke valgt adgangskode endnu
             "last_login_at": local_iso(u.last_login_at)}

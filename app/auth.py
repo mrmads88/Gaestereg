@@ -17,11 +17,12 @@ from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, Request
 from itsdangerous import BadSignature, SignatureExpired, TimestampSigner
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import get_db
-from .models import Partner, Tenant, User
+from .models import Partner, PlatformAccount, Tenant, User
 
 COOKIE = "gr_admin"
 MAX_AGE = 7 * 24 * 3600
@@ -121,8 +122,18 @@ def access_problem(db: Session, u: User) -> str | None:
     return None
 
 
-def session_platform() -> str:
-    return _session.sign(b"p").decode()
+def session_platform(version: int = 0) -> str:
+    return _session.sign(f"p:{version}".encode()).decode()
+
+
+# Disse kan bruges, før to-trins-login er sat op (når det er påkrævet).
+MFA_SETUP_PATHS = ("/api/admin/mfa", "/api/admin/logout", "/api/admin/me", "/api/admin/status")
+
+
+def _mfa_gate(request: Request, db: Session, p: "Principal", holder) -> None:
+    from . import mfa
+    if mfa.required_for(p.role) and not mfa.enabled(holder) and not request.url.path.startswith(MFA_SETUP_PATHS):
+        raise HTTPException(403, "Slå to-trins-login til først. Genindlæs siden.")
 
 
 def session_user(u: User) -> str:
@@ -137,8 +148,14 @@ def current(request: Request, db: Session = Depends(get_db)) -> Principal:
         value = _session.unsign(token, max_age=MAX_AGE).decode()
     except (BadSignature, SignatureExpired):
         raise HTTPException(401, "Log ind igen")
-    if value in ("p", "admin"):  # "admin" = cookies fra før brugerne blev indført
-        return Principal("platform")
+    if value in ("p", "admin") or value.startswith("p:"):  # "p"/"admin" = cookies fra før to-trins-login
+        acc = db.scalar(select(PlatformAccount).order_by(PlatformAccount.id))
+        version = acc.token_version if acc else 0
+        if (int(value[2:]) if value.startswith("p:") and value[2:].isdigit() else 0) != version:
+            raise HTTPException(401, "Log ind igen")
+        p = Principal("platform")
+        _mfa_gate(request, db, p, acc)
+        return p
     try:
         _, uid, version = value.split(":")
         u = db.get(User, int(uid))
@@ -150,6 +167,7 @@ def current(request: Request, db: Session = Depends(get_db)) -> Principal:
     if problem:
         raise HTTPException(403, problem)
     p = Principal(u.role, u, u.partner_id, u.tenant_id)
+    _mfa_gate(request, db, p, u)
     # I prod skal firmaet eller huset have accepteret databehandleraftalen, før der kan gemmes noget.
     if settings.env == "prod" and request.method != "GET" and not request.url.path.startswith(
             ("/api/admin/dpa", "/api/admin/logout")):

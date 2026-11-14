@@ -16,7 +16,7 @@ async function api(method, url, body, isForm) {
     else { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
   }
   const r = await fetch(url, opt);
-  if (r.status === 401 && !url.endsWith("/login")) { showLogin(); throw new Error("Log ind"); }
+  if (r.status === 401 && !/\/login(\/mfa)?$/.test(url)) { showLogin(); throw new Error("Log ind"); }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
     let msg = data.detail;
@@ -32,7 +32,7 @@ function saved() { const s = $("saved"); s.hidden = false; clearTimeout(savedT);
 
 // ---------- login ----------
 let platformLogin = false;
-function showCard(id) { ["loginForm", "forgotForm", "inviteForm"].forEach((x) => ($(x).hidden = x !== id)); }
+function showCard(id) { ["loginForm", "forgotForm", "inviteForm", "mfaForm"].forEach((x) => ($(x).hidden = x !== id)); }
 function showLogin(msg) {
   $("appView").hidden = true; $("loginView").hidden = false; showCard("loginForm");
   $("loginErr").textContent = msg || ""; $("loginErr").hidden = !msg;
@@ -48,7 +48,7 @@ $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("loginErr").hidden = true;
   const body = { email: platformLogin ? "" : $("loginEmail").value.trim(), password: $("pw").value };
   if (!platformLogin && !body.email) { $("loginErr").textContent = "Skriv din e-mail"; $("loginErr").hidden = false; return; }
-  try { await api("POST", "/api/admin/login", body); $("pw").value = ""; boot(); }
+  try { const r = await api("POST", "/api/admin/login", body); $("pw").value = ""; afterPassword(r); }
   catch (err) { $("loginErr").textContent = err.message; $("loginErr").hidden = false; }
 });
 $("forgotBtn").addEventListener("click", () => { showCard("forgotForm"); $("forgotMsg").hidden = true; $("forgotEmail").value = $("loginEmail").value; $("forgotEmail").focus(); });
@@ -76,9 +76,27 @@ $("inviteForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("inviteErr").hidden = true;
   if ($("invPw").value !== $("invPw2").value) { $("inviteErr").textContent = "De to adgangskoder er ikke ens"; $("inviteErr").hidden = false; return; }
   try {
-    await api("POST", "/api/admin/invite/accept", { token: inviteToken, password: $("invPw").value });
-    $("invPw").value = $("invPw2").value = ""; history.replaceState(null, "", "/admin"); boot();
+    const r = await api("POST", "/api/admin/invite/accept", { token: inviteToken, password: $("invPw").value });
+    $("invPw").value = $("invPw2").value = ""; history.replaceState(null, "", "/admin"); afterPassword(r);
   } catch (err) { $("inviteErr").textContent = err.message; $("inviteErr").hidden = false; }
+});
+
+// Andet trin: efter adgangskoden beder serveren om en kode fra appen (billetten gælder i 5 minutter).
+let mfaTicket = null;
+function afterPassword(r) {
+  if (!r || !r.mfa) return boot();
+  mfaTicket = r.ticket; showCard("mfaForm"); $("mfaErr").hidden = true; $("mfaCode").value = ""; $("mfaCode").focus();
+}
+$("mfaForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("mfaErr").hidden = true;
+  try {
+    const r = await api("POST", "/api/admin/login/mfa", { ticket: mfaTicket, code: $("mfaCode").value });
+    mfaTicket = null; $("mfaCode").value = ""; await boot();
+    if (r.recovery_left <= 3) toast("Du har " + r.recovery_left + " engangskoder tilbage. Lav nye under Sikkerhed.", true);
+  } catch (err) {
+    $("mfaErr").textContent = err.message; $("mfaErr").hidden = false; $("mfaCode").select();
+    if (/udløbet/.test(err.message)) setTimeout(() => showLogin("Login er udløbet. Log ind igen."), 1500);
+  }
 });
 
 async function boot() {
@@ -88,6 +106,7 @@ async function boot() {
   catch (e) { if (!/Log ind/.test(e.message)) showLogin(e.message); return; }
   $("loginView").hidden = true; $("appView").hidden = false;
   setupRole();
+  if (ME.mfa && ME.mfa.required && !ME.mfa.enabled) return showMfa(true);  // resten kræver to-trins-login
   if (ME.dpa_required) showDpa();
   if (ME.readiness && STATUS.env === "prod") {
     const miss = ME.readiness.filter((x) => !x.ok).map((x) => x.label.split(" (")[0]);
@@ -779,6 +798,73 @@ async function showDpa() {
     catch (err) { toast(err.message, true); }
   });
 }
+// ---------- to-trins-login ----------
+$("secBtn").addEventListener("click", () => showMfa(false));
+async function showMfa(forced) {
+  let st;
+  try { st = await api("GET", "/api/admin/mfa"); } catch (err) { return toast(err.message, true); }
+  document.querySelectorAll(".mfa-veil").forEach((x) => x.remove());
+  const veil = document.createElement("div");
+  veil.className = "al-veil dpa-veil mfa-veil";
+  const box = document.createElement("div");
+  box.className = "al-box mfa-box"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
+  veil.appendChild(box); document.body.appendChild(veil);
+  const close = () => { veil.remove(); if (forced) boot(); };
+  const foot = (extra) => '<div class="row">' + (extra || "") + '<span class="grow"></span>' +
+    (forced ? '<button class="btn ghost sm" type="button" data-out>Log ud</button>' : '<button class="btn ghost sm" type="button" data-close>Luk</button>') + "</div>";
+  const codeField = '<label class="fld"><span>Kode fra appen eller en engangskode</span><input data-code inputmode="numeric" autocomplete="one-time-code" maxlength="20"></label>';
+  const codesView = (codes, title) => {
+    const txt = "Nodd engangskoder (" + (ME.email || "leverandør") + ")\n" + codes.join("\n") + "\nHver kode virker én gang.";
+    box.innerHTML = "<h2>" + esc(title) + '</h2><p class="muted small">Gem dine engangskoder et sikkert sted, fx i en adgangskode-manager. Hver kode virker én gang, hvis du mister telefonen. De vises kun nu.</p>' +
+      '<ol class="mfa-codes">' + codes.map((c) => "<li><code>" + esc(c) + "</code></li>").join("") + "</ol>" +
+      '<div class="row"><button class="btn ghost sm" type="button" data-copy>Kopiér</button><a class="btn ghost sm" download="nodd-engangskoder.txt" href="data:text/plain;charset=utf-8,' + encodeURIComponent(txt) + '">Hent som fil</a></div>' +
+      '<label class="check"><input type="checkbox" data-saved> Jeg har gemt koderne</label><div class="row"><span class="grow"></span><button class="btn pri" type="button" data-done disabled>Færdig</button></div>';
+    box.querySelector("[data-copy]").onclick = () => (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast("Kopieret"), () => toast("Markér koderne og kopiér", true));
+    box.querySelector("[data-saved]").onchange = (e) => { box.querySelector("[data-done]").disabled = !e.target.checked; };
+    box.querySelector("[data-done]").onclick = () => { if (!forced) showMfa(false); else close(); };
+  };
+  const intro = () => {
+    box.innerHTML = "<h2>To-trins-login</h2>" + (forced ? '<p class="mfa-need">Din konto skal have to-trins-login, før du kan fortsætte.</p>' : "") +
+      '<p class="muted small">Ud over adgangskoden skal du skrive en kode fra en app på din telefon, når du logger ind. Så kan ingen komme ind med et stjålet kodeord.</p>' +
+      '<ol class="mfa-steps"><li>Installér en kodeapp, fx <b>Microsoft Authenticator</b> eller <b>Google Authenticator</b>.</li><li>Scan QR-koden med appen.</li><li>Skriv den 6-cifrede kode, appen viser.</li></ol>' +
+      foot('<button class="btn pri" type="button" data-start>Sæt op</button>');
+    box.querySelector("[data-start]").onclick = start;
+  };
+  const start = async () => {
+    let s; try { s = await api("POST", "/api/admin/mfa/setup"); } catch (err) { return toast(err.message, true); }
+    box.innerHTML = "<h2>Scan QR-koden</h2>" + '<div class="mfa-qr">' + s.qr + '<div><p class="muted small">Kan du ikke scanne? Vælg "indtast en nøgle" i appen og skriv:</p><code class="mfa-secret">' + esc(s.secret) + "</code></div></div>" +
+      codeField.replace("Kode fra appen eller en engangskode", "Koden fra appen") + foot('<button class="btn pri" type="button" data-enable>Slå til</button>');
+    const inp = box.querySelector("[data-code]"); inp.focus();
+    const go = async () => {
+      try { const r = await api("POST", "/api/admin/mfa/enable", { code: inp.value }); ME.mfa = { enabled: true, required: r.required }; codesView(r.recovery_codes, "To-trins-login er slået til"); }
+      catch (err) { toast(err.message, true); inp.select(); }
+    };
+    box.querySelector("[data-enable]").onclick = go;
+    inp.onkeydown = (e) => { if (e.key === "Enter") go(); };
+  };
+  const enabledView = () => {
+    box.innerHTML = '<h2>To-trins-login er slået til</h2><p class="muted small">Du har <b>' + st.recovery_left + "</b> engangskoder tilbage." +
+      (st.required ? " To-trins-login er påkrævet for din konto." : "") + "</p>" + codeField +
+      foot('<button class="btn ghost sm" type="button" data-new>Nye engangskoder</button>' + (st.required ? "" : '<button class="btn ghost sm" type="button" data-off>Slå fra</button>'));
+    const inp = box.querySelector("[data-code]");
+    const need = () => { if (!inp.value.trim()) { toast("Skriv en kode fra appen først", true); inp.focus(); return false; } return true; };
+    box.querySelector("[data-new]").onclick = async () => {
+      if (!need()) return;
+      try { codesView((await api("POST", "/api/admin/mfa/recovery", { code: inp.value })).recovery_codes, "Nye engangskoder"); } catch (err) { toast(err.message, true); }
+    };
+    const off = box.querySelector("[data-off]");
+    if (off) off.onclick = async () => {
+      if (!need()) return;
+      try { await api("POST", "/api/admin/mfa/disable", { code: inp.value }); ME.mfa.enabled = false; toast("To-trins-login er slået fra"); veil.remove(); } catch (err) { toast(err.message, true); }
+    };
+  };
+  veil.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close]")) veil.remove();
+    if (e.target.closest("[data-out]")) { veil.remove(); $("logout").click(); }
+  });
+  if (st.enabled) enabledView(); else intro();
+}
+
 function renderReadiness() {
   const r = ME.readiness || [];
   const missing = r.filter((x) => !x.ok).length;
@@ -796,7 +882,9 @@ function renderUsers(box, users) {
   const myEmail = ME.email;
   box.innerHTML = users.map((u) => '<div class="urow" data-uid="' + u.id + '"><span class="av">' + esc(initials(u.name || u.email)) + '</span><span class="grow"><b>' +
     esc(u.name || u.email) + "</b><small>" + (u.name ? esc(u.email) + " · " : "") +
-    (u.pending ? '<span class="pend">Har ikke valgt adgangskode endnu</span>' : u.last_login_at ? "Sidst logget ind " + fmtDay(u.last_login_at) : "Ikke logget ind endnu") + "</small></span>" +
+    (u.pending ? '<span class="pend">Har ikke valgt adgangskode endnu</span>' : u.last_login_at ? "Sidst logget ind " + fmtDay(u.last_login_at) : "Ikke logget ind endnu") +
+    (u.mfa ? ' · <span class="mfa-on">To-trins-login</span>' : "") + "</small></span>" +
+    (u.mfa && u.email !== myEmail ? '<button class="btn ghost sm" type="button" data-mfareset>Nulstil to-trins</button>' : "") +
     '<button class="btn ghost sm" type="button" data-link>' + (u.pending ? "Nyt invitationslink" : "Link til ny adgangskode") + "</button>" +
     (u.email === myEmail ? "" : '<button class="btn ghost sm" type="button" data-rm>Fjern</button>') + "</div>").join("") ||
     '<p class="muted small">Ingen administratorer endnu.</p>';
@@ -819,6 +907,9 @@ async function userAction(e, linkBox, after) {
   if ((b = e.target.closest("[data-link]"))) {
     try { const res = await api("POST", "/api/admin/users/" + uid + "/link"); showLink(linkBox, res, "Nyt link til " + (res.user.name || res.user.email)); toast("Det gamle link virker ikke længere"); }
     catch (err) { toast(err.message, true); }
+  } else if ((b = e.target.closest("[data-mfareset]"))) {
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Nulstil to-trins"; }, 3500); return; }
+    try { await api("POST", "/api/admin/users/" + uid + "/mfa-reset"); toast("Nulstillet. Brugeren er logget ud og sætter det op igen ved næste login."); await after(); } catch (err) { toast(err.message, true); }
   } else if ((b = e.target.closest("[data-rm]"))) {
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Fjern"; }, 3500); return; }
     try { await api("DELETE", "/api/admin/users/" + uid); toast("Fjernet"); await after(); } catch (err) { toast(err.message, true); }

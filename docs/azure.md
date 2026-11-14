@@ -160,6 +160,13 @@ ved næste login. Indstillingerne bliver stående, hvis opsætningsscriptet kør
 | `DPA_FINAL` | `1`, når databehandleraftalen er juridisk godkendt |
 | `AZURE_STORAGE_CONNECTION_STRING` | Sættes af scriptet (billeder i Blob) |
 | `REPORT_SCHEDULER` | Månedsrapporter den 1. kl. 7 (standard til) |
+| `MFA_REQUIRED` | To-trins-login påkrævet for dig og husene (standard til i prod, fra på dev) |
+| `ADMIN_MFA_RESET` | Kun i nødstilfælde, se herunder. Skal ellers ikke findes |
+
+**Mistet telefon og engangskoder (leverandør-login):** sæt `ADMIN_MFA_RESET=1` i App Service og genstart appen.
+Så er to-trins-login slået fra på leverandør-kontoen. Log ind, sæt det op igen under **Sikkerhed**, og **slet
+indstillingen** bagefter (kortet Klar til prod minder dig om det). Brugere med e-mail nulstilles i stedet af en
+administrator under **Adgang** ("Nulstil to-trins").
 
 ### 4. Eget domæne med SSL
 
@@ -184,11 +191,13 @@ minutter, fordi databasen opgraderes.
 
 ### 7. Efter udrulningen
 
-1. Kopiér de billeder, prod har i forvejen, op i Blob: knappen **Kopiér gamle billeder til Blob** under
+1. Log ind som leverandør. Første gang skal du sætte to-trins-login op med en kodeapp (fx Microsoft Authenticator)
+   og gemme dine 10 engangskoder et sikkert sted. Husenes admins gør det samme ved deres første login.
+2. Kopiér de billeder, prod har i forvejen, op i Blob: knappen **Kopiér gamle billeder til Blob** under
    **Fakturering > Klar til prod** i admin. Den kan køres igen uden skade.
-2. Log ind i admin og åbn **Fakturering**: kortet **Klar til prod** skal vise "Alt er klar".
-3. Lav en rigtig check-in på en skærm og se, at værten får SMS og mail.
-4. Åbn `https://getnodd.dk/healthz?db=1`. Den skal svare `"db": "ok"`.
+3. Log ind i admin og åbn **Fakturering**: kortet **Klar til prod** skal vise "Alt er klar".
+4. Lav en rigtig check-in på en skærm og se, at værten får SMS og mail.
+5. Åbn `https://getnodd.dk/healthz?db=1`. Den skal svare `"db": "ok"`.
 
 ## Eget domæne pr. kunde (senere, kræver B1)
 
