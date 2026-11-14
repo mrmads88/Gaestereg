@@ -320,3 +320,19 @@ main{flex:1;min-height:0;position:relative}
 .host.firm .pic img{object-fit:contain}
 .hosts.compact .host.firm .pic{padding:8px;border-radius:14px;background:#fff;border:1px solid var(--rule)}
 .firmname{display:block;color:var(--brand-ink);font-weight:700;font-size:.85rem;margin-top:2px}
+
+/* Tidsregistrering: medarbejdere stempler ind og ud */
+.stafflink{margin-left:auto}
+.stafflink + .privlink{margin-left:0}
+.ov-box.staff{width:min(820px,100%);max-height:90vh;overflow:auto}
+.ov-box.staff .lead{margin:-8px 0 0}
+.staff-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.staff-p{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 10px;border-radius:20px;background:var(--card);border:1px solid var(--rule);
+  box-shadow:var(--shadow);font:inherit;color:inherit;cursor:pointer;text-align:center}
+.staff-p:active{transform:scale(.97);background:var(--brand-soft)}
+.staff-p .av{width:76px;height:76px;border-radius:50%;background:var(--brand-soft);color:var(--brand-ink);display:grid;place-items:center;
+  font:700 1.6rem var(--f-display);overflow:hidden}
+.staff-p .av img{width:100%;height:100%;object-fit:cover}
+.staff-p b{font-size:1.02rem;line-height:1.25}
+.staff-ok{width:120px;height:120px;border-radius:50%;margin:8px auto;display:grid;place-items:center;font-size:3.4rem;color:#fff;background:var(--brand)}
+.staff-ok.out{background:var(--brand-soft)}

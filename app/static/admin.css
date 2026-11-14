@@ -561,3 +561,35 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 @media (max-width:560px){.crm-grid2,.crm-new .crm-grid3{grid-template-columns:1fr}.crm-tiles{grid-template-columns:1fr 1fr}.crm-tile b{font-size:1.15rem}}
 /* Topbaren må bryde over flere linjer på smalle skærme (CRM, Fakturering, Sikkerhed, Log ud) */
 @media (max-width:760px){.top{flex-wrap:wrap}.top-r{flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-left:auto}.top-r .who{display:none}}
+/* Tidsregistrering */
+.tm h3{margin:0;font-size:1.05rem}
+.tm-head{flex-wrap:wrap;gap:8px;align-items:center}
+.tm-warn{margin:0;background:#fde8e6;color:var(--bad);border-radius:10px;padding:8px 12px;font-weight:600;font-size:.9rem}
+.tm-inside{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.9rem}
+.tm-inside span{background:#e1f4ea;color:var(--ok);border-radius:999px;padding:3px 10px;font-weight:600}
+.tm-inside small{color:var(--soft);font-weight:500}
+.tm-table{min-width:760px;font-size:.88rem}
+.tm-table th{font-size:.75rem;color:var(--soft);text-align:left;padding:8px 6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.tm-table th.today{color:var(--accent)}
+.tm-table td{padding:5px 6px;border-bottom:1px solid var(--rule);vertical-align:middle}
+.tm-table td small{display:block}
+.tm-table .n{text-align:right;font-variant-numeric:tabular-nums}
+.tm-cell{border:1px solid transparent;background:none;border-radius:8px;padding:4px 8px;font:inherit;font-variant-numeric:tabular-nums;cursor:pointer;min-width:52px;text-align:right}
+.tm-cell:hover{background:var(--bg);border-color:var(--rule)}
+.tm-cell.on{background:var(--accent-soft);border-color:var(--accent)}
+.tm-cell.miss{color:var(--bad);font-weight:700}
+.tm-live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);vertical-align:middle}
+.tm-plus{color:var(--ok)} .tm-minus{color:var(--bad)}
+.tm-entry{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 0;border-top:1px solid var(--rule)}
+.tm-entry .fld{width:120px}
+.tm-entry .fld.grow{flex:1 1 180px;width:auto}
+.tm-acts{display:flex;gap:6px;align-items:center;padding-bottom:4px}
+.tm-meta{flex-basis:100%;margin:0;font-size:.8rem;color:var(--soft)}
+.tm-add{background:var(--bg);border-radius:12px;padding:10px;border-top:0}
+.tm-narrow{max-width:420px}
+.tm-export .fld{width:200px}
+.tm-pin{background:var(--accent-soft);border-radius:12px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.tm-pin code{font:700 1.5rem var(--f-mono);letter-spacing:.2em}
+.tm-pin small{flex-basis:100%;color:var(--soft)}
+.tm-norm{width:80px;min-height:34px;border:1px solid var(--rule);border-radius:9px;padding:4px 8px;background:#fbfbfa;font:inherit}
+.tm-staff{min-width:640px}

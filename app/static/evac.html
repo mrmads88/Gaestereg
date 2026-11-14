@@ -82,16 +82,17 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
   const save = () => { try { localStorage.setItem(key, JSON.stringify([...safe])); } catch (e) {} };
   function render() {
     const q = $("q").value.trim().toLowerCase();
-    const left = guests.filter((g) => !safe.has(g.id)).length;
+    const left = guests.filter((g) => !safe.has(g.key)).length;
+    const what = guests.some((g) => g.staff) ? "personer" : "gæster";
     $("left").textContent = left;
-    $("leftTxt").textContent = guests.length === 0 ? "gæster i huset" : left === 0 ? "Alle " + guests.length + " gæster er talt" : "af " + guests.length + " gæster mangler at blive talt";
+    $("leftTxt").textContent = guests.length === 0 ? "gæster i huset" : left === 0 ? "Alle " + guests.length + " " + what + " er talt" : "af " + guests.length + " " + what + " mangler at blive talt";
     $("bar").style.width = guests.length ? (100 * (guests.length - left) / guests.length) + "%" : "0";
     const shown = guests.filter((g) => !q || (g.name + " " + g.company + " " + g.firm + " " + g.host).toLowerCase().includes(q));
     const firms = [...new Set(shown.map((g) => g.firm))];
-    $("list").innerHTML = !guests.length ? '<div class="empty">Der er ingen gæster tjekket ind lige nu.</div>' :
+    $("list").innerHTML = !guests.length ? '<div class="empty">Der er ingen gæster eller medarbejdere tjekket ind lige nu.</div>' :
       firms.map((f) => (firms.length > 1 ? '<div class="grp">' + esc(f) + "</div>" : "") + shown.filter((g) => g.firm === f).map((g) =>
-        '<div class="p' + (safe.has(g.id) ? " safe" : "") + '" role="button" tabindex="0" aria-pressed="' + safe.has(g.id) + '" data-id="' + g.id + '"><span class="box">' + (safe.has(g.id) ? "✓" : "") + '</span><span class="grow"><b>' + esc(g.name) + "</b><small>" +
-        esc([g.company, "besøger " + g.host, "kl. " + g.time].filter(Boolean).join(" · ")) + "</small></span>" +
+        '<div class="p' + (safe.has(g.key) ? " safe" : "") + '" role="button" tabindex="0" aria-pressed="' + safe.has(g.key) + '" data-id="' + g.key + '"><span class="box">' + (safe.has(g.key) ? "✓" : "") + '</span><span class="grow"><b>' + esc(g.name) + "</b><small>" +
+        esc((g.staff ? ["Medarbejder", "stemplet ind kl. " + g.time] : [g.company, "besøger " + g.host, "kl. " + g.time]).filter(Boolean).join(" · ")) + "</small></span>" +
         (g.phone ? '<a href="tel:' + esc(g.phone.replace(/\s/g, "")) + '" data-call>Ring</a>' : "") + "</div>").join("")).join("");
   }
   async function load() {
@@ -99,14 +100,17 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
       const r = await fetch("/api/evac/" + encodeURIComponent(token), { cache: "no-store" });
       const j = await r.json();
       if (!r.ok) { document.querySelector("main").innerHTML = '<div class="empty">' + esc(j.detail || "Linket virker ikke") + "</div>"; return; }
-      $("where").textContent = j.name; guests = j.guests; render();
+      // Gæster og medarbejdere, der er stemplet ind (tidsregistrering), tælles i samme liste.
+      $("where").textContent = j.name;
+      guests = j.guests.map((g) => ({ ...g, key: "g" + g.id })).concat((j.staff || []).map((x) => ({ key: "s" + x.id, staff: true, name: x.name, firm: x.firm, time: x.since_hhmm, company: "", host: "" })));
+      render();
       $("updated").textContent = "Opdateret " + new Date().toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
     } catch (e) { $("updated").textContent = "Ingen forbindelse. Listen vises som sidst."; }
   }
   $("list").addEventListener("click", (e) => {
     if (e.target.closest("[data-call]")) return;
     const b = e.target.closest("[data-id]"); if (!b) return;
-    const id = +b.dataset.id; safe.has(id) ? safe.delete(id) : safe.add(id); save(); render();
+    const id = b.dataset.id; safe.has(id) ? safe.delete(id) : safe.add(id); save(); render();
   });
   $("list").addEventListener("keydown", (e) => {
     if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-id]")) { e.preventDefault(); e.target.click(); }

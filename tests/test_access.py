@@ -289,3 +289,26 @@ def test_crm_only_for_platform(setup):
     c = new_client()
     assert c.get("/api/admin/crm/overview").status_code == 401
     assert c.post("/api/admin/crm/companies", json={"name": "X"}).status_code == 401
+
+
+def test_time_of_other_firms_is_hidden(setup, platform):
+    other = platform.post("/api/admin/tenants", json={"name": "Fremmed tidsfirma"}).json()
+    platform.post(f"/api/admin/billing/account/subscriptions?tenant_id={other['id']}", json={"product": "time"})
+    h = platform.post(f"/api/admin/tenants/{other['id']}/hosts", json={"name": "Bo"}).json()
+    e = platform.post(f"/api/admin/tenants/{other['id']}/time/entries",
+                      json={"host_id": h["id"], "start": "2026-01-05T08:00:00", "end": "2026-01-05T16:00:00"}).json()
+    pa = setup["pa"]
+    for method, url in [("GET", f"/api/admin/tenants/{other['id']}/time/week"),
+                        ("PATCH", f"/api/admin/tenants/{other['id']}/time/settings"),
+                        ("POST", f"/api/admin/tenants/{other['id']}/time/entries"),
+                        ("POST", f"/api/admin/tenants/{other['id']}/time/approve"),
+                        ("GET", f"/api/admin/tenants/{other['id']}/time/export.csv?start=2026-01-01&end=2026-01-31"),
+                        ("PATCH", f"/api/admin/hosts/{h['id']}/time"), ("POST", f"/api/admin/hosts/{h['id']}/time/pin"),
+                        ("GET", f"/api/admin/hosts/{h['id']}/time/link"),
+                        ("PATCH", f"/api/admin/time/entries/{e['id']}"), ("DELETE", f"/api/admin/time/entries/{e['id']}")]:
+        r = pa.request(method, url, json={"host_id": h["id"], "start": "2026-01-05T08:00:00", "monday": "2026-01-05"})
+        assert r.status_code == 404, (url, r.status_code)
+    # Eget firma uden modulet: kun leverandøren kan åbne fanen.
+    assert pa.get(f"/api/admin/tenants/{setup['firm']['id']}/time/week").status_code == 403
+    assert new_client().get(f"/api/admin/tenants/{other['id']}/time/week").status_code == 401
+    platform.delete(f"/api/admin/tenants/{other['id']}")

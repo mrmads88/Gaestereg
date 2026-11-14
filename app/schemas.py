@@ -422,6 +422,10 @@ def tenant_public(t: Tenant, firms: list[Tenant] | None = None) -> dict:
         "terms_text": t.terms_text, "host_reply": t.host_reply,
         "hosts": [host_public(h, t.show_photos) for h in t.hosts if h.active],
     }
+    # Medarbejdere, der stempler ind og ud på skærmen (modul "time"). Kun navn og foto, som de andre personer.
+    d["staff"] = [{"id": h.id, "name": h.name, "photo_url": media_url(h.photo_path) if t.show_photos else ""}
+                  for h in sorted(t.hosts, key=lambda h: h.name.lower()) if h.active and h.time_enabled] \
+        if t.time_kiosk and modules.tenant_has(t, "time") else []
     d["house"] = bool(t.house_screen and firms)
     if d["house"]:
         d["firms"] = [{"id": f.id, "name": f.name, "logo_url": media_url(f.logo_path), "color": f.color,
