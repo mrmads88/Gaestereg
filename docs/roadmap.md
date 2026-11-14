@@ -152,9 +152,17 @@ Senere: video, RSS/nyheder fra en hjemmeside, kantinens rigtige menu (når kanti
 
 Senere: lyd på skærmene, skabeloner pr. hus.
 
+## Klar til prod (bygget)
+- Generalprøve på migrationen: gammel prod-kode laver databasen, ny kode opgraderer den (SQLite og SQL Server bestået).
+- Billeder i Azure Blob Storage i prod (scriptet opretter kontoen), med knap til at kopiere gamle billeder op.
+- Fejlmails til leverandøren og oppetidstjek hver time (GitHub Actions, kun når `PROD_URL` er sat).
+- "Klar til prod"-liste under Fakturering, som viser, hvilke indstillinger der mangler.
+- Databehandleraftale, som kundens admin (eller huset) accepterer ved første login. Udkast, indtil en jurist har
+  godkendt teksten (`DPA_FINAL=1`).
+- Privatlivsside for gæster (dansk/engelsk) med link fra skærmen.
+- Go-live-trin i `docs/azure.md` (B1, betalt SQL, domæne, beskyttelse af `production`).
+
 ## Venter på prod / en kunde
-- Oppetids-tjek og fejlmails. Et tjek hver anden time ville vække dev-databasen og bruge det gratis forbrug op.
-- Billeder i Azure Blob Storage (koster et par kroner om måneden). Koden er klar (fase 1).
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).
 - Databehandleraftale, som kunden accepterer ved første login. Mekanismen er nem, men teksten skal være juridisk godkendt.
 - To-trins-login for partnere.

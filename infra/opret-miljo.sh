@@ -17,6 +17,8 @@ LOC="${LOC:-swedencentral}"
 RG="${RG:-rg-gaestereg-$MILJO}"
 APP_SKU="${APP_SKU:-F1}"          # F1 = gratis. B1 til prod, når der er rigtige kunder.
 FREE_SQL="${FREE_SQL:-true}"      # Azure SQL free offer
+# Billeder i Azure Blob Storage. Standard: ja i prod (få kroner om måneden), nej i dev.
+BLOB="${BLOB:-$([ "$MILJO" = prod ] && echo true || echo false)}"
 GITHUB_REPO="${GITHUB_REPO:-mrmads88/gaestereg}"
 GH_ENV=$([ "$MILJO" = prod ] && echo production || echo dev)
 
@@ -25,14 +27,16 @@ SUB_ID="$(az account show --query id -o tsv)"
 SUFFIX="$(printf %s "$SUB_ID" | sha1sum | cut -c1-6)"
 APP="${APP:-gaestereg-$MILJO-$SUFFIX}"
 SQL="${SQL:-sql-gaestereg-$MILJO-$SUFFIX}"
+STORAGE="${STORAGE:-stgaestereg$MILJO$SUFFIX}"   # kun små bogstaver og tal, højst 24 tegn
 
 echo "Abonnement: $(az account show --query name -o tsv) ($SUB_ID)"
 echo "Miljø: $MILJO   Region: $LOC   Ressourcegruppe: $RG"
-echo "Web-app: $APP ($APP_SKU)   SQL-server: $SQL (gratis: $FREE_SQL)"
+echo "Web-app: $APP ($APP_SKU)   SQL-server: $SQL (gratis: $FREE_SQL)   Billeder i Blob: $BLOB"
 echo
 
 az provider register --namespace Microsoft.Web -o none
 az provider register --namespace Microsoft.Sql -o none
+[ "$BLOB" = true ] && az provider register --namespace Microsoft.Storage -o none
 # Findes ressourcegruppen allerede (fx oprettet i portalen), bruges den, uanset hvilken region den står i.
 # Gruppens region er kun metadata. Selve ressourcerne lægges i $LOC.
 if az group show -n "$RG" -o none 2>/dev/null; then
@@ -59,7 +63,7 @@ echo "Opretter ressourcer (tager 3-6 minutter første gang) ..."
 az deployment group create -g "$RG" -n "gaestereg-$MILJO" \
   -f "$(dirname "$0")/main.bicep" \
   -p miljo="$MILJO" location="$LOC" appName="$APP" sqlServerName="$SQL" appSku="$APP_SKU" freeSql="$FREE_SQL" \
-     sqlAdminPassword="$SQL_PASSWORD" \
+     sqlAdminPassword="$SQL_PASSWORD" blobStorage="$BLOB" storageName="$STORAGE" \
   -o none
 
 SQL_FQDN="$(az sql server show -g "$RG" -n "$SQL" --query fullyQualifiedDomainName -o tsv)"
@@ -76,6 +80,13 @@ az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
   NOTIFY_MODE="$NOTIFY_MODE" SEED_DEMO="$SEED_DEMO" \
   ADMIN_PASSWORD="$ADMIN_PASSWORD" SECRET_KEY="$SECRET_KEY" \
   SCM_DO_BUILD_DURING_DEPLOYMENT=true
+
+if [ "$BLOB" = true ]; then
+  echo "Forbinder billederne til Blob Storage ($STORAGE) ..."
+  CONN="$(az storage account show-connection-string -g "$RG" -n "$STORAGE" --query connectionString -o tsv)"
+  az webapp config appsettings set -g "$RG" -n "$APP" -o none --settings \
+    AZURE_STORAGE_CONNECTION_STRING="$CONN" AZURE_STORAGE_CONTAINER=media
+fi
 
 URL="https://$(az webapp show -g "$RG" -n "$APP" --query defaultHostName -o tsv)"
 

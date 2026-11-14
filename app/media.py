@@ -33,7 +33,60 @@ class LocalStorage:
         return self.root / name
 
 
-storage = LocalStorage(settings.media_dir)
+CONTENT_TYPES = {"png": "image/png", "jpg": "image/jpeg", "svg": "image/svg+xml"}
+
+
+class BlobStorage:
+    """Billeder i Azure Blob Storage (prod), så de overlever, at serveren flyttes eller skaleres.
+
+    /media svarer fra en lokal kopi (DATA_DIR/media), der hentes fra Blob første gang, et billede bruges. Billednavne
+    er tilfældige og ændres aldrig, så kopien kan aldrig blive forældet. Samme fire metoder som LocalStorage."""
+
+    def __init__(self, container, cache_root):
+        self.container = container  # azure.storage.blob.ContainerClient (eller en falsk i tests)
+        self.cache = LocalStorage(cache_root)
+
+    def save(self, name: str, data: bytes) -> None:
+        from azure.storage.blob import ContentSettings
+        ext = name.rsplit(".", 1)[-1]
+        self.container.upload_blob(name, data, overwrite=True, content_settings=ContentSettings(
+            content_type=CONTENT_TYPES.get(ext, "application/octet-stream"),
+            cache_control="public, max-age=31536000, immutable"))
+        self.cache.save(name, data)
+
+    def delete(self, name: str) -> None:
+        try:
+            self.container.delete_blob(name)
+        except Exception as e:  # noqa: BLE001 - findes den ikke, er den allerede væk
+            if type(e).__name__ != "ResourceNotFoundError":
+                raise
+        self.cache.delete(name)
+
+    def exists(self, name: str) -> bool:
+        return self.cache.exists(name) or self.container.get_blob_client(name).exists()
+
+    def path(self, name: str):
+        if not self.cache.exists(name):
+            self.cache.save(name, self.container.download_blob(name).readall())
+        return self.cache.path(name)
+
+
+def make_storage():
+    """Blob Storage, når AZURE_STORAGE_CONNECTION_STRING er sat (prod). Ellers lokale filer (dev, tests)."""
+    if not settings.azure_storage_connection_string:
+        return LocalStorage(settings.media_dir)
+    from azure.storage.blob import BlobServiceClient
+    container = BlobServiceClient.from_connection_string(settings.azure_storage_connection_string) \
+        .get_container_client(settings.azure_storage_container)
+    try:
+        container.create_container()
+    except Exception as e:  # noqa: BLE001 - findes allerede
+        if type(e).__name__ != "ResourceExistsError":
+            raise
+    return BlobStorage(container, settings.media_dir)
+
+
+storage = make_storage()
 
 # kind -> (max side px, output format, square crop)
 PROFILES = {

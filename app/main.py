@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
-from . import alerts, modules, reports, routes_alerts, routes_billing, routes_catering, routes_reports, routes_signage
+from . import alerts, modules, ops, reports, routes_alerts, routes_legal, routes_billing, routes_catering, routes_reports, routes_signage
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -18,6 +18,7 @@ from .routes_kiosk import purge_old
 from .seed import seed_if_empty
 
 logging.basicConfig(level=logging.INFO)
+ops.install()  # fejlmails til OPS_EMAIL (kun i live-tilstand)
 STATIC = Path(__file__).parent / "static"
 
 
@@ -77,6 +78,8 @@ app.include_router(routes_signage.public)
 app.include_router(routes_signage.pages)
 app.include_router(routes_alerts.admin)
 app.include_router(routes_alerts.public)
+app.include_router(routes_legal.admin)
+app.include_router(routes_legal.public)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")
@@ -111,5 +114,15 @@ def kiosk_page(token: str):
 
 
 @app.get("/healthz", include_in_schema=False)
-def health():
-    return {"ok": True, "env": settings.env}
+def health(db: int = 0):
+    """Uden ?db=1 rører tjekket ikke databasen (så den gratis dev-database kan sove). Med ?db=1 (oppetidstjekket i prod)
+    tjekkes databasen også. 503, hvis den ikke svarer."""
+    if db:
+        from sqlalchemy import text
+        try:
+            with SessionLocal() as s:
+                s.execute(text("SELECT 1"))
+        except Exception as e:  # noqa: BLE001
+            logging.getLogger("gaestereg.health").error("Databasen svarer ikke: %s", e)
+            raise HTTPException(503, "Databasen svarer ikke")
+    return {"ok": True, "env": settings.env, **({"db": "ok"} if db else {})}

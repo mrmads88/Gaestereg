@@ -6,7 +6,7 @@ GitHub udruller automatisk:
 | Branch       | Miljø i GitHub | Ressourcegruppe    | App Service-plan | Database             | NOTIFY_MODE |
 |--------------|----------------|--------------------|------------------|----------------------|-------------|
 | `main`       | `dev`          | `rg_gaestereg_app_dev`  | F1 (gratis)      | Azure SQL, gratis    | `test`      |
-| `production` | `production`   | `rg_gaestereg_app_prod` | B1 (senere)      | se "Prod" herunder   | `live`      |
+| `production` | `production`   | `rg_gaestereg_app_prod` | B1               | se "Go-live" herunder | `live`      |
 
 Lige nu sættes kun **dev** op. Det koster 0 kr.
 
@@ -101,25 +101,94 @@ git push -u origin feature/noget-nyt     # opret PR mod main -> tests kører på
 # Opret PR fra main til production -> merge -> PROD udrulles
 ```
 
-## Prod (senere)
+## Go-live af prod
+
+Prod kører i dag den første version. Første udrulning af den nye kode opgraderer databasen automatisk (den markeres som
+revision `0001` og opgraderes til den nyeste). Følg trinene i rækkefølge.
+
+### 0. Det skal du have klar
+
+- Domænet (fx `getnodd.dk`) med adgang til DNS.
+- En konto hos GatewayAPI og en API-nøgle (SMS).
+- En mailafsender, fx en Microsoft 365-postkasse `noreply@getnodd.dk`, med SPF og DKIM på domænet (ellers lander mails i spam).
+- Databehandleraftalen (`app/texts/databehandleraftale.html`) gennemgået af en jurist.
+- Dine firmaoplysninger: navn, CVR, adresse og kontaktmail.
+
+### 1. Generalprøve på en kopi af prod-databasen
+
+Portalen: **SQL databases > gaestereg-prod > Copy**. Kør så opgraderingen mod kopien (aldrig mod selve prod):
 
 ```bash
-APP_SKU=B1 RG=rg_gaestereg_app_prod ./infra/opret-miljo.sh prod
+python tools/prod_generalproeve.py --url "mssql+pyodbc://<bruger>:<kode>@<server>:1433/<kopi>?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes"
 ```
 
-Herefter SMS og e-mail i prod (de bliver stående, hvis scriptet køres igen):
+Den skal slutte med `GENERALPRØVEN BESTÅET`. Slet kopien bagefter. (Den er også kørt på en database lavet af den gamle
+prod-kode, både SQLite og SQL Server, med `--old-code`.)
+
+### 2. Opgradér ressourcerne
+
+```bash
+APP_SKU=B1 FREE_SQL=false RG=rg_gaestereg_app_prod ./infra/opret-miljo.sh prod
+```
+
+- **B1** (ca. 100 kr./md.): Always On (skærme og månedsmail virker hele døgnet), health check og eget domæne med SSL.
+- **Betalt serverless SQL** (`FREE_SQL=false`): den gratis database rækker kun til ca. en uge med rigtige kunder.
+  Den sover stadig om natten. Regn med nogle hundrede kroner om måneden, og tjek Azure-prisberegneren.
+- **Billeder i Blob Storage** er standard i prod (`BLOB=true`, få kroner om måneden). Scriptet opretter lagerkontoen og
+  sætter `AZURE_STORAGE_CONNECTION_STRING`.
+
+### 3. App-indstillinger
 
 ```bash
 az webapp config appsettings set -g rg_gaestereg_app_prod -n <prod-app> --settings \
   GATEWAYAPI_TOKEN='<token>' \
-  SMTP_HOST=smtp.office365.com SMTP_PORT=587 SMTP_USER='<bruger>' SMTP_PASSWORD='<kode>' SMTP_FROM='reception@ditdomæne.dk'
+  SMTP_HOST=smtp.office365.com SMTP_PORT=587 SMTP_USER='<bruger>' SMTP_PASSWORD='<kode>' SMTP_FROM='noreply@getnodd.dk' \
+  PUBLIC_URL='https://getnodd.dk' OPS_EMAIL='<din mail>' \
+  OPERATOR_NAME='<firmanavn>' OPERATOR_CVR='<cvr>' OPERATOR_ADDRESS='<adresse>' OPERATOR_EMAIL='<kontaktmail>'
 ```
 
-Overvej før prod:
+Når juristen har godkendt databehandleraftalen, så sæt `DPA_FINAL=1`. Så skal kunderne acceptere den endelige version
+ved næste login. Indstillingerne bliver stående, hvis opsætningsscriptet køres igen.
 
-- **Plan**: B1 (ca. 100 kr./md.) giver Always On, health check og eget domæne med SSL.
-- **Database**: med rigtige kunder er databasen vågen det meste af arbejdsdagen, og 55 gratis timer om måneden rækker til ca. en uge. Kør prod med `FREE_SQL=false` (betalt serverless: ca. 2 kr. pr. time, den er vågen, så en arbejdsmåned bliver nogle hundrede kroner. Tjek prisen i Azure-prisberegneren), eller ændr `freeLimitExhaustionBehavior` til `BillOverUsage` i `infra/main.bicep`.
-- **Skema-ændringer**: tabeller oprettes med `create_all`. Før første ændring af en eksisterende tabel i prod skal Alembic ind.
+| Indstilling | Bruges til |
+|---|---|
+| `GATEWAYAPI_TOKEN` | SMS til værter, gæstekoder, køkken og nødbesked |
+| `SMTP_*` | Mail til værter, invitationer, månedsrapport, nødbesked og fejlmails |
+| `PUBLIC_URL` | Links i mails (ellers bruges `*.azurewebsites.net`) |
+| `OPS_EMAIL` | Fejlmails til dig (højst én pr. slags fejl pr. 15 min. og 20 om dagen) |
+| `OPERATOR_*` | Leverandøren i databehandleraftalen og på gæsternes privatlivsside |
+| `DPA_FINAL` | `1`, når databehandleraftalen er juridisk godkendt |
+| `AZURE_STORAGE_CONNECTION_STRING` | Sættes af scriptet (billeder i Blob) |
+| `REPORT_SCHEDULER` | Månedsrapporter den 1. kl. 7 (standard til) |
+
+### 4. Eget domæne med SSL
+
+1. DNS: `www` som CNAME til `<prod-app>.azurewebsites.net`, og en TXT-post `asuid` med appens verifikations-id
+   (Portalen: **App Service > Custom domains > Add custom domain** viser begge dele).
+2. Tilføj domænet og et gratis certifikat i samme vindue (App Service Managed Certificate).
+3. Sæt `PUBLIC_URL` til domænet (trin 3).
+
+### 5. GitHub: beskyt prod og slå oppetidstjek til
+
+- **Settings > Environments > production > Required reviewers**: tilføj dig selv, så hver prod-udrulning skal godkendes.
+- **Settings > Branches > Add rule** for `production`: "Require a pull request before merging". Så kan der kun
+  komme kode i prod via en PR fra `main`.
+- **Settings > Secrets and variables > Actions > Variables**: `PROD_URL = https://getnodd.dk`. Så tjekker workflowet
+  `Oppetid` prod hver time (også databasen), og GitHub mailer dig, hvis det fejler. Tjek at
+  **Settings (din profil) > Notifications > Actions** står til mail.
+
+### 6. Udrul
+
+Opret en PR fra `main` til `production`, merge den, og godkend udrulningen under Actions. Første start tager et par
+minutter, fordi databasen opgraderes.
+
+### 7. Efter udrulningen
+
+1. Kopiér de billeder, prod har i forvejen, op i Blob: knappen **Kopiér gamle billeder til Blob** under
+   **Fakturering > Klar til prod** i admin. Den kan køres igen uden skade.
+2. Log ind i admin og åbn **Fakturering**: kortet **Klar til prod** skal vise "Alt er klar".
+3. Lav en rigtig check-in på en skærm og se, at værten får SMS og mail.
+4. Åbn `https://getnodd.dk/healthz?db=1`. Den skal svare `"db": "ok"`.
 
 ## Eget domæne pr. kunde (senere, kræver B1)
 

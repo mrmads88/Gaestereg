@@ -1,0 +1,38 @@
+# Oppetidstjek af prod hver time. Fejler tjekket, sender GitHub en mail om den fejlede kørsel
+# (Settings -> Notifications -> Actions hos den, der ejer workflowet).
+#
+# Slås til ved at sætte repo-variablen PROD_URL (Settings -> Secrets and variables -> Actions -> Variables),
+# fx https://getnodd.dk. Uden den springes tjekket over. Dev tjekkes ikke, så den gratis database kan sove.
+# Hver kørsel tager få sekunder, men GitHub tæller et minut: ca. 720 minutter om måneden.
+name: Oppetid
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  prod:
+    if: vars.PROD_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Tjek forside, skærmlink og database
+        env:
+          URL: ${{ vars.PROD_URL }}
+        run: |
+          set -u
+          ok=false
+          # Tre forsøg med pause, så en genstart eller en database, der vågner, ikke giver falsk alarm.
+          for i in 1 2 3; do
+            if curl -fsS --max-time 40 "$URL/healthz?db=1" && curl -fsS --max-time 20 -o /dev/null "$URL/admin"; then
+              ok=true; break
+            fi
+            echo "Forsøg $i fejlede. Prøver igen om 30 sekunder ..."
+            sleep 30
+          done
+          if [ "$ok" != true ]; then
+            echo "::error::$URL svarer ikke. Tjek App Service og databasen i Azure."
+            exit 1
+          fi
+          echo "Prod svarer."

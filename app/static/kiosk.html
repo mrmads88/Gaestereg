@@ -30,6 +30,7 @@
     <div class="wall-bot">
       <div class="lang" id="langSw" role="group" aria-label="Sprog / Language" hidden></div>
       <span class="wall-hint" id="wallHint" data-t="wallHint"></span>
+      <button type="button" class="privlink" id="privBtn" data-t="privacy"></button>
     </div>
   </aside>
 
@@ -161,6 +162,10 @@
 <div class="overlay" id="termsOv" hidden role="dialog" aria-modal="true" aria-labelledby="termsTitle">
   <div class="ov-box"><h2 id="termsTitle"></h2><div class="ov-text" id="termsText"></div>
     <div class="ov-act"><button class="ghost" type="button" id="termsClose" data-t="close"></button><button class="cta" type="button" id="termsAccept"><span data-t="acceptBtn"></span></button></div></div>
+</div>
+<div class="overlay" id="privOv" hidden role="dialog" aria-modal="true" aria-labelledby="privBtn">
+  <div class="ov-box priv"><iframe id="privFrame" title="Privatliv"></iframe>
+    <div class="ov-act"><button class="ghost" type="button" id="privClose" data-t="close"></button></div></div>
 </div>
 <div id="previewTag" class="preview-tag" hidden>Forhåndsvisning · intet gemmes eller sendes</div>
 <div id="printArea"></div>

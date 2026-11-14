@@ -38,9 +38,13 @@
 - Admin-moduler (`admin-rooms.js`, `admin-catering.js`, `admin-billing.js`, `admin-reports.js`, `admin-signage.js`, `admin-alerts.js`) laver en ny container ved hver mount, så klik ikke håndteres flere gange.
 - Evakueringsliste `/e/<token>` (signeret med `evac_version` på kunde eller partner). Statistik i `visit_stats` (tælles op ved check-ind og pakker).
 - Skærmen med `?m=1` er gæstens egen telefon (fra QR-plakaten): telefonens tastatur, intet print, tæller ikke som skærm.
-- Billeder gemmes via `media.storage` (lokale filer nu). Brug den, ikke `settings.media_dir` direkte, så Blob Storage senere kun kræver en ny storage-klasse.
+- Billeder gemmes via `media.storage`: `LocalStorage` lokalt og på dev, `BlobStorage` når `AZURE_STORAGE_CONNECTION_STRING` er sat (prod), med lokal kopi som cache. Brug den, ikke `settings.media_dir` direkte. Gamle filer kopieres op med knappen under Fakturering > Klar til prod (`ops.copy_media_to_blob`).
 - Azure SQL's gratis-database går på pause. `db.py` venter, mens den vågner. Kiosk-config caches i hukommelsen (`routes_kiosk._config_cache`) og tømmes af middleware i `main.py` ved alle admin-ændringer. Ingen polling må ramme databasen.
-- Billeder ligger som filer i `DATA_DIR/media` (`/home/data` i Azure).
+- Lokale billeder (og Blob-cachen) ligger i `DATA_DIR/media` (`/home/data` i Azure).
+- Drift (`ops.py`): fejl i loggen mailes til `OPS_EMAIL` (kun live + SMTP, højst én pr. slags pr. 15 min og 20 om dagen). `/healthz` rører ikke databasen; `/healthz?db=1` gør (bruges af `.github/workflows/oppetid.yml`, kun når repo-variablen `PROD_URL` er sat, så dev-databasen ikke vækkes). `ops.readiness()` er "Klar til prod"-listen, som kun platform ser.
+- Databehandleraftale (`legal.py`, `routes_legal.py`, tekst i `app/texts/databehandleraftale.html`): kundens admin accepterer ved første login (firmaet eller huset; husets accept dækker dets firmaer). I prod blokerer `auth.current` ændringer, indtil den er accepteret. Udkast, indtil `DPA_FINAL=1`; så skifter versionen, og alle accepterer igen. Leverandørens oplysninger kommer fra `OPERATOR_*`.
+- Gæsternes privatlivsside `/privatliv/<kiosk_token>` (da/en), link "Privatliv" på skærmen.
+- Før første prod-udrulning og større migrationer: `tools/prod_generalproeve.py` (gammel prod-kode laver databasen, ny kode opgraderer den). Go-live-trin: `docs/azure.md`.
 - Multi-tenant: alt hænger på `Tenant`. Skærmen identificeres kun via `Tenant.kiosk_token` i URL'en `/k/<token>`.
 - Roller (`auth.py`): platform (dig, `ADMIN_PASSWORD` uden e-mail), partner (fx kontorhotel, ser alle firmaer med samme `partner_id` og kan oprette nye) og tenant (kunde-admin, ét firma, kun når `Tenant.self_service` er slået til). Brugere logger ind med e-mail og adgangskode (scrypt). Invitation og ny adgangskode sker med et signeret link (`/admin#invite=...`), som kun virker én gang (`User.token_version`).
 - Kun platform må se og rette abonnement (`/tenants/{id}/subscription`), slette firmaer og oprette partnere. Kunde-admins må ikke slå skærmen fra (`active`).

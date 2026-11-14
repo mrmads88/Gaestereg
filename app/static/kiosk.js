@@ -15,7 +15,7 @@ const API = "/api/kiosk/" + encodeURIComponent(TOKEN);
 
 const T = {
   da: {
-    wallSub: "Tryk på den, du skal besøge. Så giver vi besked.", wallHint: "Tryk på skærmen for at begynde",
+    wallSub: "Tryk på den, du skal besøge. Så giver vi besked.", wallHint: "Tryk på skærmen for at begynde", privacy: "Privatliv",
     qHost: "Hvem skal du besøge?", leadHost: "Tryk på personen.", checkOut: "Tjek ud", back: "Tilbage",
     searchP: "Søg på navn", any: "Ved ikke hvem", anySub: "Receptionen hjælper dig",
     qName: "Hvem er du?", nameLead: "Så ved de, hvem der venter.", lName: "Dit fulde navn", lPhone: "Dit mobilnummer",
@@ -46,7 +46,7 @@ const T = {
     searchAll: "Søg på firma eller person", firmReception: "Firmaets modtagelse", houseReception: "Husets reception",
   },
   en: {
-    wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin",
+    wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin", privacy: "Privacy",
     qHost: "Who are you visiting?", leadHost: "Tap the person.", checkOut: "Check out", back: "Back",
     searchP: "Search by name", any: "Not sure who", anySub: "Reception will help you",
     qName: "Who are you?", nameLead: "So they know who is waiting.", lName: "Your full name", lPhone: "Your mobile number",
@@ -92,6 +92,7 @@ const allowUnknown = () => (FIRM ? FIRM.allow_unknown_host : CFG.allow_unknown_h
 const firmById = (id) => (CFG.firms || []).find((f) => f.id === id) || null;
 function home() {
   FIRM = null; pkgFirm = null;
+  $("privOv").hidden = true;
   const d = CFG && LANGS().includes(CFG.lang_default) ? CFG.lang_default : LANGS()[0];
   if (lang !== d) { lang = d; applyLang(); }
   show(isOpen() ? HOME() : "closed");
@@ -331,6 +332,13 @@ $("termsRead").addEventListener("click", () => {
   $("termsOv").hidden = false; hideOsk();
 });
 $("termsClose").addEventListener("click", () => ($("termsOv").hidden = true));
+// Privatlivssiden (hvad vi gemmer om gæsten, og hvor længe) i et vindue på skærmen.
+$("privBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  $("privFrame").src = "/privatliv/" + encodeURIComponent(TOKEN) + "?lang=" + (lang === "en" ? "en" : "da");
+  $("privOv").hidden = false; hideOsk();
+});
+$("privClose").addEventListener("click", () => { $("privOv").hidden = true; $("privFrame").src = "about:blank"; });
 $("termsAccept").addEventListener("click", () => { $("termsOv").hidden = true; termsOk(true); validate(); });
 
 function prepName() {

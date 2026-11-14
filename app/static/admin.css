@@ -473,3 +473,16 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .al-notify small{color:var(--soft);font-size:.8rem}
 .al-notify.off{flex-direction:column;cursor:default;font-size:.88rem;color:var(--soft)}
 .al-off{font-size:.82rem}
+
+/* ---------- databehandleraftale og klar til prod ---------- */
+.dpa-veil{z-index:80}
+.dpa-box{width:min(780px,100%)}
+.dpa-text{border:1px solid var(--rule);border-radius:12px;padding:6px 18px;max-height:46vh;overflow:auto;background:#fbfbfa;font-size:.9rem}
+.dpa-text h1{font:800 1.4rem var(--f-display);margin:12px 0 2px}
+.dpa-text h2{font-size:1rem;margin:16px 0 4px}
+.dpa-text .udkast{background:#fff4dd;border:1px solid #f0dfb8;border-radius:8px;padding:8px 12px;font-weight:700}
+.ready-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ready-list li{display:flex;gap:10px;align-items:baseline}
+.ready-list li span{font-weight:800;width:16px}
+.ready-list li.ok span{color:var(--ok)}
+.ready-list li.no span{color:var(--bad)}

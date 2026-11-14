@@ -76,7 +76,7 @@
         <p class="muted">Eller opret en ny. Hver kunde får sit eget skærmlink, logo, personer og beskeder.</p>
       </div>
 
-      <div id="billingView" class="pview" hidden></div>
+      <div id="billingView" class="pview" hidden><div id="readyBox"></div><div id="billingBox"></div></div>
       <div id="partnerView" class="pview" hidden>
         <div class="ed-head">
           <div class="ed-logo"><span id="pvInitials"></span></div>
@@ -90,6 +90,7 @@
             <div class="fld"><span>Aftalen er</span><label class="switch"><input type="checkbox" id="pActive"><i></i><em>Aktiv</em></label></div>
           </div>
           <p class="muted small">Når aftalen er slået fra, kan partnerens administratorer ikke logge ind. Skærmene kører videre.</p>
+          <p class="muted small" id="pDpa"></p>
         </div>
         <div class="stack" id="pBilling" hidden></div>
         <div class="card">
@@ -403,6 +404,7 @@
             <div class="fld"><span>Selvbetjening uden for pakken</span><label class="switch"><input type="checkbox" data-s="self_service"><i></i><em>Kundens administratorer kan logge ind, selv om pakken ikke har selvbetjening</em></label></div>
             <label class="fld"><span>Note</span><textarea data-s="sub_note" rows="3" maxlength="500" placeholder="Fx kontaktperson og aftaler"></textarea></label>
             <p class="muted small" id="subSummary"></p>
+            <p class="muted small" id="dpaStatus"></p>
           </div>
         </section>
 

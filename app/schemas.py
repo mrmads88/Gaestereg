@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from . import modules, presence
+from . import legal, modules, presence
 from .media import media_url
 from .models import Host, Partner, Tenant, User
 from .timeutil import local_iso
@@ -376,6 +376,7 @@ def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False, hos
     d["partner_name"] = t.partner.name if t.partner else ""
     d["self_service"] = modules.tenant_has(t, "self_service")  # så admins kan se, om kunde-login virker
     d["modules"] = modules.of_tenant(t)
+    d["dpa"] = legal.status(t)
     if platform:
         d["subscription"] = {f: getattr(t, f) for f in SUBSCRIPTION_FIELDS}
         d["subscription"]["sub_paid_until"] = t.sub_paid_until.isoformat() if t.sub_paid_until else None
@@ -430,6 +431,7 @@ def user_out(u: User) -> dict:
 def partner_out(p: Partner, tenant_count: int = 0, user_count: int = 0) -> dict:
     return {"id": p.id, "name": p.name, "active": p.active, "tenant_count": tenant_count,
             "meeting_privacy": p.meeting_privacy, "report_email": p.report_email, "modules": modules.of_partner(p),
+            "dpa": legal.status(p),
             "user_count": user_count, "created_at": local_iso(p.created_at)}
 
 

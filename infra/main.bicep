@@ -28,6 +28,12 @@ param freeSql bool = true
 
 param sqlAdminLogin string = 'gaestereg_admin'
 
+@description('true = billeder i Azure Blob Storage (få kroner om måneden). false = filer på app-serveren.')
+param blobStorage bool = false
+
+@description('Navn på lagerkontoen (3-24 små bogstaver og tal, unikt i hele Azure). Bruges kun med blobStorage.')
+param storageName string = ''
+
 @secure()
 param sqlAdminPassword string
 
@@ -79,6 +85,33 @@ resource db 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
     zoneRedundant: false
     requestedBackupStorageRedundancy: 'Local'
   }
+}
+
+// Billeder (logoer, baggrunde, fotos). Privat: appen henter dem og sender dem selv via /media.
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = if (blobStorage) {
+  name: storageName
+  location: location
+  tags: tags
+  kind: 'StorageV2'
+  sku: { name: 'Standard_LRS' }
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: false
+    supportsHttpsTrafficOnly: true
+    accessTier: 'Hot'
+  }
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = if (blobStorage) {
+  parent: storage
+  name: 'default'
+  properties: { deleteRetentionPolicy: { enabled: true, days: 14 } } // slettede billeder kan hentes tilbage i 14 dage
+}
+
+resource mediaContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = if (blobStorage) {
+  parent: blobService
+  name: 'media'
+  properties: { publicAccess: 'None' }
 }
 
 resource app 'Microsoft.Web/sites@2023-12-01' = {
