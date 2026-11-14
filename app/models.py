@@ -132,6 +132,9 @@ class Tenant(Base):
     dpa_version: Mapped[str] = mapped_column(Unicode(40), default="", server_default=text("''"))
     dpa_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     dpa_accepted_by: Mapped[str] = mapped_column(Unicode(200), default="", server_default=text("''"))
+    # Tidsregistrering (modul "time"): medarbejderknap på skærmen og automatisk pause ved dage over 6 timer.
+    time_kiosk: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    time_break_min: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Host.sort_order"
@@ -156,6 +159,10 @@ class Host(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     # Tælles op, når værtens personlige invitationslink laves om, så det gamle holder op med at virke.
     link_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    # Tidsregistrering: om personen registrerer arbejdstid, PIN til skærmen (scrypt) og normtid pr. uge.
+    time_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    time_pin: Mapped[str] = mapped_column(Unicode(200), default="", server_default=text("''"))
+    time_norm_min: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
 
     tenant: Mapped[Tenant] = relationship(back_populates="hosts")
 
@@ -617,3 +624,24 @@ class CrmActivity(Base):
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     done_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
+class TimeEntry(Base):
+    """Arbejdstid for en medarbejder (lov om registrering af arbejdstid). Gemmes i 5 år, også når personen slettes:
+    host_id har ingen FK, og navnet kopieres. Tider i UTC. end_at er tom, mens medarbejderen er stemplet ind.
+    approved_at låser posten. edit_log er en JSON-liste med alle rettelser (hvem, hvornår, fra og til)."""
+    __tablename__ = "time_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    host_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120), default="")
+    start_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    break_min: Mapped[int] = mapped_column(Integer, default=0)
+    source: Mapped[str] = mapped_column(Unicode(10), default="kiosk")  # kiosk | phone | admin
+    note: Mapped[str] = mapped_column(Unicode(300), default="")
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    approved_by: Mapped[str] = mapped_column(Unicode(200), default="")
+    edit_log: Mapped[str] = mapped_column(UnicodeText, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

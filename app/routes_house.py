@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import house
+from . import house, timereg
 from .auth import Principal, current
 from .db import get_db
 from .models import Partner, Tenant, utcnow
@@ -84,7 +84,8 @@ def evac_page(token: str):
 def evac_list(token: str, db: Session = Depends(get_db)):
     """Evakueringslisten: alle gæster i huset lige nu. Linket er hemmeligt og kan laves om i admin."""
     name, ids = house.evac_scope(db, token)
-    return {"name": name, "guests": house.inside_out(db, house.inside(db, ids))}
+    return {"name": name, "guests": house.inside_out(db, house.inside(db, ids)),
+            "staff": timereg.inside(db, ids)}  # medarbejdere, der er stemplet ind (tidsregistrering)
 
 
 # ---------- statistik ----------

@@ -44,6 +44,11 @@ const T = {
     clear: "Ryd",
     qFirm: "Hvilket firma skal du besøge?", leadFirm: "Tryk på firmaet, eller søg efter personen.", allFirms: "Alle firmaer",
     searchAll: "Søg på firma eller person", firmReception: "Firmaets modtagelse", houseReception: "Husets reception",
+    staff: "Medarbejder", staffQ: "Stempl ind eller ud", staffLead: "Tryk på dit navn.", pinQ: "Hej {n}. Tast din PIN",
+    pinLead: "4 cifre. Din administrator kan give dig en ny.", pinBad: "Forkert PIN. Prøv igen.",
+    noPin: "Du har ingen PIN endnu. Spørg din administrator.", tooMany: "For mange forsøg. Prøv igen om lidt.",
+    clockedIn: "Velkommen, {n}", clockedInSub: "Stemplet ind kl. {t}", clockedOut: "Tak for i dag, {n}",
+    clockedOutSub: "Stemplet ud kl. {t}. I dag: {h}",
   },
   en: {
     wallSub: "Tap the person you're visiting and we'll let them know.", wallHint: "Tap the screen to begin", privacy: "Privacy",
@@ -75,6 +80,11 @@ const T = {
     clear: "Clear",
     qFirm: "Which company are you visiting?", leadFirm: "Tap the company, or search for the person.", allFirms: "All companies",
     searchAll: "Search company or person", firmReception: "Company reception", houseReception: "Building reception",
+    staff: "Staff", staffQ: "Clock in or out", staffLead: "Tap your name.", pinQ: "Hi {n}. Enter your PIN",
+    pinLead: "4 digits. Your administrator can give you a new one.", pinBad: "Wrong PIN. Please try again.",
+    noPin: "You don't have a PIN yet. Ask your administrator.", tooMany: "Too many attempts. Please try again shortly.",
+    clockedIn: "Welcome, {n}", clockedInSub: "Clocked in at {t}", clockedOut: "See you, {n}",
+    clockedOutSub: "Clocked out at {t}. Today: {h}",
   },
 };
 let lang = "da";
@@ -92,7 +102,7 @@ const allowUnknown = () => (FIRM ? FIRM.allow_unknown_host : CFG.allow_unknown_h
 const firmById = (id) => (CFG.firms || []).find((f) => f.id === id) || null;
 function home() {
   FIRM = null; pkgFirm = null;
-  $("privOv").hidden = true;
+  $("privOv").hidden = true; staffClose();
   const d = CFG && LANGS().includes(CFG.lang_default) ? CFG.lang_default : LANGS()[0];
   if (lang !== d) { lang = d; applyLang(); }
   show(isOpen() ? HOME() : "closed");
@@ -143,6 +153,7 @@ function applyLook() {
   r.style.setProperty("--photo", bg ? 'url("' + bg + '")' : "none");
   r.style.setProperty("--dim", ((CFG.background_dim || 0) / 100).toFixed(2));
   document.title = CFG.name;
+  $("staffBtn").hidden = MOBILE || !(CFG.staff || []).length;
   $("logoPlate").innerHTML = CFG.logo_url ? '<img src="' + esc(CFG.logo_url) + '" alt="' + esc(CFG.name) + '">' : '<span class="lname">' + esc(CFG.name) + "</span>";
   applyLang();
 }
@@ -339,6 +350,55 @@ $("privBtn").addEventListener("click", (e) => {
   $("privOv").hidden = false; hideOsk();
 });
 $("privClose").addEventListener("click", () => { $("privOv").hidden = true; $("privFrame").src = "about:blank"; });
+// ---------- medarbejdere stempler ind og ud (tidsregistrering) ----------
+let staffSel = null, staffPin = "", staffBusy = false, staffT;
+function staffClose() { $("staffOv").hidden = true; clearTimeout(staffT); staffSel = null; staffPin = ""; }
+function staffRender(err) {
+  const body = $("staffBody");
+  if (!staffSel) {
+    $("staffH").textContent = t("staffQ"); $("staffLead").textContent = t("staffLead");
+    body.innerHTML = '<div class="staff-list">' + (CFG.staff || []).map((s) => '<button type="button" class="staff-p" data-sid="' + s.id + '"><span class="av">' +
+      (s.photo_url ? '<img src="' + esc(s.photo_url) + '" alt="">' : esc(initials(s.name))) + "</span><b>" + esc(s.name) + "</b></button>").join("") + "</div>";
+    return;
+  }
+  $("staffH").textContent = t("pinQ").replace("{n}", first(staffSel.name)); $("staffLead").textContent = t("pinLead");
+  body.innerHTML = '<div class="codewrap"><div class="codeboxes' + (err ? " shake" : "") + '">' + [0, 1, 2, 3].map((i) => '<span class="' + (i < staffPin.length ? "on" : i === staffPin.length ? "cur" : "") + '">' + (i < staffPin.length ? "•" : "") + "</span>").join("") + "</div>" +
+    (err ? '<p class="codeerr">' + esc(err) + "</p>" : "") + '<div class="codepad">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => '<button type="button" data-k="' + n + '">' + n + "</button>").join("") +
+    '<button type="button" class="fn" data-k="back">' + esc(t("back")) + '</button><button type="button" data-k="0">0</button><button type="button" class="fn" data-k="clr">' + esc(t("clear")) + "</button></div></div>";
+}
+function staffDone(r) {
+  const out = r.state === "out";
+  $("staffH").textContent = t(out ? "clockedOut" : "clockedIn").replace("{n}", r.first);
+  $("staffLead").textContent = t(out ? "clockedOutSub" : "clockedInSub").replace("{t}", r.hhmm).replace("{h}", r.today);
+  $("staffBody").innerHTML = '<div class="staff-ok ' + (out ? "out" : "in") + '" aria-hidden="true">' + (out ? "👋" : "✓") + "</div>";
+  clearTimeout(staffT); staffT = setTimeout(staffClose, 4500);
+}
+async function staffSend() {
+  if (staffBusy) return; staffBusy = true;
+  try {
+    if (PREVIEW) { staffDone({ state: "in", first: first(staffSel.name), hhmm: hhmm(new Date()), today: "0:00" }); return; }
+    const r = await fetch(API + "/time", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ host_id: staffSel.id, pin: staffPin }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) return staffDone(d);
+    staffPin = "";
+    staffRender(r.status === 429 ? t("tooMany") : /ingen PIN/.test(d.detail || "") ? t("noPin") : r.status === 401 ? t("pinBad") : (d.detail || t("errNet")));
+  } catch (e) { staffPin = ""; staffRender(t("errNet")); }
+  finally { staffBusy = false; }
+}
+$("staffBtn").addEventListener("click", (e) => { e.stopPropagation(); staffSel = null; staffPin = ""; staffRender(); $("staffOv").hidden = false; hideOsk(); });
+$("staffClose").addEventListener("click", staffClose);
+$("staffBody").addEventListener("click", (e) => {
+  const p = e.target.closest("[data-sid]");
+  if (p) { staffSel = (CFG.staff || []).find((s) => s.id === +p.dataset.sid) || null; staffPin = ""; staffRender(); return; }
+  const k = e.target.closest("[data-k]"); if (!k || !staffSel) return;
+  const v = k.dataset.k;
+  if (v === "back") { if (staffPin) staffPin = staffPin.slice(0, -1); else staffSel = null; }
+  else if (v === "clr") staffPin = "";
+  else if (staffPin.length < 4) staffPin += v;
+  staffRender();
+  if (staffPin.length === 4) staffSend();
+});
+
 $("termsAccept").addEventListener("click", () => { $("termsOv").hidden = true; termsOk(true); validate(); });
 
 function prepName() {

@@ -178,15 +178,27 @@ Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét s
    kunder viser omsætning, besøg, seneste login og databehandleraftale, og tidslinjen får fakturaer fra Nodd.
    "Hent dem" opretter de eksisterende kunder og huse. Morgenmail med dagens opfølgninger i prod.
    Senere: mails direkte fra CRM, påmindelse om fornyelse, tilbud som PDF, flere brugere (sælgere).
-2. **Tidsregistrering for medarbejdere (modul, kunderne kan købe).** Siden 1. juli 2024 skal arbejdsgivere i
-   Danmark registrere medarbejdernes arbejdstid. Medarbejdere stempler ind og ud på receptionsskærmen eller
-   telefonen. Ugeoversigt, godkendelse af lederen, eksport. Medarbejdere, der er stemplet ind, kommer med på
-   evakueringslisten.
+2. **Tidsregistrering for medarbejdere: bygget** (tilkøbet "Tidsregistrering", 249 kr./md. for op til 25
+   medarbejdere). Siden 1. juli 2024 skal arbejdsgivere i Danmark registrere medarbejdernes daglige arbejdstid og
+   gemme den i 5 år. Medarbejdere stempler ind og ud på receptionsskærmen (knappen "Medarbejder" og en 4-cifret PIN)
+   eller på telefonen (personligt link), hvor de også kan se deres egne registreringer. Fanen "Tid" i admin:
+   ugeskema med normtid og over/under, hvem der er på arbejde nu, manglende udstemplinger, rettelser med log,
+   godkendelse pr. uge og CSV til Danløn/Salary. Automatisk pause ved dage over 6 timer. Medarbejdere, der er
+   stemplet ind, står på evakueringslisten.
+   Senere: ferie og fravær, flere arbejdssteder/projekter, direkte overførsel til Danløn/Salary, påmindelse om
+   glemt udstempling.
 3. **Integrationer i stedet for egen bogføring og løn.** Bogføringsloven kræver anmeldte, godkendte systemer, og
    løn kræver indberetning til eIndkomst, ATP, ferie og pension. Derfor: fakturaer sendes til e-conomic, Dinero
    eller Billy, og timer eksporteres til Danløn eller Salary.
 4. Andre moduler, der passer: adgangskort og nøgler, gæsteparkering, helpdesk til huset (fejlmeldinger), skabe,
    kantine/POS.
+
+## Admin på engelsk (næste store punkt)
+Mads' ønske (november 2026): admin skal kunne bruges på engelsk. Sproget vælges på login-siden og kan skiftes
+bagefter (under "Sikkerhed"/profil). Plan: `User.lang` (og leverandørens konto), en `t()`-funktion med da/en-tekster
+i admin-JS (som `kiosk.js` allerede har), fejlbeskeder fra serveren efter brugerens sprog, og mails til brugeren
+på samme sprog. Medarbejdersiden (`/t/`), bookingsiden og evakueringslisten følger med. Skærmen er allerede på flere
+sprog.
 
 ## Venter på prod / en kunde
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).

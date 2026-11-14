@@ -16,9 +16,9 @@ from sqlalchemy.orm import object_session
 
 from .models import BillingAccount, Partner, Tenant
 
-MODULES = ("rooms", "catering", "self_service", "reports", "signage")
+MODULES = ("rooms", "catering", "self_service", "reports", "signage", "time")
 NAMES = {"rooms": "Mødelokaler", "catering": "Forplejning", "self_service": "Selvbetjening",
-         "reports": "Overblik og månedsrapport", "signage": "Infoskærm"}
+         "reports": "Overblik og månedsrapport", "signage": "Infoskærm", "time": "Tidsregistrering"}
 
 _cache: dict[tuple[str, int, date], frozenset] = {}
 

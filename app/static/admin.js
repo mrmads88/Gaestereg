@@ -314,6 +314,8 @@ function renderAll() {
   $("reportTab").hidden = ME.role !== "platform" && !(tm.reports && tm.reports.on);
   $("signageTab").hidden = ME.role !== "platform" && !(tm.signage && tm.signage.on);
   if (tab === "signage" && $("signageTab").hidden) tab = "people";
+  $("timeTab").hidden = ME.role !== "platform" && !(tm.time && tm.time.on);
+  if (tab === "time" && $("timeTab").hidden) tab = "people";
   if (tab === "report" && $("reportTab").hidden) tab = "people";
   renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
   document.querySelectorAll(".tn").forEach((x) => (x.textContent = T.name));
@@ -466,6 +468,7 @@ function setTab(name) {
   if (name === "exp") loadExpected();
   if (name === "rooms") loadRooms();
   if (name === "sub") mountBilling();
+  if (name === "time" && T) window.NoddTime.mount($("tTime"), { tenant: T, api, toast, esc });
   if (name === "signage" && T) window.NoddSignage.mount($("tSignage"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform" });
   if (name === "report" && T) window.NoddReports.mount($("tReport"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform",
     onEmail: (v) => api("PATCH", "/api/admin/tenants/" + T.id, { report_email: v }).then((x) => { T.report_email = x.report_email; saved(); }) });
