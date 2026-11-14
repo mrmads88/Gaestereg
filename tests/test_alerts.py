@@ -127,3 +127,67 @@ def test_tenant_admin_only_own_firm(plat, house):
     house_alert = plat.post("/api/admin/alerts", json={"partner_id": pid, "kind": "info"}).json()
     assert c.post(f"/api/admin/alerts/{house_alert['id']}/end").status_code == 404
     assert TestClient(app).post("/api/admin/alerts", json={"tenant_id": a["id"]}).status_code == 401
+
+
+def _log(plat, t):
+    return plat.get(f"/api/admin/tenants/{t['id']}/notifications").json()
+
+
+def test_people_notify_is_off_by_default_and_follows_setting(plat, house):
+    pid, a, b = house["partner"]["id"], house["a"], house["b"]
+    plat.post(f"/api/admin/tenants/{a['id']}/hosts", json={"name": "Anna", "phone": "20 30 40 50", "email": "anna@a.dk"})
+    plat.post(f"/api/admin/tenants/{a['id']}/hosts", json={"name": "Bo", "email": "bo@a.dk"})
+    plat.post(f"/api/admin/tenants/{b['id']}/hosts", json={"name": "Anna igen", "phone": "+45 20304050"})  # samme nummer
+    gone = plat.post(f"/api/admin/tenants/{b['id']}/hosts", json={"name": "Stoppet", "phone": "99887766"}).json()
+    plat.patch(f"/api/admin/hosts/{gone['id']}", json={"active": False})
+    plat.patch(f"/api/admin/tenants/{b['id']}", json={"teams_webhook": "https://example.com/teams"})
+
+    # Slukket som standard: notify ignoreres.
+    info = plat.get(f"/api/admin/alerts?partner_id={pid}").json()["notify"]
+    assert not info["enabled"] and info["sms"] == 1 and info["email"] == 2 and info["teams"] == 1
+    r = plat.post("/api/admin/alerts", json={"partner_id": pid, "kind": "evacuation", "notify": True}).json()
+    assert not r["notify"]
+    assert not any(n["recipient"] in ("20 30 40 50", "anna@a.dk") for n in _log(plat, a))
+    plat.post(f"/api/admin/alerts/{r['id']}/end")
+
+    # Huset slår det til. Evakuering sendes til alle én gang; information sendes aldrig.
+    assert plat.patch(f"/api/admin/alerts/settings?partner_id={pid}", json={"alert_notify": True}).json()["enabled"]
+    r = plat.post("/api/admin/alerts", json={"partner_id": pid, "kind": "evacuation", "notify": True}).json()
+    assert r["notify"]
+    log_a, log_b = _log(plat, a), _log(plat, b)
+    sms = [n for n in log_a + log_b if n["channel"] == "sms" and n["subject"].startswith("Evakuering")]
+    assert [n["recipient"] for n in sms] == ["20 30 40 50"]  # samme nummer kun én gang, ikke den stoppede person
+    assert sms[0]["body"].startswith("EVAKUERING (Alarmhuset):") and sms[0]["status"] == "test"
+    assert {n["recipient"] for n in log_a if n["channel"] == "email" and n["subject"].startswith("Evakuering")} == {"anna@a.dk", "bo@a.dk"}
+    assert any(n["channel"] == "teams" for n in log_b)
+    listed = plat.get(f"/api/admin/alerts?partner_id={pid}").json()["active"][0]
+    assert listed["notified_count"] == 4
+    # Afslut: alle får "Afblæst" én gang.
+    plat.post(f"/api/admin/alerts/{r['id']}/end")
+    plat.post(f"/api/admin/alerts/{r['id']}/end")
+    cleared = [n for n in _log(plat, a) + _log(plat, b) if n["subject"].startswith("Afblæst")]
+    assert len(cleared) == 4 and any("Du kan vende tilbage" in n["body"] for n in cleared)
+    before = len(_log(plat, a))
+    plat.post("/api/admin/alerts", json={"partner_id": pid, "kind": "info", "title": "Kaffe", "notify": True})
+    assert len(_log(plat, a)) == before
+
+
+def test_evac_list_follows_setting_and_tenant_admin_cannot_enable(plat, house):
+    pid, a = house["partner"]["id"], house["a"]
+    plat.post(f"/api/admin/tenants/{a['id']}/hosts", json={"name": "Cia", "phone": "11223344"})
+    tok = plat.get(f"/api/admin/partners/{pid}/evac-link").json()["url"].split("/e/")[1]
+    plat.post(f"/api/evac/{tok}/alert", json={"action": "start"})
+    assert not any(n["recipient"] == "11223344" for n in _log(plat, a))  # slukket
+    plat.post(f"/api/evac/{tok}/alert", json={"action": "end"})
+    plat.patch(f"/api/admin/alerts/settings?partner_id={pid}", json={"alert_notify": True})
+    plat.post(f"/api/evac/{tok}/alert", json={"action": "start"})
+    assert any(n["recipient"] == "11223344" and n["subject"].startswith("Evakuering") for n in _log(plat, a))
+    plat.post(f"/api/evac/{tok}/alert", json={"action": "end"})
+    assert any(n["recipient"] == "11223344" and n["subject"].startswith("Afblæst") for n in _log(plat, a))
+    # Firmaets egne admins kan ikke slå SMS til (det koster).
+    plat.patch(f"/api/admin/tenants/{a['id']}/subscription", json={"self_service": True})
+    link = plat.post(f"/api/admin/tenants/{a['id']}/users", json={"email": "admin@alarm-sms.dk"}).json()["invite_url"]
+    c = TestClient(app)
+    c.post("/api/admin/invite/accept", json={"token": link.split("#invite=")[1], "password": "alarm-kode-1234"})
+    assert c.patch(f"/api/admin/alerts/settings?tenant_id={a['id']}", json={"alert_notify": True}).status_code == 403
+    assert c.get(f"/api/admin/alerts?tenant_id={a['id']}").json()["notify"]["enabled"]  # huset har slået det til
