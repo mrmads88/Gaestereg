@@ -259,3 +259,13 @@ def test_alerts_of_other_houses_are_hidden(setup, platform):
     assert pa.post(f"/api/admin/alerts/{a['id']}/end").status_code == 404
     platform.post(f"/api/admin/alerts/{a['id']}/end")
     platform.delete(f"/api/admin/partners/{other['id']}")
+
+
+def test_dpa_endpoints_need_login():
+    c = new_client()
+    assert c.get("/api/admin/dpa").status_code == 401
+    assert c.post("/api/admin/dpa/accept", json={"version": "x"}).status_code == 401
+
+
+def test_media_to_blob_only_for_platform():
+    assert new_client().post("/api/admin/ops/media-to-blob").status_code == 401

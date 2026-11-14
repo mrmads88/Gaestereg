@@ -1,0 +1,72 @@
+<!-- Databehandleraftale. Felterne $leverandoer, $cvr, $adresse, $email, $kunde og $version udfyldes af legal.py.
+     UDKAST: skal gennemgås og godkendes af en jurist. Sæt derefter DPA_FINAL=1, så kunderne skal acceptere den endelige
+     tekst. Ændres teksten senere, så hæv DPA_VERSION i legal.py, så alle accepterer igen. -->
+$udkast
+<h1>Databehandleraftale</h1>
+<p class="meta">Version $version</p>
+
+<h2>1. Parter</h2>
+<p><b>Den dataansvarlige:</b> $kunde (herefter "Kunden").</p>
+<p><b>Databehandleren:</b> $leverandoer, CVR $cvr, $adresse, $email (herefter "Leverandøren").</p>
+<p>Aftalen gælder Kundens brug af Leverandørens løsning til gæsteregistrering, mødelokaler, forplejning,
+infoskærme og tilhørende tjenester (herefter "Løsningen").</p>
+
+<h2>2. Formål og instruks</h2>
+<p>Leverandøren behandler kun personoplysninger på Kundens dokumenterede instruks og kun for at levere Løsningen.
+Denne aftale og Kundens opsætning af Løsningen udgør instruksen. Leverandøren underretter straks Kunden, hvis en
+instruks efter Leverandørens opfattelse er i strid med databeskyttelsesreglerne.</p>
+
+<h2>3. Hvilke oplysninger og om hvem</h2>
+<ul>
+<li><b>Gæster:</b> navn, mobilnummer, firma, hvem de besøger, tidspunkt for ankomst og afgang, accept af husregler.</li>
+<li><b>Forventede gæster:</b> navn, mobil, e-mail, firma og forventet tidspunkt.</li>
+<li><b>Kundens medarbejdere (værter):</b> navn, titel, mobilnummer, e-mail og evt. foto.</li>
+<li><b>Kundens administratorer:</b> navn, e-mail og tidspunkt for seneste login.</li>
+<li><b>Bookinger og forplejning:</b> mødets titel, arrangør, antal deltagere, bemærkninger og omkostningssted.</li>
+<li><b>Beskeder:</b> log over sendte SMS'er, e-mails og Teams-beskeder.</li>
+</ul>
+<p>Der behandles ikke følsomme oplysninger (GDPR art. 9) eller CPR-numre. Kunden må ikke bruge fritekstfelter til
+sådanne oplysninger.</p>
+
+<h2>4. Varighed og sletning</h2>
+<p>Aftalen gælder, så længe Leverandøren behandler oplysninger for Kunden. Besøg slettes automatisk efter det antal dage,
+Kunden har valgt i Løsningen. Statistik gemmes uden navne. Ved ophør sletter Leverandøren Kundens oplysninger senest
+30 dage efter, medmindre Kunden inden da beder om at få dem udleveret, eller lovgivning kræver opbevaring.</p>
+
+<h2>5. Fortrolighed og sikkerhed</h2>
+<p>Kun personer, der har brug for det for at levere Løsningen, har adgang, og de er underlagt tavshedspligt.
+Leverandøren træffer passende tekniske og organisatoriske foranstaltninger (GDPR art. 32), herunder krypteret
+forbindelse (HTTPS), adgangskoder gemt med scrypt, adgangskontrol, så hver kunde kun ser egne data, logning af
+beskeder, automatisk sletning og sikkerhedskopier hos hostingudbyderen.</p>
+
+<h2>6. Underdatabehandlere</h2>
+<p>Kunden giver generel godkendelse til, at Leverandøren bruger disse underdatabehandlere:</p>
+<ul>
+<li><b>Microsoft Ireland Operations Ltd. (Microsoft Azure):</b> hosting af server, database og billeder i Sverige (EU).</li>
+<li><b>GatewayAPI ApS (Danmark):</b> afsendelse af SMS.</li>
+<li><b>Mailudbyder:</b> afsendelse af e-mail. Leverandøren oplyser den konkrete udbyder på forespørgsel.</li>
+</ul>
+<p>Leverandøren varsler ændringer i underdatabehandlere mindst 30 dage i forvejen, så Kunden kan gøre indsigelse.
+Leverandøren pålægger underdatabehandlere de samme forpligtelser som i denne aftale. Oplysninger overføres ikke til
+lande uden for EU/EØS uden et gyldigt overførselsgrundlag.</p>
+
+<h2>7. Bistand til Kunden</h2>
+<p>Leverandøren hjælper Kunden med at opfylde de registreredes rettigheder (fx indsigt og sletning), med sikkerhed,
+konsekvensanalyser og forhåndshøring, i det omfang det er rimeligt ud fra behandlingens art. Henvendelser fra
+registrerede sendes videre til Kunden.</p>
+
+<h2>8. Brud på persondatasikkerheden</h2>
+<p>Leverandøren underretter Kunden uden unødig forsinkelse, og så vidt muligt senest 48 timer efter at være blevet
+opmærksom på et brud, så Kunden kan anmelde det til Datatilsynet inden for 72 timer.</p>
+
+<h2>9. Kontrol og revision</h2>
+<p>Leverandøren stiller de oplysninger til rådighed, der er nødvendige for at vise, at aftalen overholdes, og giver
+mulighed for revision foretaget af Kunden eller en uafhængig revisor med rimeligt varsel.</p>
+
+<h2>10. Ansvar, ændringer og lovvalg</h2>
+<p>Parternes ansvar følger den aftale om Løsningen, Kunden har indgået med Leverandøren. Ændringer i denne aftale
+offentliggøres som en ny version, som Kunden accepterer i Løsningen. Aftalen er underlagt dansk ret.</p>
+
+<h2>11. Accept</h2>
+<p>Aftalen indgås, når Kundens administrator accepterer den i Løsningen. Tidspunkt, version og hvem der accepterede,
+gemmes som dokumentation.</p>

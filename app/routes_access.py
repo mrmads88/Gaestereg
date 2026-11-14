@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .auth import (COOKIE, MAX_AGE, Principal, access_problem, check_master_password, check_user_password,
                    current, hash_password, invite_token, require_platform, session_platform, session_user,
                    slow_down, user_from_invite)
-from . import catering, ratelimit, signage
+from . import catering, legal, ops, ratelimit, signage
 from .config import settings
 from .db import get_db
 from .media import delete_media
@@ -97,10 +97,18 @@ def status():
     }
 
 
+@router.post("/ops/media-to-blob")
+def media_to_blob(p: Principal = Depends(require_platform)):
+    """Engangsjob ved go-live: billeder fra før Blob Storage kopieres op (kun leverandøren)."""
+    return ops.copy_media_to_blob()
+
+
 @router.get("/me")
 def me(db: Session = Depends(get_db), p: Principal = Depends(current)):
     partner = db.get(Partner, p.partner_id) if p.partner_id else None
     return {
+        **({"readiness": ops.readiness()} if p.is_platform else {}),
+        "dpa_required": legal.required(db, p),
         "role": p.role,
         "name": p.user.name if p.user else "Platform-admin",
         "email": p.user.email if p.user else "",

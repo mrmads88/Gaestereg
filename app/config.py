@@ -54,10 +54,23 @@ class Settings:
 
     gatewayapi_token: str = field(default_factory=lambda: os.getenv("GATEWAYAPI_TOKEN", ""))
     gatewayapi_url: str = field(default_factory=lambda: os.getenv("GATEWAYAPI_URL", "https://gatewayapi.com/rest/mtsms"))
+    # Billeder i Azure Blob Storage (prod). Tom = lokale filer i DATA_DIR/media.
+    azure_storage_connection_string: str = field(default_factory=lambda: os.getenv("AZURE_STORAGE_CONNECTION_STRING", ""))
+    azure_storage_container: str = field(default_factory=lambda: os.getenv("AZURE_STORAGE_CONTAINER", "media"))
     # Månedsrapporter sendes automatisk den 1. kl. 07 (slås fra i tests). Links i mails peger på public_url.
     report_scheduler: bool = field(default_factory=lambda: _bool("REPORT_SCHEDULER", True))
     public_url: str = field(default_factory=lambda: os.getenv("PUBLIC_URL", "") or (
         f"https://{os.environ['WEBSITE_HOSTNAME']}" if os.getenv("WEBSITE_HOSTNAME") else "http://localhost:8000"))
+    public_url_explicit: str = field(default_factory=lambda: os.getenv("PUBLIC_URL", ""))
+    # Fejlmails til leverandøren (komma mellem flere). Tom = ingen fejlmails.
+    ops_email: str = field(default_factory=lambda: os.getenv("OPS_EMAIL", ""))
+    # Leverandøren (databehandleren) i databehandleraftalen og på gæsternes privatlivsside.
+    operator_name: str = field(default_factory=lambda: os.getenv("OPERATOR_NAME", ""))
+    operator_cvr: str = field(default_factory=lambda: os.getenv("OPERATOR_CVR", ""))
+    operator_address: str = field(default_factory=lambda: os.getenv("OPERATOR_ADDRESS", ""))
+    operator_email: str = field(default_factory=lambda: os.getenv("OPERATOR_EMAIL", ""))
+    # Sæt DPA_FINAL=1, når en jurist har godkendt teksten i app/texts/. Indtil da står den som udkast.
+    dpa_final: bool = field(default_factory=lambda: _bool("DPA_FINAL", False))
 
     def __post_init__(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)

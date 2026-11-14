@@ -76,6 +76,9 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .langbtn b{font-family:var(--f-display);font-size:1.7rem;font-weight:650;letter-spacing:-.01em}
 .langbtn span{color:var(--soft);font-size:1.05rem;margin-top:-10px}
 .wall-hint{display:none;font-size:.9rem;opacity:.7}
+.privlink{margin-left:auto;background:none;border:0;color:inherit;opacity:.6;font:600 .82rem var(--f-body);text-decoration:underline;cursor:pointer;padding:6px}
+.ov-box.priv{width:min(860px,100%);max-height:90vh}
+.ov-box.priv iframe{width:100%;height:68vh;border:0;border-radius:14px;background:#fff}
 @media (min-width:900px){
   .wall{flex-direction:column;align-items:stretch;padding-block:40px 36px}
   .wall-top{flex:none}

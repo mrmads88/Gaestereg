@@ -13,3 +13,5 @@ segno==1.6.1
 # Azure SQL. Kræver "ODBC Driver 18 for SQL Server", som er installeret i App Service (Linux, Python).
 # Bruges kun, når DATABASE_URL starter med mssql+pyodbc://. Lokalt og i tests bruges SQLite.
 pyodbc==5.2.0
+# Billeder i Azure Blob Storage, når AZURE_STORAGE_CONNECTION_STRING er sat. Ellers bruges lokale filer.
+azure-storage-blob==12.24.0

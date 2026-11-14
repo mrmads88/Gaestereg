@@ -149,7 +149,14 @@ def current(request: Request, db: Session = Depends(get_db)) -> Principal:
     problem = access_problem(db, u)
     if problem:
         raise HTTPException(403, problem)
-    return Principal(u.role, u, u.partner_id, u.tenant_id)
+    p = Principal(u.role, u, u.partner_id, u.tenant_id)
+    # I prod skal firmaet eller huset have accepteret databehandleraftalen, før der kan gemmes noget.
+    if settings.env == "prod" and request.method != "GET" and not request.url.path.startswith(
+            ("/api/admin/dpa", "/api/admin/logout")):
+        from . import legal
+        if legal.required(db, p):
+            raise HTTPException(403, "Accepter databehandleraftalen først. Genindlæs siden.")
+    return p
 
 
 def require_platform(p: Principal = Depends(current)) -> Principal:

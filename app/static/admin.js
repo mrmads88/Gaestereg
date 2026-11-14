@@ -88,6 +88,11 @@ async function boot() {
   catch (e) { if (!/Log ind/.test(e.message)) showLogin(e.message); return; }
   $("loginView").hidden = true; $("appView").hidden = false;
   setupRole();
+  if (ME.dpa_required) showDpa();
+  if (ME.readiness && STATUS.env === "prod") {
+    const miss = ME.readiness.filter((x) => !x.ok).map((x) => x.label.split(" (")[0]);
+    if (miss.length) { $("banner").textContent = "Prod mangler: " + miss.join(", ") + ". Se Fakturering."; $("banner").hidden = false; }
+  }
   const env = STATUS.env;
   $("envPill").textContent = env === "prod" ? "Produktion" : env === "dev" ? "Dev" : "Lokal";
   $("envPill").className = "envpill " + env;
@@ -184,7 +189,8 @@ function showView(v) { $("noTenant").hidden = true; $("editor").hidden = v !== "
 function showBilling() {
   T = null; P = null; location.hash = "billing"; showView("billing"); renderList(); renderPartners();
   document.documentElement.style.setProperty("--accent", "#12352e");
-  window.NoddBilling.mountAdmin($("billingView"), { api, toast, esc });
+  window.NoddBilling.mountAdmin($("billingBox"), { api, toast, esc });
+  renderReadiness();
 }
 $("billingBtn").addEventListener("click", showBilling);
 async function selectPartner(id) {
@@ -197,6 +203,7 @@ async function selectPartner(id) {
 }
 async function renderPartner(keepImport) {
   $("pName").textContent = P.name; $("pvInitials").textContent = initials(P.name);
+  $("pDpa").textContent = dpaText(P.dpa);
   if ($("pAlert").dataset.pid !== String(P.id)) {
     $("pAlert").dataset.pid = P.id;
     window.NoddAlerts.mount($("pAlert"), { scope: { partner_id: P.id }, api, toast, esc, name: () => P.name + " (hele huset)" });
@@ -748,6 +755,41 @@ function loadRooms() {
   if (foodOn) window.NoddCatering.mount($("tFood"), { scope: { tenant_id: T.id }, api, toast, esc });
 }
 
+// ---------- databehandleraftale og klar til prod ----------
+const dpaText = (d) => d && d.accepted_at ? "Databehandleraftale: accepteret " + new Date(d.accepted_at).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }) +
+  " af " + d.accepted_by + " (version " + d.version + ")" + (d.current ? "" : ". En nyere version venter på accept.") : "Databehandleraftale: ikke accepteret endnu.";
+async function showDpa() {
+  let d;
+  try { d = await api("GET", "/api/admin/dpa"); } catch (err) { return; }
+  if (!d.required) return;
+  const veil = document.createElement("div");
+  veil.className = "al-veil dpa-veil";
+  veil.innerHTML = '<div class="al-box dpa-box" role="dialog" aria-modal="true" aria-labelledby="dpaH"><h2 id="dpaH">Databehandleraftale for ' + esc(d.org_name) + "</h2>" +
+    '<p class="muted small">Før I bruger løsningen, skal ' + (d.org_kind === "hus" ? "huset" : "firmaet") + " acceptere databehandleraftalen. Den beskriver, hvordan vi behandler gæsternes og jeres oplysninger på jeres vegne." +
+    (d.org_kind === "hus" ? " Accepten gælder også husets firmaer." : "") + "</p>" +
+    '<div class="dpa-text">' + d.html + "</div>" +
+    '<label class="check"><input type="checkbox" id="dpaOk"> Jeg har læst aftalen og accepterer den på vegne af ' + esc(d.org_name) + "</label>" +
+    '<div class="row"><a class="btn ghost sm" href="/databehandleraftale" target="_blank" rel="noopener">Åbn til print</a><span class="grow"></span>' +
+    '<button class="btn ghost sm" type="button" id="dpaLater">Log ud</button><button class="btn pri" type="button" id="dpaAccept" disabled>Accepter</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector("#dpaOk").addEventListener("change", (e) => { veil.querySelector("#dpaAccept").disabled = !e.target.checked; });
+  veil.querySelector("#dpaLater").addEventListener("click", () => $("logout").click());
+  veil.querySelector("#dpaAccept").addEventListener("click", async () => {
+    try { await api("POST", "/api/admin/dpa/accept", { version: d.version }); veil.remove(); toast("Tak. Aftalen er accepteret og gemt."); }
+    catch (err) { toast(err.message, true); }
+  });
+}
+function renderReadiness() {
+  const r = ME.readiness || [];
+  const missing = r.filter((x) => !x.ok).length;
+  $("readyBox").innerHTML = '<div class="card ready"><div class="row"><h3 class="grow">Klar til prod</h3><span class="pill ' + (missing ? "venter" : "sendt") + '">' +
+    (missing ? missing + " mangler" : "Alt er klar") + '</span></div><p class="muted small">Indstillinger i App Service for ' + esc(STATUS.env) +
+    ". Se docs/azure.md for hvordan de sættes.</p><ul class=\"ready-list\">" + r.map((x) => '<li class="' + (x.ok ? "ok" : "no") + '"><span>' + (x.ok ? "✓" : "✗") + "</span>" + esc(x.label) + "</li>").join("") + "</ul>" +
+    (r.some((x) => x.key === "blob" && x.ok) ? '<div class="row"><button class="btn ghost sm" type="button" id="blobCopy">Kopiér gamle billeder til Blob</button><span class="muted small">Engangsjob ved go-live. Kan køres igen uden skade.</span></div>' : "") + "</div>";
+  const b = $("blobCopy");
+  if (b) b.addEventListener("click", async () => { b.disabled = true; try { toast((await api("POST", "/api/admin/ops/media-to-blob")).message); } catch (err) { toast(err.message, true); } b.disabled = false; });
+}
+
 // ---------- users (adgang) ----------
 const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";
 function renderUsers(box, users) {
@@ -804,6 +846,7 @@ function renderSub() {
     if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v;
   });
   const old = (S.sub_yearly_price || 0) + (S.self_service_monthly_price || 0) * 12;
+  $("dpaStatus").textContent = dpaText(T.dpa);
   $("subSummary").textContent = old ? "Tidligere aftale uden pakke: " + old.toLocaleString("da-DK") + " kr. pr. år. Flyt den over i en pakke ovenfor." : "";
 }
 function mountBilling() {

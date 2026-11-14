@@ -42,6 +42,10 @@ class Partner(Base):
     meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))
     report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
     alert_notify: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))  # hele huset
+    # Databehandleraftalen: hvilken version kundens admin har accepteret, hvornår og af hvem. Se legal.py.
+    dpa_version: Mapped[str] = mapped_column(Unicode(40), default="", server_default=text("''"))
+    dpa_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dpa_accepted_by: Mapped[str] = mapped_column(Unicode(200), default="", server_default=text("''"))
 
     tenants: Mapped[list["Tenant"]] = relationship(back_populates="partner")
 
@@ -124,6 +128,10 @@ class Tenant(Base):
     report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
     # Nødbesked sendes også som SMS/mail/Teams til firmaets personer. Slukket som standard (koster SMS).
     alert_notify: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    # Databehandleraftalen: hvilken version kundens admin har accepteret, hvornår og af hvem. Se legal.py.
+    dpa_version: Mapped[str] = mapped_column(Unicode(40), default="", server_default=text("''"))
+    dpa_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dpa_accepted_by: Mapped[str] = mapped_column(Unicode(200), default="", server_default=text("''"))
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Host.sort_order"
