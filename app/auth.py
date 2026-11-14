@@ -109,7 +109,8 @@ def access_problem(db: Session, u: User) -> str | None:
         t = db.get(Tenant, u.tenant_id) if u.tenant_id else None
         if t is None:
             return "Firmaet findes ikke længere."
-        if not t.self_service:
+        from . import modules  # undgå cirkulær import
+        if not modules.tenant_has(t, "self_service"):
             return f"Selvbetjening er ikke slået til for {t.name}. Kontakt din leverandør."
     elif u.role == "partner":
         p = db.get(Partner, u.partner_id) if u.partner_id else None

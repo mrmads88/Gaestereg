@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from . import catering, invitations, presence, ratelimit, rooms
+from . import catering, invitations, modules, presence, ratelimit, rooms
 from .auth import Principal, current
 from .db import SessionLocal, get_db
 from .media import delete_media, media_url, save_image
@@ -100,9 +100,12 @@ def create_room(body: RoomIn, request: Request, db: Session = Depends(get_db), p
     if (body.tenant_id is None) == (body.partner_id is None):
         raise HTTPException(422, "Lokalet skal høre til enten et firma eller huset")
     if body.tenant_id is not None:
-        get_tenant_for(db, body.tenant_id, p)
-    elif db.get(Partner, body.partner_id) is None or not p.can_manage_partner(body.partner_id):
-        raise HTTPException(404, "Partneren findes ikke")
+        modules.require_tenant(get_tenant_for(db, body.tenant_id, p), "rooms")
+    else:
+        partner = db.get(Partner, body.partner_id)
+        if partner is None or not p.can_manage_partner(body.partner_id):
+            raise HTTPException(404, "Partneren findes ikke")
+        modules.require_partner(partner, "rooms")
     r = Room(tenant_id=body.tenant_id, partner_id=body.partner_id, name=body.name.strip(), location=body.location.strip(),
              description=body.description.strip(), capacity=body.capacity, setups=_clean(body.setups),
              equipment=_clean(body.equipment), privacy=body.privacy)
@@ -279,6 +282,7 @@ def booking_page(token: str):
 @public.get("/api/book/{token}")
 def book_info(token: str, date: str | None = None, db: Session = Depends(get_db)):
     h, t = _host(db, token)
+    modules.require_tenant(t, "rooms")
     rs = rooms.rooms_for_tenant(db, t)
     by_id = {r.id: r for r in rs}
     try:
@@ -349,7 +353,7 @@ def room_quick_book(token: str, body: QuickBookIn, db: Session = Depends(get_db)
     """"Book nu" på skærmen ved døren: fra nu og 15, 30 eller 60 minutter frem (eller til næste møde)."""
     ratelimit.check("roombook:" + token, 12, 3600)
     room = db.scalar(select(Room).where(Room.screen_token == token))
-    if room is None or not room.active:
+    if room is None or not room.active or not modules.owner_has(db, room.tenant_id, room.partner_id, "rooms"):
         raise HTTPException(404, "Lokaleskærmen er ikke sat op")
     now = utcnow().replace(second=0, microsecond=0)
     end = now + timedelta(minutes=body.minutes)

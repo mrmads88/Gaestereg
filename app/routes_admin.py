@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
-from . import catering
+from . import catering, modules
 from .models import (Booking, Host, Invitation, Kitchen, Notification, Partner, Room, Tenant, User, Visit, VisitStat, new_token,
                      utcnow)
 from .notify import build_messages, deliver
@@ -53,7 +53,9 @@ def list_tenants(db: Session = Depends(get_db), p: Principal = Depends(current))
         q = q.where(Tenant.id == p.tenant_id)
         counts = counts.where(Host.tenant_id == p.tenant_id)
     n = dict(db.execute(counts).all())
-    return [tenant_admin(t, with_hosts=False, platform=p.is_platform, host_count=n.get(t.id, 0)) for t in db.scalars(q)]
+    ts = db.scalars(q).all()
+    modules.prime(db, ts)  # moduler for alle kunderne i få forespørgsler
+    return [tenant_admin(t, with_hosts=False, platform=p.is_platform, host_count=n.get(t.id, 0)) for t in ts]
 
 
 @router.post("/tenants")

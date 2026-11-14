@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from . import presence
+from . import modules, presence
 from .media import media_url
 from .models import Host, Partner, Tenant, User
 from .timeutil import local_iso
@@ -55,6 +55,7 @@ class TenantUpdate(BaseModel):
     host_reply: bool | None = None
     escalate_minutes: int | None = Field(None, ge=0, le=120)
     teams_webhook: str | None = Field(None, max_length=1000)
+    report_email: str | None = Field(None, max_length=500)
     house_screen: bool | None = None
     meeting_privacy: Literal["", "title", "organizer", "busy"] | None = None
     languages: list[str] | None = Field(None, min_length=1, max_length=len(SUPPORTED_LANGS))
@@ -83,6 +84,11 @@ class TenantUpdate(BaseModel):
             if len(day) != 2 or not all(re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", x) for x in day) or day[0] >= day[1]:
                 raise ValueError("Skriv åbningstider som 08:00 til 16:00, hvor åbning er før lukning")
         return v
+
+    @field_validator("report_email")
+    @classmethod
+    def _report(cls, v):
+        return clean_emails(v)
 
     @field_validator("teams_webhook")
     @classmethod
@@ -234,6 +240,12 @@ class PartnerUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=120)
     active: bool | None = None
     meeting_privacy: Literal["", "title", "organizer", "busy"] | None = None
+    report_email: str | None = Field(None, max_length=500)
+
+    @field_validator("report_email")
+    @classmethod
+    def _report(cls, v):
+        return clean_emails(v)
 
 
 class RoomIn(BaseModel):
@@ -300,6 +312,19 @@ class SubscriptionIn(BaseModel):
     sub_note: str | None = Field(None, max_length=500)
 
 
+def clean_emails(v: str | None) -> str | None:
+    """'a@x.dk; b@y.dk' -> 'a@x.dk, b@y.dk'. Fejl, hvis en adresse ikke ligner en e-mail."""
+    if v is None:
+        return v
+    parts = [x.strip() for x in v.replace(";", ",").split(",") if x.strip()]
+    bad = [x for x in parts if "@" not in x or "." not in x.split("@")[-1] or " " in x]
+    if bad:
+        raise ValueError("Ugyldig e-mailadresse: " + bad[0])
+    if len(parts) > 10:
+        raise ValueError("Højst 10 modtagere")
+    return ", ".join(parts)
+
+
 # ---------- serializers ----------
 
 def host_admin(h: Host) -> dict:
@@ -322,7 +347,7 @@ TENANT_FIELDS = [
     "reception_email", "reception_phone", "print_badge", "badge_size", "idle_seconds", "retention_days",
     "lang_default", "lang_mode", "wifi_name", "wifi_password", "delivery_enabled", "delivery_email", "delivery_phone",
     "delivery_note", "closed_text", "group_checkin", "terms_enabled", "terms_title", "terms_text", "host_reply",
-    "escalate_minutes", "teams_webhook", "house_screen", "meeting_privacy",
+    "escalate_minutes", "teams_webhook", "house_screen", "meeting_privacy", "report_email",
     "sms_sender", "sms_template", "email_subject", "email_template",
 ]
 
@@ -349,7 +374,8 @@ def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False, hos
     d["opening_hours"] = opening_hours(t)
     d["partner_id"] = t.partner_id
     d["partner_name"] = t.partner.name if t.partner else ""
-    d["self_service"] = t.self_service  # så kunde- og partner-admins kan se, om kunde-login virker
+    d["self_service"] = modules.tenant_has(t, "self_service")  # så admins kan se, om kunde-login virker
+    d["modules"] = modules.of_tenant(t)
     if platform:
         d["subscription"] = {f: getattr(t, f) for f in SUBSCRIPTION_FIELDS}
         d["subscription"]["sub_paid_until"] = t.sub_paid_until.isoformat() if t.sub_paid_until else None
@@ -403,7 +429,7 @@ def user_out(u: User) -> dict:
 
 def partner_out(p: Partner, tenant_count: int = 0, user_count: int = 0) -> dict:
     return {"id": p.id, "name": p.name, "active": p.active, "tenant_count": tenant_count,
-            "meeting_privacy": p.meeting_privacy,
+            "meeting_privacy": p.meeting_privacy, "report_email": p.report_email, "modules": modules.of_partner(p),
             "user_count": user_count, "created_at": local_iso(p.created_at)}
 
 

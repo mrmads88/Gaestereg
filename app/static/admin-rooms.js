@@ -8,7 +8,10 @@
   const hm = (s) => { const d = new Date(s); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
   const list = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
 
+  const fresh = (outer) => { const el = document.createElement("div"); el.className = "stack"; outer.replaceChildren(el); return el; };
   function mount(box, o) {
+    // Ny container ved hver mount, så klik-håndteringen ikke lægges på flere gange (ét klik = én handling).
+    box = fresh(box);
     const { api, toast, esc } = o;
     const q = o.scope.tenant_id ? "tenant_id=" + o.scope.tenant_id : "partner_id=" + o.scope.partner_id;
     const isHouse = !!o.scope.partner_id;

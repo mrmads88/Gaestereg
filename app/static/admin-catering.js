@@ -10,7 +10,10 @@
       : /kaffe|\bte\b/i.test(s) ? "☕" : /brød|morgen|croissant/i.test(s) ? "🥐" : /sandwich|frokost|mad/i.test(s) ? "🥪" : /drik/i.test(s) ? "🥤" : "🍽️"; };
   const pad = (n) => String(n).padStart(2, "0");
 
+  const fresh = (outer) => { const el = document.createElement("div"); el.className = "stack"; outer.replaceChildren(el); return el; };
   function mount(box, o) {
+    // Ny container ved hver mount, så klik-håndteringen ikke lægges på flere gange (ét klik = én handling).
+    box = fresh(box);
     const { api, toast, esc } = o;
     const q = o.scope.tenant_id ? "tenant_id=" + o.scope.tenant_id : "partner_id=" + o.scope.partner_id;
     const isHouse = !!o.scope.partner_id;
