@@ -62,7 +62,7 @@
   <header class="top">
     <div class="top-l"><img class="lockup" src="/static/brand/nodd-lockup.svg" alt="Nodd" width="104" height="29"><span class="envpill" id="envPill"></span>
       <button class="switcher" type="button" id="switchBtn" hidden aria-haspopup="dialog"><span class="sw-logo" id="swLogo"></span><span class="sw-name" id="swName">Vælg kunde</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><kbd id="swKbd">Ctrl K</kbd></button></div>
-    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="billingBtn" hidden>Fakturering</button><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="secBtn">Sikkerhed</button><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
+    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="crmBtn" hidden>CRM</button><button class="btn ghost sm" type="button" id="billingBtn" hidden>Fakturering</button><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="secBtn">Sikkerhed</button><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
   </header>
   <div class="banner" id="banner" hidden></div>
 
@@ -85,6 +85,7 @@
         <p class="muted">Eller opret en ny. Hver kunde får sit eget skærmlink, logo, personer og beskeder.</p>
       </div>
 
+      <div id="crmView" class="pview" hidden><div id="crmBox"></div></div>
       <div id="billingView" class="pview" hidden><div id="readyBox"></div><div id="billingBox"></div></div>
       <div id="partnerView" class="pview" hidden>
         <div class="ed-head">
@@ -464,6 +465,7 @@
 <script src="/static/admin-reports.js"></script>
 <script src="/static/admin-signage.js"></script>
 <script src="/static/admin-alerts.js"></script>
+<script src="/static/admin-crm.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

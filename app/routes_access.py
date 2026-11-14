@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .auth import (COOKIE, MAX_AGE, Principal, access_problem, check_master_password, check_user_password,
                    current, hash_password, invite_token, require_platform, session_platform, session_user,
                    slow_down, user_from_invite)
-from . import catering, legal, mfa, ops, ratelimit, signage
+from . import catering, crm, legal, mfa, ops, ratelimit, signage
 from .config import settings
 from .db import get_db
 from .media import delete_media
@@ -376,6 +376,7 @@ def delete_partner(pid: int, db: Session = Depends(get_db), p: Principal = Depen
         db.delete(room)  # bookinger slettes af databasen (ON DELETE CASCADE)
     db.flush()  # lokalerne først: der er ingen relationship, så SQLAlchemy kender ikke rækkefølgen
     db.query(User).filter(User.partner_id == pid).delete()
+    crm.unlink_partner(db, pid)
     db.query(BillingAccount).filter(BillingAccount.partner_id == pid).delete()  # pakker og fakturaer følger med
     db.query(EmergencyAlert).filter(EmergencyAlert.partner_id == pid).delete()
     for s in db.scalars(select(SignageScreen).where(SignageScreen.partner_id == pid)).all():

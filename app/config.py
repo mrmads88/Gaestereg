@@ -73,6 +73,9 @@ class Settings:
     dpa_final: bool = field(default_factory=lambda: _bool("DPA_FINAL", False))
     # To-trins-login påkrævet for leverandøren og husene. Standard: kun i prod.
     mfa_required: bool = field(default_factory=lambda: _bool("MFA_REQUIRED", os.getenv("APP_ENV", "local") == "prod"))
+    # CRM: morgenmail med dagens opfølgninger kl. 07.30 (standard kun i prod, så dev-databasen kan sove).
+    crm_digest: bool = field(default_factory=lambda: _bool("CRM_DIGEST", os.getenv("APP_ENV", "local") == "prod"))
+    crm_email: str = field(default_factory=lambda: os.getenv("CRM_EMAIL", ""))  # tom = OPS_EMAIL
     admin_mfa_reset: bool = field(default_factory=lambda: _bool("ADMIN_MFA_RESET", False))  # nødknap, se docs/azure.md
 
     def __post_init__(self):

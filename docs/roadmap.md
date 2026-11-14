@@ -172,9 +172,12 @@ Senere: lyd på skærmene, skabeloner pr. hus.
 ## Nodd som platform: de næste moduler
 Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét sted.
 
-1. **CRM (kun leverandøren).** Kunder, huse, pakker og fakturaer findes allerede. Nyt: kontaktpersoner, noter,
-   opfølgninger med dato, salgsmuligheder (pipeline: kontakt, demo, tilbud, vundet/tabt), en tidslinje pr. kunde
-   (fakturaer, logins, besøgstal) og emner, der endnu ikke er kunder. Påmindelser på mail.
+1. **CRM (kun leverandøren): bygget.** Knappen "CRM" i topbaren. Overblik (omsætning pr. md., åben og vægtet
+   pipeline, vundet i måneden, dagens opfølgninger, seneste aktivitet), pipeline med træk og slip, firmaliste med
+   søgning og CSV, og et kort pr. firma med stamdata, kontakter, salgsmuligheder, opgaver og tidslinje. Koblede
+   kunder viser omsætning, besøg, seneste login og databehandleraftale, og tidslinjen får fakturaer fra Nodd.
+   "Hent dem" opretter de eksisterende kunder og huse. Morgenmail med dagens opfølgninger i prod.
+   Senere: mails direkte fra CRM, påmindelse om fornyelse, tilbud som PDF, flere brugere (sælgere).
 2. **Tidsregistrering for medarbejdere (modul, kunderne kan købe).** Siden 1. juli 2024 skal arbejdsgivere i
    Danmark registrere medarbejdernes arbejdstid. Medarbejdere stempler ind og ud på receptionsskærmen eller
    telefonen. Ugeoversigt, godkendelse af lederen, eksport. Medarbejdere, der er stemplet ind, kommer med på
