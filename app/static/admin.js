@@ -216,6 +216,9 @@ async function renderPartner(keepImport) {
   $("pBilling").hidden = ME.role !== "platform";
   const repOn = ME.role === "platform" || (pm.reports && pm.reports.on);
   $("pReport").hidden = !repOn;
+  const sigOn = ME.role === "platform" || (pm.signage && pm.signage.on);
+  $("pSignage").hidden = !sigOn;
+  if (!keepImport && sigOn) window.NoddSignage.mount($("pSignage"), { scope: { partner_id: P.id }, api, toast, esc, platform: ME.role === "platform" });
   if (!keepImport && repOn) window.NoddReports.mount($("pReport"), { scope: { partner_id: P.id }, api, toast, esc, platform: ME.role === "platform",
     onEmail: (v) => api("PATCH", "/api/admin/partners/" + P.id, { report_email: v }).then((x) => { Object.assign(P, x); saved(); }) });
   if (!keepImport && ME.role === "platform") window.NoddBilling.mountAccount($("pBilling"), { scope: { partner_id: P.id }, api, toast, esc,
@@ -271,6 +274,8 @@ function renderAll() {
   $("roomsTab").hidden = ME.role !== "platform" && !((tm.rooms && tm.rooms.on) || (tm.catering && tm.catering.on));
   if (tab === "rooms" && $("roomsTab").hidden) tab = "people";
   $("reportTab").hidden = ME.role !== "platform" && !(tm.reports && tm.reports.on);
+  $("signageTab").hidden = ME.role !== "platform" && !(tm.signage && tm.signage.on);
+  if (tab === "signage" && $("signageTab").hidden) tab = "people";
   if (tab === "report" && $("reportTab").hidden) tab = "people";
   renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
   document.querySelectorAll(".tn").forEach((x) => (x.textContent = T.name));
@@ -419,6 +424,7 @@ function setTab(name) {
   if (name === "exp") loadExpected();
   if (name === "rooms") loadRooms();
   if (name === "sub") mountBilling();
+  if (name === "signage" && T) window.NoddSignage.mount($("tSignage"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform" });
   if (name === "report" && T) window.NoddReports.mount($("tReport"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform",
     onEmail: (v) => api("PATCH", "/api/admin/tenants/" + T.id, { report_email: v }).then((x) => { T.report_email = x.report_email; saved(); }) });
 }

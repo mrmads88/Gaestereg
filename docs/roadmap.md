@@ -123,11 +123,19 @@ Dinero, så fakturaer sendes derfra; kunden kan ikke selv se sin pakke i admin.
 
 Senere: sammenligning mellem firmaer i et hus over tid, travleste tidspunkter for gæster (kræver statistik pr. time).
 
-## Fase 8: Infoskærme
-Infoskærme som gæsteskærmen, hvor kunden selv bygger skærmen af blokke: velkomst og logo, dagens forventede gæster
-(kun fornavne), mødelokaler ledig/optaget, kantinens/køkkenets menu, billeder og video, nyheder, vejr, ur og
-evakueringsinfo. Blokkene følger pakken: lokale- og menublokke kræver de moduler. Modulet hedder `signage` og er
-allerede på prislisten (Komplet, Hus og tilkøb).
+## Fase 8: Infoskærme (bygget)
+- Infoskærm pr. firma eller hus på `/s/<token>` (åbnes i tv'ets browser). White-label, tema firmafarve/mørk/lys,
+  opsætning med sidebar eller fuld skærm, virker på tværs og på højkant.
+- Playliste af slides, der skifter med blød overgang: velkomst, tekst/nyhed (med billede), billede, dagens gæster
+  (kun firma eller fornavn + forbogstav), mødelokaler (ledig/optaget, diskretion gælder), dagens menu (tekst pr.
+  ugedag) og QR-kode. Hver slide kan begrænses til ugedage og tidsrum. Slides uden indhold i dag springes over.
+- Sidebar: ur, vejr (Open-Meteo, hentes af skærmen selv), mødelokaler, forventede gæster, gæste-wifi, menu og QR.
+  Felter, der ikke kan være der, skjules. Nyhedsbånd nederst.
+- Editor i admin (fanen Infoskærme og husets side) med levende forhåndsvisning, billedupload og nyt link.
+- Kræver modulet `signage` (Komplet, Hus eller tilkøb). Mødelokale-blokken kræver `rooms`.
+- Skærmens data caches i hukommelsen og tømmes ved admin-ændringer, bookinger og invitationer.
+
+Senere: video, RSS/nyheder fra en hjemmeside, kantinens rigtige menu (når kantine/POS kommer), nødbesked på alle skærme.
 
 ## Venter på prod / en kunde
 - Oppetids-tjek og fejlmails. Et tjek hver anden time ville vække dev-databasen og bruge det gratis forbrug op.

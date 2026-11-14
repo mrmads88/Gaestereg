@@ -234,3 +234,17 @@ def test_reports_of_other_houses_are_hidden(setup, platform):
         assert pa.get(url).status_code == 404, url
     assert pa.post(f"/api/admin/report/send-test?partner_id={other['id']}", json={"to": "x@y.dk"}).status_code == 404
     platform.delete(f"/api/admin/partners/{other['id']}")
+
+
+def test_signage_of_other_firms_is_hidden(setup, platform):
+    other = platform.post("/api/admin/tenants", json={"name": "Fremmed skærmfirma"}).json()
+    platform.post(f"/api/admin/billing/account/subscriptions?tenant_id={other['id']}", json={"product": "signage"})
+    s = platform.post("/api/admin/signage", json={"tenant_id": other["id"], "name": "Lobby"}).json()
+    pa = setup["pa"]
+    assert pa.get(f"/api/admin/signage?tenant_id={other['id']}").status_code == 404
+    assert pa.patch(f"/api/admin/signage/{s['id']}", json={"name": "x"}).status_code == 404
+    assert pa.post(f"/api/admin/signage/{s['id']}/link").status_code == 404
+    assert pa.delete(f"/api/admin/signage/{s['id']}").status_code == 404
+    assert pa.post("/api/admin/signage", json={"tenant_id": other["id"], "name": "x"}).status_code == 404
+    assert new_client().get(f"/api/admin/signage?tenant_id={other['id']}").status_code == 401
+    platform.delete(f"/api/admin/tenants/{other['id']}")

@@ -14,7 +14,7 @@ from sqlalchemy import and_, or_, select, true
 from sqlalchemy.orm import Session
 
 from . import invitations as inv_mod
-from . import ratelimit, rooms
+from . import ratelimit, rooms, signage
 from .auth import Principal, current
 from .db import get_db
 from .media import media_url
@@ -122,6 +122,7 @@ def cancel(iid: int, request: Request, db: Session = Depends(get_db), p: Princip
     if inv.status == "pending":
         inv.status = "cancelled"
         db.commit()
+        signage.clear_cache()
     return inv_mod.out(inv, _base(request))
 
 
@@ -185,7 +186,9 @@ def host_invite(token: str, body: InvitationIn, request: Request, bg: Background
     ratelimit.hit("host-invite:" + str(h.id))
     t = db.get(Tenant, h.tenant_id)
     body.host_id = h.id
-    return _create(db, t, h, body, h.name, request, bg)
+    out = _create(db, t, h, body, h.name, request, bg)
+    signage.clear_cache()  # "dagens gæster" på infoskærmene
+    return out
 
 
 @public.delete("/api/host/{token}/invitations/{iid}")

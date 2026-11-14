@@ -109,6 +109,7 @@
           <div class="tablewrap" id="pStats"></div>
         </div>
         <div class="stack" id="pReport" hidden></div>
+        <div class="stack" id="pSignage" hidden></div>
         <div class="card upsell" id="pModNote" hidden></div>
         <div class="stack" id="pRooms"></div>
         <div class="stack" id="pFood"></div>
@@ -143,6 +144,7 @@
           <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
           <button role="tab" type="button" data-tab="exp" aria-selected="false">Forventede gæster</button>
           <button role="tab" type="button" data-tab="rooms" aria-selected="false" id="roomsTab">Lokaler</button>
+          <button role="tab" type="button" data-tab="signage" aria-selected="false" id="signageTab">Infoskærme</button>
           <button role="tab" type="button" data-tab="report" aria-selected="false" id="reportTab">Overblik</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
           <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
@@ -368,6 +370,9 @@
           </div>
         </section>
 
+        <!-- SIGNAGE -->
+        <section class="tab" id="tab-signage" hidden><div class="stack" id="tSignage"></div></section>
+
         <!-- REPORT -->
         <section class="tab" id="tab-report" hidden><div class="stack" id="tReport"></div></section>
 
@@ -445,6 +450,7 @@
 <script src="/static/admin-catering.js"></script>
 <script src="/static/admin-billing.js"></script>
 <script src="/static/admin-reports.js"></script>
+<script src="/static/admin-signage.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

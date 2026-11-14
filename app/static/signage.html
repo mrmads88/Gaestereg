@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Infoskærm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Infoskærm til tv i receptionen, kantinen eller gangen. White-label: kundens logo og farve, ingen Nodd.
+   Hovedfelt med slides, der skifter, en sidebar med faste felter og et nyhedsbånd nederst.
+   Stor tekst, der kan læses på afstand. Skalerer med skærmen (vw/vh). */
+:root{--brand:#12352e;--bg:#0f1714;--panel:rgb(255 255 255 / .08);--panel-2:rgb(255 255 255 / .14);--ink:#fff;--soft:rgb(255 255 255 / .72);
+  --free:#22c55e;--busy:#ef4444;--f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:"IBM Plex Mono",ui-monospace,monospace;color-scheme:dark}
+body.light{--bg:#f4f3ef;--panel:#fff;--panel-2:#eceae4;--ink:#14171d;--soft:#5d6470;color-scheme:light}
+body.dark{--bg:#0e1013;--panel:rgb(255 255 255 / .06);--panel-2:rgb(255 255 255 / .12)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:clamp(15px,1.35vw,40px)/1.35 var(--f-body);overflow:hidden;-webkit-font-smoothing:antialiased;cursor:none}
+body.brand{background:radial-gradient(120% 120% at 0% 0%,color-mix(in oklab,var(--brand) 92%,#fff) 0%,var(--brand) 45%,color-mix(in oklab,var(--brand) 70%,#000) 100%)}
+.stage{height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,27%);grid-template-rows:minmax(0,1fr) auto;gap:1.4vw;padding:1.6vw}
+body.full .stage{grid-template-columns:minmax(0,1fr)}
+body.full .side{display:none}
+.slides{position:relative;border-radius:1.6vw;overflow:hidden;background:var(--panel);min-height:0}
+body.full .slides{grid-column:1/-1}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .9s ease;display:flex;flex-direction:column;padding:3.2vw}
+.slide.on{opacity:1}
+.slide h1{font:800 clamp(28px,4.4vw,140px)/1.02 var(--f-display);letter-spacing:-.02em;margin:0}
+.slide h2{font:800 clamp(22px,2.8vw,90px)/1.05 var(--f-display);letter-spacing:-.02em;margin:0 0 1.6vw}
+.slide p{margin:1vw 0 0;color:var(--soft);font-size:1.35em;white-space:pre-line;max-width:46em}
+.kicker{font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);font-size:.8em;margin-bottom:1vw}
+/* velkomst */
+.welcome{justify-content:flex-end;background-size:cover;background-position:center}
+.welcome::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgb(0 0 0 / .05) 30%,rgb(0 0 0 / .62))}
+.welcome>*{position:relative}
+.welcome .logo{position:absolute;top:3vw;left:3.2vw;background:#fff;border-radius:1.2vw;padding:1vw 1.4vw;max-width:34%}
+.welcome .logo img{display:block;max-height:7vw;max-width:100%;object-fit:contain}
+.welcome h1,.welcome p{color:#fff}
+.welcome p{color:rgb(255 255 255 / .86)}
+/* tekst og billede */
+.text{justify-content:center}
+.text.with-img{flex-direction:row;align-items:stretch;gap:3vw;padding:0}
+.text.with-img .pic{flex:1 1 50%;background-size:cover;background-position:center}
+.text.with-img .body{flex:1 1 50%;display:flex;flex-direction:column;justify-content:center;padding:3.2vw 3.2vw 3.2vw 0}
+.image{padding:0;background:#000}
+.image .pic{position:absolute;inset:0;background-size:cover;background-position:center}
+.image .cap{position:absolute;left:0;right:0;bottom:0;padding:2.4vw 3.2vw;background:linear-gradient(180deg,transparent,rgb(0 0 0 / .7));color:#fff}
+.image .cap h2{margin:0;color:#fff}
+/* lokaler */
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(18vw,1fr));gap:1.2vw;align-content:start}
+.room{background:var(--panel-2);border-radius:1.2vw;padding:1.3vw 1.5vw;border-left:.5vw solid var(--free)}
+.room.busy{border-left-color:var(--busy)}
+.room b{display:block;font:700 1.25em var(--f-display)}
+.room .st{font-weight:700;margin-top:.3vw}
+.room .st i{display:inline-block;width:.8em;height:.8em;border-radius:50%;background:var(--free);margin-right:.4em;vertical-align:-.05em}
+.room.busy .st i{background:var(--busy)}
+.room small{display:block;color:var(--soft);margin-top:.3vw}
+/* gæster */
+.guests{display:flex;flex-direction:column;gap:.9vw}
+.guest{display:flex;gap:2vw;align-items:baseline;font-size:1.45em;padding:.8vw 0;border-bottom:1px solid var(--panel-2)}
+.guest .t{font:500 .85em var(--f-mono);color:var(--soft);min-width:4.2em}
+.guest b{font-weight:700}
+.guest span{color:var(--soft)}
+/* menu og qr */
+.menu .dish{font:700 clamp(24px,3.2vw,100px)/1.15 var(--f-display);white-space:pre-line;margin-top:1vw}
+.qr{flex-direction:row;align-items:center;gap:4vw}
+.qr .code{background:#fff;border-radius:1.4vw;padding:1.2vw;width:min(38vh,30vw);flex:none}
+.qr .code svg{display:block;width:100%;height:auto}
+/* sidebar */
+.side{display:flex;flex-direction:column;gap:1.2vw;min-height:0;overflow:hidden}
+.w{background:var(--panel);border-radius:1.4vw;padding:1.3vw 1.5vw}
+.w h3{margin:0 0 .6vw;font-size:.72em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.brandw{display:flex;align-items:center;justify-content:center;background:#fff;padding:1.2vw}
+.brandw img{max-height:5vw;max-width:100%;object-fit:contain}
+.brandw b{color:var(--brand);font:800 1.5em var(--f-display)}
+.clock .t{font:600 clamp(40px,5vw,160px)/1 var(--f-mono);letter-spacing:-.04em}
+.clock .d{color:var(--soft);margin-top:.4vw;font-weight:600}
+.weather{display:flex;align-items:center;gap:1vw}
+.weather .ico{font-size:2.6em;line-height:1}
+.weather .tmp{font:700 2em/1 var(--f-display)}
+.weather small{display:block;color:var(--soft)}
+.list{display:flex;flex-direction:column;gap:.5vw}
+.li{display:flex;justify-content:space-between;gap:.8vw;font-size:.95em}
+.li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .dot{display:inline-block;width:.7em;height:.7em;border-radius:50%;background:var(--free);margin-right:.4em}
+.li .dot.busy{background:var(--busy)}
+.li .t{font:500 .9em var(--f-mono);color:var(--soft)}
+.wifi b{display:block;font-size:1.15em}
+.wifi .pw{font:500 1.1em var(--f-mono)}
+.qrw{display:flex;gap:1vw;align-items:center}
+.qrw .code{background:#fff;border-radius:.8vw;padding:.5vw;width:8vw;flex:none}
+.qrw .code svg{display:block;width:100%;height:auto}
+.empty{color:var(--soft)}
+/* nyhedsbånd */
+.ticker{grid-column:1/-1;background:var(--panel);border-radius:1vw;overflow:hidden;white-space:nowrap;height:3.4vw;display:flex;align-items:center}
+.ticker .run{display:inline-block;padding-left:100%;font-weight:600;font-size:1.05em;animation:run linear infinite}
+.ticker .run span{margin:0 2.5vw}
+.ticker .run span::before{content:"●";color:var(--brand);margin-right:2.5vw;filter:brightness(1.6)}
+body.light .ticker .run span::before{filter:none}
+@keyframes run{to{transform:translateX(-100%)}}
+.corner{position:absolute;top:1.4vw;right:1.6vw;z-index:2;font:600 1.4em var(--f-mono);text-shadow:0 1px 6px rgb(0 0 0 / .35)}
+.err{height:100%;display:grid;place-items:center;text-align:center;padding:4vw}
+.rooms-grid.few{grid-template-columns:repeat(auto-fill,minmax(24vw,1fr));gap:1.6vw}
+.rooms-grid.few .room{padding:2vw 2.2vw;font-size:1.3em}
+@media (orientation:portrait){
+  .stage{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto auto}
+  .slide{padding:5vw}
+  .slide h1{font-size:clamp(28px,8vw,160px)}
+  .slide h2{font-size:clamp(22px,6vw,120px);margin-bottom:3vw}
+  .guest{font-size:1.6em;gap:4vw;padding:1.6vw 0}
+  .menu .dish{font-size:clamp(24px,6.5vw,120px)}
+  .rooms-grid.few{grid-template-columns:1fr}
+  .welcome .logo img{max-height:12vw}
+  .qr{flex-direction:column;align-items:flex-start}
+  .qr .code{width:min(60vw,40vh)}
+  .side{display:grid;grid-template-columns:1fr 1fr;gap:1.6vw}
+  body{font-size:clamp(15px,2.2vw,40px)}
+  .rooms-grid{grid-template-columns:1fr 1fr}
+  .ticker{height:5vw}
+}
+@media (prefers-reduced-motion:reduce){.slide{transition:none}.ticker .run{animation:none;padding-left:0}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body class="brand">
+<div class="stage" id="stage" hidden>
+  <div class="slides" id="slides"><div class="corner" id="corner" hidden></div></div>
+  <aside class="side" id="side"></aside>
+  <div class="ticker" id="ticker" hidden><div class="run" id="run"></div></div>
+</div>
+<div class="err" id="err" hidden></div>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const token = decodeURIComponent(location.pathname.split("/").pop());
+  const preview = new URLSearchParams(location.search).get("preview") === "1";
+  const pad = (n) => String(n).padStart(2, "0");
+  const hm = (d) => pad(d.getHours()) + ":" + pad(d.getMinutes());
+  const DAYS = ["mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag", "søndag"];
+  const wd = (d) => (d.getDay() + 6) % 7;  // 0 = mandag
+  let S = null, idx = -1, timer = null, sig = "", weather = {};
+
+  // ---------- hvad vises nu ----------
+  function scheduled(x, now) {
+    if (x.days && x.days.length && !x.days.includes(wd(now))) return false;
+    const t = hm(now);
+    if (x.from_time && t < x.from_time) return false;
+    if (x.to_time && t >= x.to_time) return false;
+    return true;
+  }
+  function hasData(x, now) {
+    if (x.type === "guests") return !!(S.guests && S.guests.some((g) => new Date(g.time) > new Date(now - 2 * 3600e3)));
+    if (x.type === "rooms") return !!(S.rooms && S.rooms.length);
+    if (x.type === "menu") return !!(x.week && (x.week[wd(now)] || "").trim());
+    if (x.type === "image") return !!x.image;
+    if (x.type === "qr") return !!x.url;
+    return true;
+  }
+  const playable = () => { const now = new Date(); return S.content.slides.filter((x) => scheduled(x, now) && hasData(x, now)); };
+
+  function roomStatus(r, now) {
+    const bs = r.bookings.map((b) => ({ ...b, s: new Date(b.start), e: new Date(b.end) })).filter((b) => b.e > now);
+    const cur = bs.find((b) => b.s <= now), next = bs.find((b) => b.s > now);
+    return { cur, next };
+  }
+
+  // ---------- slides ----------
+  function slideHtml(x) {
+    const now = new Date(), img = x.image ? S.images[x.image] : "";
+    switch (x.type) {
+      case "welcome": {
+        const bg = img || S.brand.background_url;
+        return '<div class="slide welcome" style="' + (bg ? "background-image:url('" + esc(bg) + "')" : "") + '">' +
+          (S.brand.logo_url ? '<div class="logo"><img src="' + esc(S.brand.logo_url) + '" alt=""></div>' : "") +
+          "<h1>" + esc(x.title || "Velkommen") + "</h1>" + (x.text ? "<p>" + esc(x.text) + "</p>" : "") + "</div>";
+      }
+      case "text":
+        return img ? '<div class="slide text with-img"><div class="pic" style="background-image:url(\'' + esc(img) + '\')"></div><div class="body"><h1>' + esc(x.title) + "</h1>" + (x.text ? "<p>" + esc(x.text) + "</p>" : "") + "</div></div>"
+          : '<div class="slide text"><h1>' + esc(x.title) + "</h1>" + (x.text ? "<p>" + esc(x.text) + "</p>" : "") + "</div>";
+      case "image":
+        return '<div class="slide image"><div class="pic" style="background-image:url(\'' + esc(img) + '\')"></div>' +
+          (x.title || x.text ? '<div class="cap"><h2>' + esc(x.title) + "</h2>" + (x.text ? "<p>" + esc(x.text) + "</p>" : "") + "</div>" : "") + "</div>";
+      case "rooms":
+        return '<div class="slide"><h2>' + esc(x.title || "Mødelokaler i dag") + '</h2><div class="rooms-grid' + (S.rooms.length <= 6 ? " few" : "") + '">' + S.rooms.map((r) => {
+          const st = roomStatus(r, now);
+          return '<div class="room' + (st.cur ? " busy" : "") + '"><b>' + esc(r.name) + '</b><div class="st"><i></i>' + (st.cur ? "Optaget til " + hm(st.cur.e) : st.next ? "Ledigt til " + hm(st.next.s) : "Ledigt resten af dagen") +
+            "</div><small>" + esc([r.location, st.next && st.cur ? "Næste " + hm(st.next.s) : ""].filter(Boolean).join(" · ")) + "</small></div>";
+        }).join("") + "</div></div>";
+      case "guests": {
+        const gs = S.guests.filter((g) => new Date(g.time) > new Date(now - 2 * 3600e3)).slice(0, 9);
+        return '<div class="slide"><div class="kicker">I dag</div><h2>' + esc(x.title || "Vi glæder os til at se") + '</h2><div class="guests">' +
+          gs.map((g) => '<div class="guest"><span class="t">' + hm(new Date(g.time)) + "</span><b>" + esc(g.name || g.company) + "</b>" + (g.name && g.company ? "<span>" + esc(g.company) + "</span>" : "") + "</div>").join("") + "</div></div>";
+      }
+      case "menu":
+        return '<div class="slide menu"><div class="kicker">' + esc(DAYS[wd(now)]) + "</div><h2>" + esc(x.title || "Dagens menu") + '</h2><div class="dish">' + esc(x.week[wd(now)]) + "</div>" + (x.text ? "<p>" + esc(x.text) + "</p>" : "") + "</div>";
+      case "qr":
+        return '<div class="slide qr"><div class="code">' + (S.qr[x.url] || "") + '</div><div><h1>' + esc(x.title || "Scan koden") + "</h1>" + (x.text ? "<p>" + esc(x.text) + "</p>" : "") + "</div></div>";
+    }
+    return '<div class="slide"></div>';
+  }
+
+  function show(next) {
+    const list = playable();
+    const box = $("slides");
+    box.querySelectorAll(".slide").forEach((el) => el.classList.remove("on"));
+    clearTimeout(timer);
+    if (!list.length) {
+      box.insertAdjacentHTML("beforeend", slideHtml({ type: "welcome", title: S.brand.name || "Velkommen" }));
+      requestAnimationFrame(() => box.lastElementChild.classList.add("on"));
+      timer = setTimeout(() => show(true), 30000);
+      return;
+    }
+    idx = next ? (idx + 1) % list.length : Math.min(Math.max(idx, 0), list.length - 1);
+    const x = list[idx];
+    box.insertAdjacentHTML("beforeend", slideHtml(x));
+    const el = box.lastElementChild;
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("on")));
+    setTimeout(() => box.querySelectorAll(".slide:not(.on)").forEach((o) => o !== el && o.remove()), 1200);
+    timer = setTimeout(() => show(true), (x.duration || 12) * 1000);
+  }
+
+  // ---------- sidebar ----------
+  const WMO = (c) => c === 0 ? ["☀️", "Klart"] : c <= 2 ? ["🌤️", "Let skyet"] : c === 3 ? ["☁️", "Overskyet"] : c <= 48 ? ["🌫️", "Tåge"]
+    : c <= 57 ? ["🌦️", "Støvregn"] : c <= 67 ? ["🌧️", "Regn"] : c <= 77 ? ["🌨️", "Sne"] : c <= 82 ? ["🌧️", "Byger"] : c <= 86 ? ["🌨️", "Snebyger"] : ["⛈️", "Torden"];
+  async function loadWeather(w) {
+    if (w.lat == null || w.lon == null) return;
+    const key = w.lat + "," + w.lon, hit = weather[key];
+    if (hit && Date.now() - hit.at < 30 * 60e3) return;
+    try {
+      const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=" + w.lat + "&longitude=" + w.lon +
+        "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1");
+      const j = await r.json();
+      weather[key] = { at: Date.now(), t: Math.round(j.current.temperature_2m), c: j.current.weather_code,
+        max: Math.round(j.daily.temperature_2m_max[0]), min: Math.round(j.daily.temperature_2m_min[0]) };
+      renderSide();
+    } catch (e) { weather[key] = { at: Date.now(), err: true }; renderSide(); }  // uden net: feltet skjules og prøves igen senere
+  }
+  function widgetHtml(w) {
+    const now = new Date();
+    switch (w.type) {
+      case "clock": {
+        const d = now.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+        return '<div class="w clock"><div class="t">' + hm(now) + '</div><div class="d">' + esc(d.charAt(0).toUpperCase() + d.slice(1)) + "</div></div>";
+      }
+      case "weather": {
+        const x = weather[w.lat + "," + w.lon];
+        if (x && x.err) return "";
+        if (!x) return '<div class="w"><h3>Vejret i ' + esc(w.place || "byen") + '</h3><span class="empty">Henter…</span></div>';
+        const [ico, txt] = WMO(x.c);
+        return '<div class="w"><h3>Vejret i ' + esc(w.place || "byen") + '</h3><div class="weather"><span class="ico">' + ico + '</span><div><span class="tmp">' + x.t + "°</span><small>" + esc(txt) + " · " + x.min + "° til " + x.max + "°</small></div></div></div>";
+      }
+      case "rooms":
+        if (!S.rooms || !S.rooms.length) return "";
+        return '<div class="w"><h3>' + esc(w.title || "Mødelokaler") + '</h3><div class="list">' + S.rooms.slice(0, 7).map((r) => {
+          const st = roomStatus(r, now);
+          return '<div class="li"><span><i class="dot' + (st.cur ? " busy" : "") + '"></i>' + esc(r.name) + '</span><span class="t">' + (st.cur ? "til " + hm(st.cur.e) : "ledigt") + "</span></div>";
+        }).join("") + "</div></div>";
+      case "guests": {
+        const gs = (S.guests || []).filter((g) => new Date(g.time) > new Date(now - 30 * 60e3)).slice(0, 5);
+        if (!gs.length) return "";
+        return '<div class="w"><h3>' + esc(w.title || "Forventede gæster") + '</h3><div class="list">' + gs.map((g) => '<div class="li"><span>' + esc(g.name || g.company) + '</span><span class="t">' + hm(new Date(g.time)) + "</span></div>").join("") + "</div></div>";
+      }
+      case "wifi":
+        return S.wifi ? '<div class="w wifi"><h3>' + esc(w.title || "Gæste-wifi") + "</h3><b>" + esc(S.wifi.name) + '</b><span class="pw">' + esc(S.wifi.password) + "</span></div>" : "";
+      case "menu": {
+        const dish = (w.week || [])[wd(now)] || "";
+        return dish ? '<div class="w"><h3>' + esc(w.title || "Dagens menu") + "</h3><div>" + esc(dish) + "</div></div>" : "";
+      }
+      case "qr":
+        return w.url ? '<div class="w qrw"><div class="code">' + (S.qr[w.url] || "") + '</div><div><b>' + esc(w.title || "Scan koden") + "</b></div></div>" : "";
+    }
+    return "";
+  }
+  function renderSide() {
+    if (!S) return;
+    const logo = '<div class="w brandw">' + (S.brand.logo_url ? '<img src="' + esc(S.brand.logo_url) + '" alt="' + esc(S.brand.name) + '">' : "<b>" + esc(S.brand.name) + "</b>") + "</div>";
+    const side = $("side");
+    side.innerHTML = logo + S.content.side.map(widgetHtml).join("");
+    // Felter, der ikke kan være der, skjules nedefra (hellere færre felter end afskårne felter).
+    const kids = [...side.children];
+    for (let i = kids.length - 1; i > 1 && side.scrollHeight > side.clientHeight + 1; i--) kids[i].remove();
+    const c = $("corner");
+    c.hidden = S.screen.layout !== "full";
+    c.textContent = hm(new Date());
+  }
+
+  // ---------- data ----------
+  async function load() {
+    try {
+      const r = await fetch("/api/signage/" + encodeURIComponent(token) + "/state" + (preview ? "?preview=1" : ""), { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) { $("stage").hidden = true; $("err").hidden = false; $("err").innerHTML = "<div><h1>Infoskærmen er ikke sat op</h1><p>" + esc(j.detail || "") + "</p></div>"; return; }
+      if (S && S.day !== j.day && !preview) { location.reload(); return; }  // ny dag: frisk start
+      S = j;
+      document.body.className = j.screen.theme + (j.screen.layout === "full" ? " full" : "");
+      document.documentElement.style.setProperty("--brand", j.brand.color || "#12352e");
+      document.title = j.screen.name;
+      $("err").hidden = true; $("stage").hidden = false;
+      const t = j.content.ticker;
+      $("ticker").hidden = !t.length;
+      const newSig = JSON.stringify([j.content, j.screen]);
+      if (t.length && newSig !== sig) {
+        $("run").innerHTML = t.map((x) => "<span>" + esc(x) + "</span>").join("");
+        $("run").style.animationDuration = Math.max(20, t.join(" ").length * 0.28) + "s";
+      }
+      j.content.side.filter((w) => w.type === "weather").forEach(loadWeather);
+      renderSide();
+      if (newSig !== sig) { sig = newSig; idx = -1; show(true); }
+    } catch (e) { /* ingen forbindelse: skærmen kører videre med det, den har */ }
+  }
+  load();
+  setInterval(load, 60000);
+  setInterval(renderSide, 15000);
+  if (navigator.wakeLock && !preview) {
+    const lock = () => navigator.wakeLock.request("screen").catch(() => {});
+    lock(); document.addEventListener("visibilitychange", () => { if (!document.hidden) lock(); });
+  }
+})();
+</script>
+</body>
+</html>

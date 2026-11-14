@@ -144,8 +144,9 @@ SCREEN_CACHE_SECONDS = 6 * 3600
 
 def clear_cache() -> None:
     _screen_cache.clear()
-    from . import catering  # køkkensiden viser bookingernes lokale og tid, så den tømmes samtidig
+    from . import catering, signage  # køkkensiden og infoskærmene viser bookingerne, så de tømmes samtidig
     catering.clear_cache()
+    signage.clear_cache()
 
 
 def screen_state(db_factory, token: str) -> dict:
