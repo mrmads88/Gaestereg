@@ -214,6 +214,10 @@ async function renderPartner(keepImport) {
   $("pModNote").innerHTML = modNote(P.name, roomsOn, foodOn, "huset");
   $("pRooms").hidden = !roomsOn; $("pFood").hidden = !foodOn;
   $("pBilling").hidden = ME.role !== "platform";
+  const repOn = ME.role === "platform" || (pm.reports && pm.reports.on);
+  $("pReport").hidden = !repOn;
+  if (!keepImport && repOn) window.NoddReports.mount($("pReport"), { scope: { partner_id: P.id }, api, toast, esc, platform: ME.role === "platform",
+    onEmail: (v) => api("PATCH", "/api/admin/partners/" + P.id, { report_email: v }).then((x) => { Object.assign(P, x); saved(); }) });
   if (!keepImport && ME.role === "platform") window.NoddBilling.mountAccount($("pBilling"), { scope: { partner_id: P.id }, api, toast, esc,
     onChange: async () => {  // husets moduler kan have ændret sig: vis lokaler/forplejning med det samme
       await loadPartners(); P = partners.find((x) => x.id === P.id) || P;
@@ -266,6 +270,8 @@ function renderAll() {
   const tm = T.modules || {};
   $("roomsTab").hidden = ME.role !== "platform" && !((tm.rooms && tm.rooms.on) || (tm.catering && tm.catering.on));
   if (tab === "rooms" && $("roomsTab").hidden) tab = "people";
+  $("reportTab").hidden = ME.role !== "platform" && !(tm.reports && tm.reports.on);
+  if (tab === "report" && $("reportTab").hidden) tab = "people";
   renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
   document.querySelectorAll(".tn").forEach((x) => (x.textContent = T.name));
   renderImport($("tImport"), { tenant_id: T.id, withFirm: false });
@@ -413,6 +419,8 @@ function setTab(name) {
   if (name === "exp") loadExpected();
   if (name === "rooms") loadRooms();
   if (name === "sub") mountBilling();
+  if (name === "report" && T) window.NoddReports.mount($("tReport"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform",
+    onEmail: (v) => api("PATCH", "/api/admin/tenants/" + T.id, { report_email: v }).then((x) => { T.report_email = x.report_email; saved(); }) });
 }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
 

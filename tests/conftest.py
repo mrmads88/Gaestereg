@@ -5,7 +5,8 @@ import tempfile
 import pytest
 
 _tmp = tempfile.mkdtemp()
-os.environ.update(DATA_DIR=_tmp, APP_ENV="local", ADMIN_PASSWORD="hemmelig", NOTIFY_MODE="test", SEED_DEMO="1")
+os.environ.update(DATA_DIR=_tmp, APP_ENV="local", ADMIN_PASSWORD="hemmelig", NOTIFY_MODE="test", SEED_DEMO="1",
+                  REPORT_SCHEDULER="0")
 
 from fastapi.testclient import TestClient  # noqa: E402
 

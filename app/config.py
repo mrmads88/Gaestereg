@@ -54,6 +54,10 @@ class Settings:
 
     gatewayapi_token: str = field(default_factory=lambda: os.getenv("GATEWAYAPI_TOKEN", ""))
     gatewayapi_url: str = field(default_factory=lambda: os.getenv("GATEWAYAPI_URL", "https://gatewayapi.com/rest/mtsms"))
+    # Månedsrapporter sendes automatisk den 1. kl. 07 (slås fra i tests). Links i mails peger på public_url.
+    report_scheduler: bool = field(default_factory=lambda: _bool("REPORT_SCHEDULER", True))
+    public_url: str = field(default_factory=lambda: os.getenv("PUBLIC_URL", "") or (
+        f"https://{os.environ['WEBSITE_HOSTNAME']}" if os.getenv("WEBSITE_HOSTNAME") else "http://localhost:8000"))
 
     def __post_init__(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)

@@ -108,6 +108,7 @@
           <p class="muted small">Antal gæster pr. måned. Kan fx bruges til at fakturere lejerne. Tallene gemmes uden navne, så de bliver, selv om besøgene slettes.</p>
           <div class="tablewrap" id="pStats"></div>
         </div>
+        <div class="stack" id="pReport" hidden></div>
         <div class="card upsell" id="pModNote" hidden></div>
         <div class="stack" id="pRooms"></div>
         <div class="stack" id="pFood"></div>
@@ -142,6 +143,7 @@
           <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
           <button role="tab" type="button" data-tab="exp" aria-selected="false">Forventede gæster</button>
           <button role="tab" type="button" data-tab="rooms" aria-selected="false" id="roomsTab">Lokaler</button>
+          <button role="tab" type="button" data-tab="report" aria-selected="false" id="reportTab">Overblik</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
           <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
           <button role="tab" type="button" data-tab="sub" aria-selected="false" id="subTab" hidden>Abonnement</button>
@@ -366,6 +368,9 @@
           </div>
         </section>
 
+        <!-- REPORT -->
+        <section class="tab" id="tab-report" hidden><div class="stack" id="tReport"></div></section>
+
         <!-- ROOMS -->
         <section class="tab" id="tab-rooms" hidden><div class="card upsell" id="tModNote" hidden></div><div class="stack" id="tRooms"></div><div class="stack" id="tFood"></div></section>
 
@@ -439,6 +444,7 @@
 <script src="/static/admin-rooms.js"></script>
 <script src="/static/admin-catering.js"></script>
 <script src="/static/admin-billing.js"></script>
+<script src="/static/admin-reports.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

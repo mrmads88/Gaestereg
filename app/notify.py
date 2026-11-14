@@ -172,7 +172,9 @@ def send_sms(sender: str, phone: str, text: str) -> None:
         raise RuntimeError(f"GatewayAPI svarede {r.status_code}: {r.text[:300]}")
 
 
-def send_email(to: str, subject: str, body: str, from_name: str, html: str | None = None) -> None:
+def send_email(to: str, subject: str, body: str, from_name: str, html: str | None = None,
+               attachments: list[tuple[str, bytes, str]] | None = None) -> None:
+    """attachments: [(filnavn, indhold, "type/undertype")]."""
     if not settings.smtp_configured:
         raise RuntimeError("E-mail er ikke sat op (SMTP_HOST/SMTP_FROM mangler)")
     if not valid_email(to):
@@ -184,6 +186,9 @@ def send_email(to: str, subject: str, body: str, from_name: str, html: str | Non
     msg.set_content(body)
     if html:
         msg.add_alternative(html, subtype="html")
+    for name, data, mime in attachments or []:
+        maintype, subtype = mime.split("/", 1)
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=name)
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as s:
         if settings.smtp_starttls:
             s.starttls()
