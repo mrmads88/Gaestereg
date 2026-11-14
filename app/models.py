@@ -479,3 +479,20 @@ class InvoiceLine(Base):
     ref_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # account_product eller adjustment
     ref_end: Mapped[date | None] = mapped_column(Date, nullable=True)  # nyt billed_through ved godkendelse
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SignageScreen(Base):
+    """En infoskærm (fase 8). Hører til et firma eller et hus ligesom lokaler. Skærmen findes på /s/<token>.
+    content er JSON: {"slides": [...], "side": [...], "ticker": [...]} (valideres i signage.py)."""
+    __tablename__ = "signage_screens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    token: Mapped[str] = mapped_column(Unicode(40), unique=True, index=True, default=new_token)
+    layout: Mapped[str] = mapped_column(Unicode(10), default="sidebar")  # sidebar | full
+    theme: Mapped[str] = mapped_column(Unicode(10), default="brand")  # brand | light | dark
+    content: Mapped[str] = mapped_column(UnicodeText, default="{}")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
