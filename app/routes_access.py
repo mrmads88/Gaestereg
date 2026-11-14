@@ -13,7 +13,7 @@ from . import catering, ratelimit, signage
 from .config import settings
 from .db import get_db
 from .media import delete_media
-from .models import BillingAccount, Kitchen, Partner, Room, SignageScreen, Tenant, User, utcnow
+from .models import BillingAccount, EmergencyAlert, Kitchen, Partner, Room, SignageScreen, Tenant, User, utcnow
 from .notify import send_email
 from .routes_admin import get_tenant_for
 from .schemas import (AcceptIn, ForgotIn, LoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
@@ -332,6 +332,7 @@ def delete_partner(pid: int, db: Session = Depends(get_db), p: Principal = Depen
     db.flush()  # lokalerne først: der er ingen relationship, så SQLAlchemy kender ikke rækkefølgen
     db.query(User).filter(User.partner_id == pid).delete()
     db.query(BillingAccount).filter(BillingAccount.partner_id == pid).delete()  # pakker og fakturaer følger med
+    db.query(EmergencyAlert).filter(EmergencyAlert.partner_id == pid).delete()
     for s in db.scalars(select(SignageScreen).where(SignageScreen.partner_id == pid)).all():
         for f in signage.images_of(signage.load_content(s)):
             delete_media(f)

@@ -144,7 +144,8 @@ body:not(.busy) .dot{animation:pulse 2.4s ease-in-out infinite}
     const soon = !cur && next && (next.s - now) <= 10 * 60000;
     document.body.classList.toggle("busy", !!cur);
     document.body.classList.toggle("soon", !!soon);
-    led(cur ? "busy" : soon ? "soon" : "free");
+    const alarm = window.NoddAlert && window.NoddAlert.kind !== "info";  // nødbesked: LED'en lyser rødt
+    led(alarm || cur ? "busy" : soon ? "soon" : "free");
 
     if (cur) {
       // Møder, der følger lige efter hinanden, tæller som ét langt "optaget".
@@ -238,5 +239,6 @@ body:not(.busy) .dot{animation:pulse 2.4s ease-in-out infinite}
   }
 })();
 </script>
+<script src="/static/alert.js"></script>
 </body>
 </html>

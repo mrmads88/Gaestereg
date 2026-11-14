@@ -496,3 +496,21 @@ class SignageScreen(Base):
     content: Mapped[str] = mapped_column(UnicodeText, default="{}")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class EmergencyAlert(Base):
+    """En nødbesked på alle skærme for et firma eller et hus. kind: evacuation | warning | info.
+    Aktiv, når ended_at er tom og ends_at (automatisk slut) ikke er passeret. Se alerts.py."""
+    __tablename__ = "emergency_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(Unicode(12), default="evacuation")
+    title: Mapped[str] = mapped_column(Unicode(120))
+    message: Mapped[str] = mapped_column(Unicode(600), default="")
+    created_by: Mapped[str] = mapped_column(Unicode(200), default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ended_by: Mapped[str] = mapped_column(Unicode(200), default="")

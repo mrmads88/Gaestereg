@@ -248,3 +248,14 @@ def test_signage_of_other_firms_is_hidden(setup, platform):
     assert pa.post("/api/admin/signage", json={"tenant_id": other["id"], "name": "x"}).status_code == 404
     assert new_client().get(f"/api/admin/signage?tenant_id={other['id']}").status_code == 401
     platform.delete(f"/api/admin/tenants/{other['id']}")
+
+
+def test_alerts_of_other_houses_are_hidden(setup, platform):
+    other = platform.post("/api/admin/partners", json={"name": "Fremmed alarmhus"}).json()
+    a = platform.post("/api/admin/alerts", json={"partner_id": other["id"], "kind": "info"}).json()
+    pa = setup["pa"]
+    assert pa.get(f"/api/admin/alerts?partner_id={other['id']}").status_code == 404
+    assert pa.post("/api/admin/alerts", json={"partner_id": other["id"], "kind": "evacuation"}).status_code == 404
+    assert pa.post(f"/api/admin/alerts/{a['id']}/end").status_code == 404
+    platform.post(f"/api/admin/alerts/{a['id']}/end")
+    platform.delete(f"/api/admin/partners/{other['id']}")

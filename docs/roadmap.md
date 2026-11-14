@@ -137,6 +137,16 @@ Senere: sammenligning mellem firmaer i et hus over tid, travleste tidspunkter fo
 
 Senere: video, RSS/nyheder fra en hjemmeside, kantinens rigtige menu (når kantine/POS kommer), nødbesked på alle skærme.
 
+## Nødbesked på alle skærme (bygget)
+- Rød knap "Nødbesked" øverst på firmaet og huset i admin. Typer: Evakuering (rød, hele skærmen), Vigtig besked
+  (orange, hele skærmen) og Information (bånd øverst). Tekst kan rettes, og beskeden kan slutte af sig selv.
+- Vises på gæsteskærme (også gæstens telefon), lokaleskærme (LED rød) og infoskærme inden for 15 sekunder.
+  Et husets besked når alle husets og firmaernes skærme. Den vigtigste aktive besked vinder.
+- Brandvagten kan starte og afslutte evakuering fra evakueringslisten på telefonen uden login.
+- Svarer fra hukommelsen (`alerts.py`), så skærmenes polling ikke rammer databasen. Gælder alle pakker.
+
+Senere: SMS/Teams til alle personer i huset ved evakuering, lyd på skærmene, skabeloner pr. hus.
+
 ## Venter på prod / en kunde
 - Oppetids-tjek og fejlmails. Et tjek hver anden time ville vække dev-databasen og bruge det gratis forbrug op.
 - Billeder i Azure Blob Storage (koster et par kroner om måneden). Koden er klar (fase 1).

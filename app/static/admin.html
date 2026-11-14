@@ -80,6 +80,7 @@
       <div id="partnerView" class="pview" hidden>
         <div class="ed-head">
           <div class="ed-logo"><span id="pvInitials"></span></div>
+          <span class="al-slot" id="pAlert"></span>
           <div class="ed-title"><h1 id="pName"></h1><p class="muted" id="pSub"></p></div>
         </div>
         <div class="card" id="pSettings">
@@ -133,7 +134,7 @@
             <div class="link-row"><span class="lbl">Skærmlink</span><code id="kioskUrl"></code>
               <button class="btn ghost sm" type="button" id="copyLink">Kopiér</button>
               <a class="btn ghost sm" id="openKiosk" target="_blank" rel="noopener">Åbn skærm</a>
-              <a class="btn ghost sm" id="openPoster" target="_blank" rel="noopener" title="QR-kode til døren: gæsten tjekker ind på sin egen telefon">QR til døren</a><span class="scr" id="scrStatus"></span></div>
+              <a class="btn ghost sm" id="openPoster" target="_blank" rel="noopener" title="QR-kode til døren: gæsten tjekker ind på sin egen telefon">QR til døren</a><span class="scr" id="scrStatus"></span><span id="tAlert"></span></div>
           </div>
         </div>
 
@@ -451,6 +452,7 @@
 <script src="/static/admin-billing.js"></script>
 <script src="/static/admin-reports.js"></script>
 <script src="/static/admin-signage.js"></script>
+<script src="/static/admin-alerts.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>
