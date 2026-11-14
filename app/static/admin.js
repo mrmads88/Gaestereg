@@ -96,6 +96,7 @@ async function boot() {
   if (STATUS.default_password && ME.role === "platform") warn.push("Standard-adgangskoden bruges. Sæt ADMIN_PASSWORD.");
   $("banner").textContent = warn.join(" "); $("banner").hidden = !warn.length;
   await Promise.all([loadTenants(), loadPartners()]);
+  if (location.hash === "#billing" && ME.role === "platform") return showBilling();
   const h = location.hash.match(/^#([tp])(\d+)$/);
   if (h && h[1] === "p") return selectPartner(+h[2]);
   if (h && h[1] === "t") return selectTenant(+h[2]);
@@ -128,6 +129,7 @@ function setupRole() {
   $("newTenant").textContent = r === "platform" ? "+ Ny kunde" : "+ Nyt firma";
   $("newName").placeholder = r === "platform" ? "Kundens navn, fx Junckers" : "Firmaets navn";
   $("subTab").hidden = !can("subscription");
+  $("billingBtn").hidden = r !== "platform";
   $("activeFld").hidden = !can("toggle_active");
   $("houseFld").hidden = !can("toggle_active");
   $("delRow").hidden = !can("delete_tenant");
@@ -178,7 +180,13 @@ $("newPartnerForm").addEventListener("submit", async (e) => {
   catch (err) { toast(err.message, true); }
 });
 
-function showView(v) { $("noTenant").hidden = true; $("editor").hidden = v !== "tenant"; $("partnerView").hidden = v !== "partner"; $("pv").hidden = v !== "tenant"; }
+function showView(v) { $("noTenant").hidden = true; $("editor").hidden = v !== "tenant"; $("partnerView").hidden = v !== "partner"; $("pv").hidden = v !== "tenant"; $("billingView").hidden = v !== "billing"; }
+function showBilling() {
+  T = null; P = null; location.hash = "billing"; showView("billing"); renderList(); renderPartners();
+  document.documentElement.style.setProperty("--accent", "#12352e");
+  window.NoddBilling.mountAdmin($("billingView"), { api, toast, esc });
+}
+$("billingBtn").addEventListener("click", showBilling);
 async function selectPartner(id) {
   P = partners.find((x) => x.id === id);
   if (!P) { await loadPartners(); P = partners.find((x) => x.id === id); }
@@ -201,9 +209,20 @@ async function renderPartner(keepImport) {
   $("pLink").hidden = true;
   if (!keepImport) renderImport($("pImport"), { partner_id: P.id, withFirm: true });
   loadHouse("p", "/api/admin/partners/" + P.id, true);
-  if (!keepImport) window.NoddRooms.mount($("pRooms"), { scope: { partner_id: P.id }, api, toast, esc, privacy: P.meeting_privacy,
+  const pm = P.modules || {}, roomsOn = pm.rooms && pm.rooms.on, foodOn = pm.catering && pm.catering.on;
+  $("pModNote").hidden = roomsOn && foodOn;
+  $("pModNote").innerHTML = modNote(P.name, roomsOn, foodOn, "huset");
+  $("pRooms").hidden = !roomsOn; $("pFood").hidden = !foodOn;
+  $("pBilling").hidden = ME.role !== "platform";
+  if (!keepImport && ME.role === "platform") window.NoddBilling.mountAccount($("pBilling"), { scope: { partner_id: P.id }, api, toast, esc,
+    onChange: async () => {  // husets moduler kan have ændret sig: vis lokaler/forplejning med det samme
+      await loadPartners(); P = partners.find((x) => x.id === P.id) || P;
+      const pm2 = P.modules || {};
+      if (!!(pm2.rooms && pm2.rooms.on) !== !!roomsOn || !!(pm2.catering && pm2.catering.on) !== !!foodOn) renderPartner();
+    } });
+  if (!keepImport && roomsOn) window.NoddRooms.mount($("pRooms"), { scope: { partner_id: P.id }, api, toast, esc, privacy: P.meeting_privacy,
     firms: tenants.filter((t) => t.partner_id === P.id), onPrivacy: (v) => patchPartner({ meeting_privacy: v }) });
-  if (!keepImport) window.NoddCatering.mount($("pFood"), { scope: { partner_id: P.id }, api, toast, esc });
+  if (!keepImport && foodOn) window.NoddCatering.mount($("pFood"), { scope: { partner_id: P.id }, api, toast, esc });
   renderUsers($("pUsers"), await api("GET", "/api/admin/partners/" + P.id + "/users").catch(() => []));
 }
 $("pTenants").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
@@ -244,6 +263,9 @@ function upsertList() { const i = tenants.findIndex((x) => x.id === T.id); if (i
 // ---------- render editor ----------
 function renderAll() {
   $("houseFld").hidden = !can("toggle_active") || !T.partner_id;
+  const tm = T.modules || {};
+  $("roomsTab").hidden = ME.role !== "platform" && !((tm.rooms && tm.rooms.on) || (tm.catering && tm.catering.on));
+  if (tab === "rooms" && $("roomsTab").hidden) tab = "people";
   renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
   document.querySelectorAll(".tn").forEach((x) => (x.textContent = T.name));
   renderImport($("tImport"), { tenant_id: T.id, withFirm: false });
@@ -390,6 +412,7 @@ function setTab(name) {
   if (name === "access") loadAccess();
   if (name === "exp") loadExpected();
   if (name === "rooms") loadRooms();
+  if (name === "sub") mountBilling();
 }
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
 
@@ -685,11 +708,22 @@ $("hostLinks").addEventListener("click", async (e) => {
 });
 
 // ---------- mødelokaler ----------
+function modNote(name, roomsOn, foodOn, who) {
+  const miss = [!roomsOn && "Mødelokaler", !foodOn && "Forplejning"].filter(Boolean);
+  if (!miss.length) return "";
+  return "<h3>" + esc(miss.join(" og ")) + "</h3><p class=\"muted\">" + esc(miss.join(" og ") + " er ikke med i " + name + "s pakke. ") +
+    (ME.role === "platform" ? "Tilmeld en pakke eller et tilkøb under " + (who === "huset" ? "abonnementet ovenfor" : "fanen Abonnement") + "."
+      : "Kontakt jeres leverandør, hvis I vil have det med.") + "</p>";
+}
 function loadRooms() {
   if (!T) return;
-  window.NoddRooms.mount($("tRooms"), { scope: { tenant_id: T.id }, api, toast, esc, privacy: T.meeting_privacy,
+  const m = T.modules || {}, roomsOn = m.rooms && m.rooms.on, foodOn = m.catering && m.catering.on;
+  $("tModNote").hidden = roomsOn && foodOn;
+  $("tModNote").innerHTML = modNote(T.name, roomsOn, foodOn, "firma");
+  $("tRooms").hidden = !roomsOn; $("tFood").hidden = !foodOn;
+  if (roomsOn) window.NoddRooms.mount($("tRooms"), { scope: { tenant_id: T.id }, api, toast, esc, privacy: T.meeting_privacy,
     onPrivacy: (v) => patchTenant({ meeting_privacy: v }) });
-  window.NoddCatering.mount($("tFood"), { scope: { tenant_id: T.id }, api, toast, esc });
+  if (foodOn) window.NoddCatering.mount($("tFood"), { scope: { tenant_id: T.id }, api, toast, esc });
 }
 
 // ---------- users (adgang) ----------
@@ -747,10 +781,13 @@ function renderSub() {
     const v = S[el.dataset.s];
     if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v;
   });
-  const year = (S.sub_yearly_price || 0) + (S.self_service ? (S.self_service_monthly_price || 0) * 12 : 0);
-  const until = S.sub_paid_until;
-  $("subSummary").textContent = "I alt " + year.toLocaleString("da-DK") + " kr. pr. år" +
-    (until ? (until < today() ? ". Udløb " : ". Betalt til ") + new Date(until).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }) + "." : ". Ingen betalingsdato sat.");
+  const old = (S.sub_yearly_price || 0) + (S.self_service_monthly_price || 0) * 12;
+  $("subSummary").textContent = old ? "Tidligere aftale uden pakke: " + old.toLocaleString("da-DK") + " kr. pr. år. Flyt den over i en pakke ovenfor." : "";
+}
+function mountBilling() {
+  if (!T || ME.role !== "platform") return;
+  window.NoddBilling.mountAccount($("tBilling"), { scope: { tenant_id: T.id }, api, toast, esc,
+    onChange: async () => { const fresh = await api("GET", "/api/admin/tenants/" + T.id); T.modules = fresh.modules; T.self_service = fresh.self_service; renderAll(); } });
 }
 document.querySelectorAll("[data-s]").forEach((el) => el.addEventListener("change", async () => {
   const k = el.dataset.s;

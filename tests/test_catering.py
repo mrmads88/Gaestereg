@@ -26,6 +26,7 @@ def house(plat):
     """Et hus med et lokale og et køkken med tre varer, og to firmaer med hver én person."""
     ratelimit.reset()
     partner = plat.post("/api/admin/partners", json={"name": "Køkkenhuset"}).json()
+    plat.post(f"/api/admin/billing/account/subscriptions?partner_id={partner['id']}", json={"product": "hus"})
     mk = lambda name: plat.post("/api/admin/tenants", json={"name": name, "partner_id": partner["id"]}).json()  # noqa: E731
     a, b = mk("Alfa ApS"), mk("Beta A/S")
     ha = plat.post(f"/api/admin/tenants/{a['id']}/hosts", json={"name": "Anna Alfa"}).json()

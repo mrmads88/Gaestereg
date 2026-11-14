@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from sqlalchemy import or_, select, true
 from sqlalchemy.orm import Session
 
+from . import modules
 from .media import media_url
 from .models import Booking, Partner, Room, Tenant, utcnow
 from .timeutil import TZ, from_local, local_iso, to_local
@@ -23,18 +24,24 @@ MAX_MINUTES = 12 * 60
 # ---------- hvem må hvad ----------
 
 def rooms_for_tenant(db: Session, t: Tenant, active_only: bool = True) -> list[Room]:
-    """Lokaler et firma kan booke: firmaets egne og husets (partnerens)."""
-    cond = Room.tenant_id == t.id
-    if t.partner_id is not None:
-        cond = or_(cond, Room.partner_id == t.partner_id)
-    q = select(Room).where(cond)
+    """Lokaler et firma kan booke: firmaets egne og husets (partnerens), når modulet er slået til."""
+    conds = []
+    if modules.tenant_has(t, "rooms"):
+        conds.append(Room.tenant_id == t.id)
+    if t.partner_id is not None and modules.partner_has(t.partner, "rooms"):
+        conds.append(Room.partner_id == t.partner_id)
+    if not conds:
+        return []
+    q = select(Room).where(or_(*conds))
     if active_only:
         q = q.where(Room.active == true())
     return list(db.scalars(q.order_by(Room.sort_order, Room.name)))
 
 
 def can_book(t: Tenant, room: Room) -> bool:
-    return room.tenant_id == t.id or (room.partner_id is not None and room.partner_id == t.partner_id)
+    if room.tenant_id is not None:
+        return room.tenant_id == t.id and modules.tenant_has(t, "rooms")
+    return room.partner_id is not None and room.partner_id == t.partner_id and modules.partner_has(t.partner, "rooms")
 
 
 # ---------- diskretion ----------
@@ -150,7 +157,7 @@ def screen_state(db_factory, token: str) -> dict:
         return hit[1]
     with db_factory() as db:
         room = db.scalar(select(Room).where(Room.screen_token == token))
-        if room is None or not room.active:
+        if room is None or not room.active or not modules.owner_has(db, room.tenant_id, room.partner_id, "rooms"):
             raise HTTPException(404, "Lokaleskærmen er ikke sat op")
         start, _ = day_bounds(today)
         owner = db.get(Tenant, room.tenant_id) if room.tenant_id else None

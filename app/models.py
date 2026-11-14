@@ -40,6 +40,7 @@ class Partner(Base):
     evac_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # evakueringslink
     # Hvad lokaleskærme viser om møder: title | organizer | busy. Tom = standard (busy). Se rooms.privacy_for.
     meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))
+    report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
 
     tenants: Mapped[list["Tenant"]] = relationship(back_populates="partner")
 
@@ -118,6 +119,8 @@ class Tenant(Base):
     self_service_monthly_price: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     sub_paid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     sub_note: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
+    # Månedsrapport på mail (firmaets egne admins bestemmer). Flere adresser adskilles med komma.
+    report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Host.sort_order"
@@ -354,3 +357,125 @@ class CateringLine(Base):
     unit: Mapped[str] = mapped_column(Unicode(20), default="")
     unit_price: Mapped[int] = mapped_column(Integer, default=0)
     qty: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class ReportRun(Base):
+    """En sendt (eller forsøgt) månedsrapport. Den unikke nøgle sikrer, at hver rapport kun sendes én gang,
+    også hvis appen genstarter. scope: tenant | partner."""
+    __tablename__ = "report_runs"
+    __table_args__ = (UniqueConstraint("scope", "scope_id", "month", name="uq_report_run"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scope: Mapped[str] = mapped_column(Unicode(10))
+    scope_id: Mapped[int] = mapped_column(Integer)
+    month: Mapped[str] = mapped_column(Unicode(7))  # YYYY-MM
+    recipients: Mapped[str] = mapped_column(Unicode(500), default="")
+    status: Mapped[str] = mapped_column(Unicode(10), default="venter")  # venter | sendt | test | fejl
+    error: Mapped[str] = mapped_column(UnicodeText, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+# ---------- abonnement og fakturering ----------
+
+class Product(Base):
+    """Prislisten: pakker, tilkøb, forbrug og engangsposter. Priser i øre ekskl. moms.
+    kind: package (månedspris, højst én pr. kunde) | addon (månedspris) | usage (pr. stk., fx SMS) | once (engangs).
+    audience: firm | house | all. modules: JSON-liste med det, produktet låser op (se modules.py)."""
+    __tablename__ = "products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(Unicode(40), unique=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    kind: Mapped[str] = mapped_column(Unicode(10))
+    audience: Mapped[str] = mapped_column(Unicode(10), default="all")
+    price: Mapped[int] = mapped_column(Integer, default=0)
+    unit: Mapped[str] = mapped_column(Unicode(20), default="md.")
+    modules: Mapped[str] = mapped_column(UnicodeText, default="[]")
+    included_sms: Mapped[int] = mapped_column(Integer, default=0)  # pr. måned, for pakker
+    description: Mapped[str] = mapped_column(Unicode(500), default="")
+    features: Mapped[str] = mapped_column(UnicodeText, default="[]")  # punkter til pakkekortet
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class BillingAccount(Base):
+    """Kunden, der betaler: et firma (tenant_id) eller et hus (partner_id). interval: month | quarter | year.
+    Fakturaer udstedes forud for perioden. Forbrug (SMS) afregnes bagud."""
+    __tablename__ = "billing_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, unique=True)
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, unique=True)
+    interval: Mapped[str] = mapped_column(Unicode(10), default="month")
+    discount_pct: Mapped[int] = mapped_column(Integer, default=0)  # fast rabat på alt løbende
+    cvr: Mapped[str] = mapped_column(Unicode(20), default="")
+    invoice_email: Mapped[str] = mapped_column(Unicode(200), default="")
+    reference: Mapped[str] = mapped_column(Unicode(120), default="")  # att., EAN eller ordrenr.
+    note: Mapped[str] = mapped_column(Unicode(500), default="")
+    usage_billed_through: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AccountProduct(Base):
+    """Et produkt, kunden er tilmeldt. billed_through: faktureret til (eksklusiv). Slutdato = opsagt fra og med."""
+    __tablename__ = "account_products"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("billing_accounts.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    billed_through: Mapped[date | None] = mapped_column(Date, nullable=True)
+    price_override: Mapped[int | None] = mapped_column(Integer, nullable=True)  # øre pr. md., tom = prislisten
+    discount_pct: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(Unicode(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Adjustment(Base):
+    """Engangspost på næste faktura: et engangsprodukt (fx opsætning) eller en rabat (negativt beløb).
+    invoice_id sættes, når fakturaen godkendes (ingen FK: én kaskadevej)."""
+    __tablename__ = "adjustments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("billing_accounts.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    description: Mapped[str] = mapped_column(Unicode(200))
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    amount: Mapped[int] = mapped_column(Integer)  # øre pr. stk., negativ = rabat
+    invoice_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Invoice(Base):
+    """Fakturagrundlag for en periode [period_start, period_end). draft kan laves om. final er låst og har nummer."""
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("billing_accounts.id", ondelete="CASCADE"), index=True)
+    number: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sættes ved godkendelse (ikke unik pga. NULL)
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    usage_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(Unicode(10), default="draft")  # draft | final | paid
+    subtotal: Mapped[int] = mapped_column(Integer, default=0)
+    vat: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class InvoiceLine(Base):
+    __tablename__ = "invoice_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(Unicode(12))  # product | credit | usage | once | discount
+    description: Mapped[str] = mapped_column(Unicode(300))
+    qty: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price: Mapped[int] = mapped_column(Integer, default=0)
+    amount: Mapped[int] = mapped_column(Integer, default=0)
+    ref_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # account_product eller adjustment
+    ref_end: Mapped[date | None] = mapped_column(Date, nullable=True)  # nyt billed_through ved godkendelse
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)

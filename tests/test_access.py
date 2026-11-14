@@ -185,6 +185,7 @@ def test_invite_email_has_logo_button_and_plain_text():
 
 def test_rooms_of_other_firms_and_houses_are_hidden(setup, platform):
     other = platform.post("/api/admin/tenants", json={"name": "Fremmed firma"}).json()
+    platform.post(f"/api/admin/billing/account/subscriptions?tenant_id={other['id']}", json={"product": "rooms"})
     room = platform.post("/api/admin/rooms", json={"tenant_id": other["id"], "name": "Fremmed lokale"}).json()
     pa = setup["pa"]  # partner-admin for et andet hus
     assert pa.get(f"/api/admin/rooms?tenant_id={other['id']}").status_code == 404
@@ -200,6 +201,7 @@ def test_rooms_of_other_firms_and_houses_are_hidden(setup, platform):
 
 def test_kitchens_of_other_firms_are_hidden(setup, platform):
     other = platform.post("/api/admin/tenants", json={"name": "Fremmed køkkenfirma"}).json()
+    platform.post(f"/api/admin/billing/account/subscriptions?tenant_id={other['id']}", json={"product": "catering"})
     k = platform.post("/api/admin/kitchens", json={"tenant_id": other["id"], "name": "Fremmed køkken"}).json()
     item = platform.post(f"/api/admin/kitchens/{k['id']}/items", json={"name": "Kage", "price": 10}).json()
     pa = setup["pa"]  # partner-admin for et andet hus
@@ -212,3 +214,13 @@ def test_kitchens_of_other_firms_are_hidden(setup, platform):
     assert pa.put("/api/admin/bookings/999999/catering", json={"kitchen_id": k["id"], "items": []}).status_code == 404
     assert new_client().get(f"/api/admin/kitchens?tenant_id={other['id']}").status_code == 401
     platform.delete(f"/api/admin/tenants/{other['id']}")
+
+
+def test_billing_is_platform_only(setup, platform):
+    pa = setup["pa"]
+    pid = setup["partner"]["id"]
+    for method, url in [("GET", "/api/admin/billing/products"), ("GET", f"/api/admin/billing/account?partner_id={pid}"),
+                        ("POST", "/api/admin/billing/run"), ("GET", "/api/admin/billing/invoices"),
+                        ("GET", "/api/admin/billing/invoices.csv")]:
+        assert pa.request(method, url, json={"period_start": "2030-01-01"}).status_code == 403, url
+    assert new_client().get("/api/admin/billing/invoices").status_code == 401

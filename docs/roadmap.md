@@ -81,6 +81,46 @@ Lokaler og køkken kan høre til huset (partneren), så alle firmaer i et kontor
   Visningen skal tilpasses Outlooks små paneler, så tekst og billeder ikke bliver små og svære at læse.
 - Synk med lokalepostkasser i Microsoft 365, så bookinger fra Outlook og Nodd ikke kolliderer.
 
+## Fase 6: Pakker, tilkøb og fakturering (bygget)
+Moduler følger af det, kunden har købt (`billing.py`, `modules.py`). Kunden er et firma eller et hus. Har huset et modul,
+gælder det for alle husets firmaer.
+
+Prisforslag (kr. ekskl. moms, kan rettes under Fakturering → Prisliste):
+
+| Pakke | Pris/md. | Indhold |
+|---|---|---|
+| Start | 349 | Gæsteskærm, besked til værten, invitationer, pakker, evakuering, 100 SMS |
+| Plus | 649 | Start + selvbetjening, overblik og månedsrapport, 300 SMS |
+| Komplet | 1.195 | Plus + mødelokaler (5), forplejning, infoskærm, 500 SMS |
+| Hus | 2.495 | Husets skærm, 10 firmaer, alle moduler for alle firmaer, 1.000 SMS |
+
+Tilkøb pr. md.: Mødelokaler 349, Forplejning 249, Selvbetjening 149, Overblik/rapport 99, Infoskærm 199,
+ekstra skærm 99, ekstra lokale 49, ekstra firma i huset 99. Forbrug: SMS ud over pakken 0,39 kr./stk. (bagud).
+Engangs: opsætning 1.495, tablet med gulvstander 4.495. Årsbetaling: 2 måneder gratis.
+
+Tankerne bag: pakkerne er nemme at sælge og forstå, og tilkøb dækker resten. SMS er den eneste reelle variable udgift,
+så den er med i pakken op til et loft og afregnes derefter. Hus-pakken er billigere pr. firma end Komplet, så
+kontorhoteller har en grund til at samle firmaerne hos sig.
+
+- Fakturering forud pr. måned, kvartal eller år. Tilmelding midt i en periode udregnes pr. dag og kommer automatisk
+  med på næste faktura. Opsigelse af betalt tid krediteres.
+- Rabat: fast på kunden (%), pr. produkt (%), særpris pr. produkt og engangsrabatter.
+- Fakturakørsel laver kladder, der kan godkendes (nummer fra 1001) og hentes som CSV til bogføringen.
+
+Mangler: grænser (5 lokaler, 10 firmaer, skærme) håndhæves ikke automatisk endnu; integration med e-conomic eller
+Dinero, så fakturaer sendes derfra; kunden kan ikke selv se sin pakke i admin.
+
+## Fase 7: Overblik og månedsrapport
+Dashboard pr. firma og pr. hus til direktionsmøder (print/PDF): gæster, pakker, bookinger, belægning pr. lokale,
+forplejning pr. måned, top-varer, pr. firma i huset, udvikling mod sidste periode. Månedsrapport på mail med nøgletal
+og CSV til `report_email` (feltet og `report_runs` findes). Kræver modulet `reports` (Plus og op).
+
+## Fase 8: Infoskærme
+Infoskærme som gæsteskærmen, hvor kunden selv bygger skærmen af blokke: velkomst og logo, dagens forventede gæster
+(kun fornavne), mødelokaler ledig/optaget, kantinens/køkkenets menu, billeder og video, nyheder, vejr, ur og
+evakueringsinfo. Blokkene følger pakken: lokale- og menublokke kræver de moduler. Modulet hedder `signage` og er
+allerede på prislisten (Komplet, Hus og tilkøb).
+
 ## Venter på prod / en kunde
 - Oppetids-tjek og fejlmails. Et tjek hver anden time ville vække dev-databasen og bruge det gratis forbrug op.
 - Billeder i Azure Blob Storage (koster et par kroner om måneden). Koden er klar (fase 1).

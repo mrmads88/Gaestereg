@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from sqlalchemy import or_, select, true
 from sqlalchemy.orm import Session
 
+from . import modules
 from .db import SessionLocal
 from .media import delete_media, media_url
 from .models import (Booking, CateringLine, CateringOrder, Kitchen, MenuItem, Notification, Room, Tenant, utcnow)
@@ -33,17 +34,23 @@ def kr(oere: int) -> str:
 # ---------- hvem må bestille hvad ----------
 
 def kitchens_for_tenant(db: Session, t: Tenant, active_only: bool = True) -> list[Kitchen]:
-    cond = Kitchen.tenant_id == t.id
-    if t.partner_id is not None:
-        cond = or_(cond, Kitchen.partner_id == t.partner_id)
-    q = select(Kitchen).where(cond)
+    conds = []
+    if modules.tenant_has(t, "catering"):
+        conds.append(Kitchen.tenant_id == t.id)
+    if t.partner_id is not None and modules.partner_has(t.partner, "catering"):
+        conds.append(Kitchen.partner_id == t.partner_id)
+    if not conds:
+        return []
+    q = select(Kitchen).where(or_(*conds))
     if active_only:
         q = q.where(Kitchen.active == true())
     return list(db.scalars(q.order_by(Kitchen.name)))
 
 
 def can_order(t: Tenant, k: Kitchen) -> bool:
-    return k.tenant_id == t.id or (k.partner_id is not None and k.partner_id == t.partner_id)
+    if k.tenant_id is not None:
+        return k.tenant_id == t.id and modules.tenant_has(t, "catering")
+    return k.partner_id is not None and k.partner_id == t.partner_id and modules.partner_has(t.partner, "catering")
 
 
 def items_of(db: Session, kitchen_ids: list[int], active_only: bool = True) -> list[MenuItem]:
@@ -259,6 +266,8 @@ def kitchen_by_token(db: Session, token: str) -> Kitchen:
     k = db.scalar(select(Kitchen).where(Kitchen.order_token == token))
     if k is None:
         raise HTTPException(404, "Linket virker ikke længere. Bed om et nyt.")
+    if not modules.owner_has(db, k.tenant_id, k.partner_id, "catering"):
+        raise HTTPException(404, "Forplejning er ikke slået til. Kontakt jeres leverandør.")
     return k
 
 

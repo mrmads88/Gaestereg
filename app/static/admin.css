@@ -363,3 +363,41 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
 .ct-kpi{display:flex;gap:24px;flex-wrap:wrap}
 .ct-kpi b{font:700 1.4rem var(--f-display)}
 tr.muted td{color:var(--soft);text-decoration:line-through}
+
+/* ---------- abonnement og fakturering ---------- */
+.bl-hero{flex-direction:row;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;background:linear-gradient(135deg,#12352e,#1d5a4c);color:#fff;border:0}
+.bl-hero .lbl,.bl-hero .muted,.bl-hero small{color:rgb(255 255 255 / .75)}
+.bl-big{font:800 2.2rem/1.1 var(--f-display);letter-spacing:-.02em;margin:4px 0 10px}
+.bl-big small{font:600 .9rem var(--f-body)}
+.bl-next{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.bl-next b{font:700 1.5rem var(--f-display)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-block;border-radius:999px;padding:3px 10px;font-size:.78rem;font-weight:700;background:var(--key);color:var(--soft)}
+.bl-hero .chip.on{background:rgb(255 255 255 / .16);color:#fff}
+.bl-fromfld{flex-direction:row;align-items:center;gap:8px}
+.bl-fromfld input{min-height:34px;border:1px solid var(--rule);border-radius:10px;padding:4px 10px;background:#fbfbfa}
+.bl-pkgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.bl-pkg{border:1px solid var(--rule);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.bl-pkg.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.bl-pkg-h{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.bl-pkg-h b{font:700 1.15rem var(--f-display)}
+.bl-price{font:700 1.5rem var(--f-display)}
+.bl-price small{font:600 .8rem var(--f-body);color:var(--soft)}
+.bl-pkg ul{margin:0;padding-left:18px;font-size:.86rem;display:flex;flex-direction:column;gap:3px;flex:1}
+.bl-pkg .btn{align-self:flex-start}
+.bl-list{display:flex;flex-direction:column}
+.bl-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--rule)}
+.bl-row:first-child{border-top:0}
+.bl-row .acts{display:flex;gap:6px}
+.bl-row .tag{margin-left:6px}
+.bl-adj input{flex:1;min-width:120px;min-height:36px;border:1px solid var(--rule);border-radius:10px;padding:6px 10px;background:#fbfbfa}
+.bl-adj input[type=number]{flex:0 0 130px}
+table.bl-inv{min-width:0}
+table.bl-inv td{padding:7px 4px}
+table.bl-inv tr.neg td{color:var(--ok)}
+table.bl-inv tr.sum td{border-top:2px solid var(--rule);font-weight:600}
+table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
+.bl-feat{width:100%;margin-top:6px;font:inherit;font-size:.82rem;border:1px solid var(--rule);border-radius:8px;padding:6px}
+.bl-price-in{width:100px;min-height:34px;border:1px solid var(--rule);border-radius:8px;padding:4px 8px}
+.bl-sms-in{width:80px;min-height:34px;border:1px solid var(--rule);border-radius:8px;padding:4px 8px}
+.card.upsell{background:linear-gradient(135deg,#fffaf0,#fff);border-color:#f0dfb8}

@@ -53,7 +53,7 @@
   <header class="top">
     <div class="top-l"><img class="lockup" src="/static/brand/nodd-lockup.svg" alt="Nodd" width="104" height="29"><span class="envpill" id="envPill"></span>
       <button class="switcher" type="button" id="switchBtn" hidden aria-haspopup="dialog"><span class="sw-logo" id="swLogo"></span><span class="sw-name" id="swName">Vælg kunde</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><kbd id="swKbd">Ctrl K</kbd></button></div>
-    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
+    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="billingBtn" hidden>Fakturering</button><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
   </header>
   <div class="banner" id="banner" hidden></div>
 
@@ -76,6 +76,7 @@
         <p class="muted">Eller opret en ny. Hver kunde får sit eget skærmlink, logo, personer og beskeder.</p>
       </div>
 
+      <div id="billingView" class="pview" hidden></div>
       <div id="partnerView" class="pview" hidden>
         <div class="ed-head">
           <div class="ed-logo"><span id="pvInitials"></span></div>
@@ -89,6 +90,7 @@
           </div>
           <p class="muted small">Når aftalen er slået fra, kan partnerens administratorer ikke logge ind. Skærmene kører videre.</p>
         </div>
+        <div class="stack" id="pBilling" hidden></div>
         <div class="card">
           <h3>Administratorer</h3>
           <p class="muted">De kan oprette og rette alle firmaer under <b class="pn"></b>, men ikke se priser eller slette firmaer.</p>
@@ -106,6 +108,7 @@
           <p class="muted small">Antal gæster pr. måned. Kan fx bruges til at fakturere lejerne. Tallene gemmes uden navne, så de bliver, selv om besøgene slettes.</p>
           <div class="tablewrap" id="pStats"></div>
         </div>
+        <div class="card upsell" id="pModNote" hidden></div>
         <div class="stack" id="pRooms"></div>
         <div class="stack" id="pFood"></div>
         <div class="card">
@@ -138,7 +141,7 @@
           <button role="tab" type="button" data-tab="flow" aria-selected="false">Gæsteflow</button>
           <button role="tab" type="button" data-tab="msg" aria-selected="false">Beskeder</button>
           <button role="tab" type="button" data-tab="exp" aria-selected="false">Forventede gæster</button>
-          <button role="tab" type="button" data-tab="rooms" aria-selected="false">Lokaler</button>
+          <button role="tab" type="button" data-tab="rooms" aria-selected="false" id="roomsTab">Lokaler</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
           <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
           <button role="tab" type="button" data-tab="sub" aria-selected="false" id="subTab" hidden>Abonnement</button>
@@ -364,7 +367,7 @@
         </section>
 
         <!-- ROOMS -->
-        <section class="tab" id="tab-rooms" hidden><div class="stack" id="tRooms"></div><div class="stack" id="tFood"></div></section>
+        <section class="tab" id="tab-rooms" hidden><div class="card upsell" id="tModNote" hidden></div><div class="stack" id="tRooms"></div><div class="stack" id="tFood"></div></section>
 
         <!-- ACCESS -->
         <section class="tab" id="tab-access" hidden>
@@ -380,20 +383,14 @@
 
         <!-- SUBSCRIPTION (kun platform) -->
         <section class="tab" id="tab-sub" hidden>
+          <div class="stack" id="tBilling"></div>
           <div class="card">
-            <h3>Abonnement</h3>
+            <h3>Aftale</h3>
             <p class="muted">Kun du kan se og rette dette. Kunder og partnere ser det ikke.</p>
-            <div class="g2">
-              <label class="fld"><span>Årsabonnement (kr. pr. år)</span><input type="number" min="0" step="100" data-s="sub_yearly_price"></label>
-              <label class="fld"><span>Betalt til og med</span><input type="date" data-s="sub_paid_until"></label>
-            </div>
-            <div class="g2">
-              <div class="fld"><span>Selvbetjening</span><label class="switch"><input type="checkbox" data-s="self_service"><i></i><em>Kundens administratorer kan logge ind</em></label></div>
-              <label class="fld"><span>Selvbetjening (kr. pr. måned)</span><input type="number" min="0" step="10" data-s="self_service_monthly_price"></label>
-            </div>
             <label class="fld"><span>Partner</span><select data-s="partner_id" id="subPartner"></select>
-              <small class="hint">Partnerens administratorer kan rette alle firmaer, der hører til partneren.</small></label>
-            <label class="fld"><span>Note</span><textarea data-s="sub_note" rows="3" maxlength="500" placeholder="Fx fakturanummer, kontaktperson, aftaler"></textarea></label>
+              <small class="hint">Partnerens administratorer kan rette alle firmaer, der hører til partneren. Har partneren en pakke, gælder modulerne også her.</small></label>
+            <div class="fld"><span>Selvbetjening uden for pakken</span><label class="switch"><input type="checkbox" data-s="self_service"><i></i><em>Kundens administratorer kan logge ind, selv om pakken ikke har selvbetjening</em></label></div>
+            <label class="fld"><span>Note</span><textarea data-s="sub_note" rows="3" maxlength="500" placeholder="Fx kontaktperson og aftaler"></textarea></label>
             <p class="muted small" id="subSummary"></p>
           </div>
         </section>
@@ -441,6 +438,7 @@
 <script src="/static/langs.js"></script>
 <script src="/static/admin-rooms.js"></script>
 <script src="/static/admin-catering.js"></script>
+<script src="/static/admin-billing.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

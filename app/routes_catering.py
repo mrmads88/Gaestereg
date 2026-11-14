@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from . import catering, rooms
+from . import catering, modules, rooms
 from .auth import Principal, current
 from .db import get_db
 from .media import delete_media, save_image
@@ -110,9 +110,12 @@ def create_kitchen(body: KitchenIn, request: Request, db: Session = Depends(get_
     if (body.tenant_id is None) == (body.partner_id is None):
         raise HTTPException(422, "Køkkenet skal høre til enten et firma eller huset")
     if body.tenant_id is not None:
-        get_tenant_for(db, body.tenant_id, p)
-    elif db.get(Partner, body.partner_id) is None or not p.can_manage_partner(body.partner_id):
-        raise HTTPException(404, "Partneren findes ikke")
+        modules.require_tenant(get_tenant_for(db, body.tenant_id, p), "catering")
+    else:
+        partner = db.get(Partner, body.partner_id)
+        if partner is None or not p.can_manage_partner(body.partner_id):
+            raise HTTPException(404, "Partneren findes ikke")
+        modules.require_partner(partner, "catering")
     k = Kitchen(tenant_id=body.tenant_id, partner_id=body.partner_id, name=body.name.strip(), kind=body.kind,
                 email=body.email.strip(), phone=body.phone.strip(), lead_hours=body.lead_hours, note=body.note.strip())
     db.add(k)
