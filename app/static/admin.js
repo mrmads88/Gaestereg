@@ -203,6 +203,7 @@ async function renderPartner(keepImport) {
   loadHouse("p", "/api/admin/partners/" + P.id, true);
   if (!keepImport) window.NoddRooms.mount($("pRooms"), { scope: { partner_id: P.id }, api, toast, esc, privacy: P.meeting_privacy,
     firms: tenants.filter((t) => t.partner_id === P.id), onPrivacy: (v) => patchPartner({ meeting_privacy: v }) });
+  if (!keepImport) window.NoddCatering.mount($("pFood"), { scope: { partner_id: P.id }, api, toast, esc });
   renderUsers($("pUsers"), await api("GET", "/api/admin/partners/" + P.id + "/users").catch(() => []));
 }
 $("pTenants").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
@@ -688,6 +689,7 @@ function loadRooms() {
   if (!T) return;
   window.NoddRooms.mount($("tRooms"), { scope: { tenant_id: T.id }, api, toast, esc, privacy: T.meeting_privacy,
     onPrivacy: (v) => patchTenant({ meeting_privacy: v }) });
+  window.NoddCatering.mount($("tFood"), { scope: { tenant_id: T.id }, api, toast, esc });
 }
 
 // ---------- users (adgang) ----------

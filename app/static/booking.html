@@ -106,7 +106,38 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
 .err{color:var(--bad);font-weight:600;margin:0}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:999px;padding:12px 22px;
   font-weight:700;z-index:30;box-shadow:0 10px 30px rgb(0 0 0 / .25)}
-@media (max-width:520px){.drawer{width:100%}.rooms{grid-template-columns:1fr}}
+/* forplejning */
+.food{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--rule);padding-top:16px}
+.food-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.food-h h3{font:700 1.15rem var(--f-display);margin:0}
+.food-h small{display:block;color:var(--soft);font-size:.82rem;margin-top:2px}
+.food-h small.warn{color:var(--bad);font-weight:700}
+.cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cats button{flex:none;min-height:34px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid var(--rule);font-size:.85rem;color:var(--ink)}
+.cats button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.menu{display:flex;flex-direction:column;gap:10px}
+.mi{display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--rule);border-radius:16px;padding:10px;transition:border-color .15s,box-shadow .15s}
+.mi.on{border-color:var(--brand);box-shadow:0 0 0 2px color-mix(in oklab,var(--brand) 22%,transparent)}
+.mi .pic{width:76px;height:76px;border-radius:12px;overflow:hidden;background:var(--paper);display:grid;place-items:center;font-size:2rem}
+.mi .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.mi .txt{min-width:0}
+.mi b{display:block;font-size:1rem;line-height:1.2}
+.mi .d{color:var(--soft);font-size:.82rem;line-height:1.3;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mi .pr{font-weight:700;font-size:.9rem;margin-top:4px}
+.mi .pr span{color:var(--soft);font-weight:500}
+.mi .tg{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.mi .tg i{font-style:normal;font-size:.68rem;font-weight:700;background:#e8f3ec;color:#1b6a43;border-radius:999px;padding:1px 7px}
+.mi .add{min-height:40px;padding:0 14px;font-size:.88rem;background:var(--brand);color:#fff}
+.mi .step button{min-height:38px;width:38px}
+.mi .step input{width:42px;font-size:1rem}
+.foodsum{display:flex;justify-content:space-between;align-items:baseline;gap:10px;background:color-mix(in oklab,var(--brand) 8%,#fff);border-radius:12px;padding:10px 12px;font-size:.9rem}
+.foodsum b{font:700 1.1rem var(--f-mono);white-space:nowrap}
+.order{margin-top:6px;font-size:.85rem;color:var(--ink);background:var(--paper);border-radius:10px;padding:6px 10px}
+.order .st{font-weight:700}
+.order b,.order .st{display:inline}
+.order .st.confirmed,.order .st.delivered{color:var(--ok)}
+.item .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:520px){.drawer{width:100%}.rooms{grid-template-columns:1fr}.mi{grid-template-columns:60px 1fr;align-items:start}.mi .pic{width:60px;height:60px}.mi .ctl{grid-column:2;justify-self:start}}
 @media (prefers-reduced-motion:reduce){.drawer{animation:none}}
 [hidden]{display:none!important}
 </style>
@@ -125,6 +156,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
   <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle">
     <div class="dh" id="dPhoto"><button type="button" class="x" id="dClose" aria-label="Luk">×</button><h2 id="dTitle"></h2></div>
     <form class="db" id="form" autocomplete="off">
+      <div id="bookFields" style="display:contents">
       <label>Mødets titel<input name="title" maxlength="200" placeholder="Fx Kundemøde med Acme"></label>
       <div class="row">
         <label>Starter<input name="start" type="time" step="900" required></label>
@@ -137,7 +169,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
       <div><div class="lbl">Antal deltagere</div><div class="step"><button type="button" id="minus" aria-label="Færre">−</button><input name="attendees" type="number" min="0" max="1000" value="2" inputmode="numeric" aria-label="Antal deltagere"><button type="button" id="plus" aria-label="Flere">+</button></div></div>
       <div id="setupBox"><div class="lbl">Opstilling</div><div class="seg" id="setups"></div></div>
       <div id="equipBox"><div class="lbl">Udstyr</div><div class="seg" id="equip"></div></div>
-      <label>Bemærkninger<textarea name="note" maxlength="1000" placeholder="Fx ekstra stole eller adgang fra kl. 8"></textarea></label>
+      <label>Bemærkninger<textarea name="note" maxlength="500" placeholder="Fx ekstra stole eller adgang fra kl. 8"></textarea></label>
+      </div>
+      <section class="food" id="foodBox" hidden>
+        <div class="food-h"><div><h3>Forplejning</h3><small id="foodNote"></small></div><div class="seg" id="kitchens"></div></div>
+        <div class="cats" id="cats" role="group" aria-label="Kategori"></div>
+        <div class="menu" id="menu"></div>
+        <div id="foodMeta" hidden style="display:flex;flex-direction:column;gap:12px">
+          <div class="row">
+            <label>Serveres kl.<input name="deliver" type="time" step="900"></label>
+            <label>Omkostningssted<input name="cost_center" maxlength="60" placeholder="Valgfrit, fx Salg"></label>
+          </div>
+          <label>Allergier og ønsker til køkkenet<textarea name="food_note" maxlength="500" placeholder="Fx 2 vegetarer, 1 glutenfri"></textarea></label>
+          <div class="foodsum"><span id="foodLines"></span><b id="foodTotal"></b></div>
+        </div>
+      </section>
       <div class="sum" id="sum"></div>
       <p class="err" id="err" hidden></p>
       <button class="pri" type="submit" id="send">Book lokalet</button>
@@ -157,6 +203,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
   const iso = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   const hm = (d) => pad(d.getHours()) + ":" + pad(d.getMinutes());
   let day = iso(new Date()), data = null, room = null, sel = { setup: "", equipment: new Set() };
+  let editing = null, kitchen = null, cart = new Map(), cat = "", deliverTouched = false;  // forplejning: valgt køkken, kurv (id -> {qty, follow})
+  const money = (o) => (o / 100).toLocaleString("da-DK", { style: "currency", currency: "DKK" });
+  const ICON = (c, n) => { const s = (n || "") + " " + (c || "");  // ikon ud fra varens navn, ellers kategorien
+    return /vand|juice|sodavand|saft/i.test(s) ? "🥤" : /salat/i.test(s) ? "🥗" : /frugt/i.test(s) ? "🍎" : /kage|cookie|sød|snack/i.test(s) ? "🍰"
+      : /kaffe|\bte\b/i.test(s) ? "☕" : /brød|morgen|croissant/i.test(s) ? "🥐" : /sandwich|frokost|mad/i.test(s) ? "🥪" : /drik/i.test(s) ? "🥤" : "🍽️"; };
   $("inviteLink").href = "/i/" + encodeURIComponent(token);
 
   function days() {
@@ -214,9 +265,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
   function renderMine() {
     const mine = data.bookings.filter((b) => b.mine);
     const name = (id) => (data.rooms.find((r) => r.id === id) || {}).name || "";
+    const canFood = data.kitchens.length > 0;
     $("mine").innerHTML = mine.length ? mine.map((b) => '<div class="item"><div class="grow"><b>' + esc(b.title || "Møde") + "</b><small>" +
       esc(name(b.room_id) + " · " + hm(new Date(b.start)) + "–" + hm(new Date(b.end)) + (b.attendees ? " · " + b.attendees + " pers." : "")) +
-      '</small></div><button type="button" class="ghost" data-cancel="' + b.id + '">Aflys</button></div>').join("") :
+      "</small>" + (b.catering ? '<div class="order">🍽️ ' + esc(b.catering.lines.map((l) => l.qty + " × " + l.name).join(", ")) + " · <b>" +
+      esc(b.catering.total_text) + '</b> · <span class="st ' + esc(b.catering.status) + '">' + esc(b.catering.status_text) + "</span></div>" : "") +
+      '</div><div class="acts">' + (canFood || b.catering ? '<button type="button" class="ghost" data-food="' + b.id + '">' + (b.catering ? "Ret forplejning" : "Bestil forplejning") + "</button>" : "") +
+      '<button type="button" class="ghost" data-cancel="' + b.id + '">Aflys</button></div></div>').join("") :
       '<p class="empty">Ingen bookinger denne dag.</p>';
   }
 
@@ -261,10 +316,102 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     $("equipBox").hidden = !room.equipment.length;
     $("equip").innerHTML = room.equipment.map((x) => '<button type="button" data-eq="' + esc(x) + '" aria-pressed="false">' + esc(x) + "</button>").join("");
     $("err").hidden = true;
+    editing = null; $("bookFields").hidden = false;
+    setupFood(null);
     $("veil").hidden = false;
     document.body.style.overflow = "hidden";
     summary();
     setTimeout(() => f.title.focus(), 50);
+  }
+
+  // Ret forplejning på en eksisterende booking: kun forplejningsdelen vises.
+  function openFood(bid) {
+    const b = data.bookings.find((x) => x.id === bid); if (!b) return;
+    room = data.rooms.find((r) => r.id === b.room_id); if (!room) return;
+    const f = $("form"); f.reset();
+    editing = b; sel = { setup: b.setup || "", equipment: new Set(b.equipment || []) };
+    $("dTitle").textContent = (b.title || "Møde") + " · " + room.name;
+    $("dPhoto").querySelector("img")?.remove();
+    if (room.photo_url) $("dPhoto").insertAdjacentHTML("afterbegin", '<img src="' + esc(room.photo_url) + '" alt="">');
+    f.start.value = hm(new Date(b.start)); f.end.value = hm(new Date(b.end)); f.attendees.value = b.attendees || 0;
+    $("bookFields").hidden = true; $("err").hidden = true;
+    setupFood(b.catering);
+    $("veil").hidden = false; document.body.style.overflow = "hidden";
+    summary();
+  }
+
+  // ---------- forplejning ----------
+  function setupFood(order) {
+    const ks = data.kitchens;
+    $("foodBox").hidden = !ks.length;
+    cart = new Map(); cat = "";
+    if (!ks.length) return;
+    kitchen = (order && ks.find((k) => k.id === order.kitchen_id)) || ks[0];
+    const f = $("form");
+    if (order) {
+      order.lines.forEach((l) => { if (l.item_id) cart.set(l.item_id, { qty: l.qty, follow: false }); });
+      f.deliver.value = hm(new Date(order.deliver_at)); f.cost_center.value = order.cost_center; f.food_note.value = order.note;
+    } else { f.deliver.value = f.start.value; }
+    deliverTouched = !!order;
+    $("kitchens").hidden = ks.length < 2;
+    $("kitchens").innerHTML = ks.map((k) => '<button type="button" data-kitchen="' + k.id + '" aria-pressed="' + (k === kitchen) + '"' +
+      (order && k.id !== order.kitchen_id ? " disabled" : "") + ">" + esc(k.name) + "</button>").join("");
+    renderMenu();
+  }
+
+  function renderMenu() {
+    if (!kitchen) return;
+    const cats = [...new Set(kitchen.items.map((i) => i.category).filter(Boolean))];
+    $("cats").hidden = cats.length < 2;
+    $("cats").innerHTML = ['<button type="button" data-cat="" aria-pressed="' + (cat === "") + '">Alle</button>']
+      .concat(cats.map((c) => '<button type="button" data-cat="' + esc(c) + '" aria-pressed="' + (cat === c) + '">' + ICON(c) + " " + esc(c) + "</button>")).join("");
+    const items = kitchen.items.filter((i) => !cat || i.category === cat);
+    $("menu").innerHTML = items.map((i) => {
+      const c = cart.get(i.id), q = c ? c.qty : 0;
+      return '<div class="mi' + (q ? " on" : "") + '" data-item="' + i.id + '"><div class="pic">' +
+        (i.photo_url ? '<img src="' + esc(i.photo_url) + '" alt="" loading="lazy">' : ICON(i.category, i.name)) + '</div><div class="txt"><b>' + esc(i.name) + "</b>" +
+        (i.description ? '<div class="d">' + esc(i.description) + "</div>" : "") +
+        '<div class="pr">' + esc(i.price_text) + " <span>" + esc(i.unit) + "</span></div>" +
+        (i.tags.length ? '<div class="tg">' + i.tags.map((t) => "<i>" + esc(t) + "</i>").join("") + "</div>" : "") + '</div><div class="ctl">' +
+        (q ? '<div class="step"><button type="button" data-q="-1" aria-label="Færre ' + esc(i.name) + '">−</button><input type="number" min="0" max="1000" value="' + q +
+          '" inputmode="numeric" data-qty aria-label="Antal ' + esc(i.name) + '"><button type="button" data-q="1" aria-label="Flere ' + esc(i.name) + '">+</button></div>'
+          : '<button type="button" class="add" data-add>Tilføj</button>') + "</div></div>";
+    }).join("");
+    foodSummary();
+  }
+
+  function deliverAt() {
+    const f = $("form");
+    return new Date(day + "T" + (f.deliver.value || f.start.value || "00:00"));
+  }
+
+  function foodSummary() {
+    if (!kitchen) return;
+    const lines = [...cart.entries()].map(([id, c]) => ({ i: kitchen.items.find((x) => x.id === id), q: c.qty })).filter((x) => x.i && x.q > 0);
+    const total = lines.reduce((s, x) => s + x.i.price * x.q, 0);
+    $("foodMeta").hidden = !lines.length;
+    $("foodLines").textContent = lines.map((x) => x.q + " × " + x.i.name).join(", ");
+    $("foodTotal").textContent = money(total);
+    const late = lines.length && deliverAt() < new Date(Date.now() + kitchen.lead_hours * 3600000);
+    const note = $("foodNote");
+    note.className = late ? "warn" : "";
+    note.textContent = late ? "For kort varsel: " + kitchen.name + " skal have bestillingen " + kitchen.lead_hours + " timer før"
+      : [kitchen.name + (kitchen.kind === "external" ? " (ekstern leverandør)" : ""), kitchen.note].filter(Boolean).join(" · ");
+    $("send").textContent = editing ? (lines.length ? "Gem forplejning" : editing.catering ? "Fjern forplejning" : "Gem")
+      : lines.length ? "Book lokale og forplejning · " + money(total) : "Book lokalet";
+  }
+
+  function foodBody() {
+    if (!kitchen) return null;
+    const f = $("form");
+    const items = [...cart.entries()].filter(([, c]) => c.qty > 0).map(([id, c]) => ({ item_id: id, qty: c.qty }));
+    if (!items.length && !(editing && editing.catering)) return null;
+    return { kitchen_id: kitchen.id, items, deliver_at: f.deliver.value || "", note: f.food_note.value.trim(), cost_center: f.cost_center.value.trim() };
+  }
+
+  function setQty(id, q, follow) {
+    q = Math.max(0, Math.min(1000, q | 0));
+    if (q) cart.set(id, { qty: q, follow: !!follow }); else cart.delete(id);
   }
   function close() { $("veil").hidden = true; document.body.style.overflow = ""; }
 
@@ -273,7 +420,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     const s = fromTime(f.start.value || "00:00"), e = fromTime(f.end.value || "00:00");
     $("dur").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(e - s === +b.dataset.m)));
     const dlabel = new Date(day + "T12:00").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
-    const clash = data.bookings.find((b) => b.room_id === room.id && fromMin(b.start) < e && fromMin(b.end) > s);
+    const clash = !editing && data.bookings.find((b) => b.room_id === room.id && fromMin(b.start) < e && fromMin(b.end) > s);
     $("sum").innerHTML = "<b>" + esc(room.name) + "</b> · " + esc(dlabel) + " kl. <span class=\"tm\">" + esc(f.start.value) + "–" + esc(f.end.value) + "</span>" +
       (+f.attendees.value ? " · " + (+f.attendees.value) + " pers." : "") + (sel.setup ? " · " + esc(sel.setup) : "") +
       (clash ? '<br><span class="err">Optaget ' + hm(new Date(clash.start)) + "–" + hm(new Date(clash.end)) + "</span>" : "") +
@@ -304,8 +451,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     if ((e.key === "Enter" || e.key === " ") && e.target.matches(".tl")) { e.preventDefault(); open(+e.target.dataset.room); }
   });
   $("mine").addEventListener("click", async (e) => {
+    const fb = e.target.closest("[data-food]"); if (fb) return openFood(+fb.dataset.food);
     const b = e.target.closest("[data-cancel]"); if (!b) return;
-    if (!confirm("Aflys bookingen?")) return;
+    const bk = data.bookings.find((x) => x.id === +b.dataset.cancel);
+    if (!confirm(bk && bk.catering ? "Aflys bookingen? Køkkenet får besked om, at forplejningen er annulleret." : "Aflys bookingen?")) return;
     const r = await fetch(api + "/" + b.dataset.cancel, { method: "DELETE" });
     toast(r.ok ? "Bookingen er aflyst" : "Det gik ikke. Prøv igen");
     load();
@@ -328,13 +477,47 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     sel.equipment.has(b.dataset.eq) ? sel.equipment.delete(b.dataset.eq) : sel.equipment.add(b.dataset.eq);
     b.setAttribute("aria-pressed", String(sel.equipment.has(b.dataset.eq)));
   });
-  const step = (d) => { const f = $("form"); f.attendees.value = Math.max(0, Math.min(1000, (+f.attendees.value || 0) + d)); summary(); };
+  const step = (d) => { const f = $("form"); f.attendees.value = Math.max(0, Math.min(1000, (+f.attendees.value || 0) + d)); follow(); summary(); };
+  function follow() {  // varer "pr. person", der er tilføjet med ét tryk, følger antal deltagere
+    const n = +$("form").attendees.value || 0;
+    let changed = false;
+    cart.forEach((c, id) => { if (c.follow && n > 0 && c.qty !== n) { c.qty = n; changed = true; } });
+    if (changed) renderMenu();
+  }
   $("minus").addEventListener("click", () => step(-1));
   $("plus").addEventListener("click", () => step(1));
-  $("form").addEventListener("input", summary);
+  $("form").addEventListener("input", (e) => {
+    if (e.target.name === "attendees") follow();
+    if (e.target.matches("[data-qty]")) { setQty(+e.target.closest("[data-item]").dataset.item, +e.target.value, false); foodSummary(); return; }
+    if (e.target.name === "deliver") deliverTouched = true;
+    if (e.target.name === "start" && !deliverTouched) e.target.form.deliver.value = e.target.value;  // serveres ved mødets start
+    if (["deliver", "start"].includes(e.target.name)) foodSummary();
+    summary();
+  });
+  $("menu").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-item]"); if (!row) return;
+    const id = +row.dataset.item, it = kitchen.items.find((x) => x.id === id), c = cart.get(id);
+    if (e.target.closest("[data-add]")) {
+      const n = +$("form").attendees.value || 0;
+      const per = it.unit === "pr. person" && n > 0;
+      setQty(id, per ? n : 1, per);
+    } else if (e.target.closest("[data-q]")) setQty(id, (c ? c.qty : 0) + +e.target.closest("[data-q]").dataset.q, false);
+    else return;
+    renderMenu();
+    const again = $("menu").querySelector('[data-item="' + id + '"] [data-q="1"], [data-item="' + id + '"] [data-add]');
+    if (again) again.focus();
+  });
+  $("cats").addEventListener("click", (e) => { const b = e.target.closest("[data-cat]"); if (!b) return; cat = b.dataset.cat; renderMenu(); });
+  $("kitchens").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-kitchen]"); if (!b || b.disabled) return;
+    kitchen = data.kitchens.find((k) => k.id === +b.dataset.kitchen); cart = new Map(); cat = "";
+    $("kitchens").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    renderMenu();
+  });
   $("form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (editing) return saveFood();
     const s = fromTime(f.start.value), en = fromTime(f.end.value);
     const endDay = en <= s ? null : day;
     if (!endDay) { $("err").textContent = "Sluttidspunktet skal være efter starttidspunktet"; $("err").hidden = false; return; }
@@ -342,17 +525,30 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     try {
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         room_id: room.id, title: f.title.value.trim(), start: day + "T" + f.start.value, end: day + "T" + f.end.value,
-        attendees: +f.attendees.value || 0, setup: sel.setup, equipment: [...sel.equipment], note: f.note.value.trim() }) });
+        attendees: +f.attendees.value || 0, setup: sel.setup, equipment: [...sel.equipment], note: f.note.value.trim(), catering: foodBody() }) });
       const j = await r.json();
       if (!r.ok) {
         $("err").textContent = typeof j.detail === "string" ? j.detail : "Tjek felterne og prøv igen";
         $("err").hidden = false; return;
       }
-      close(); toast(room.name + " er booket kl. " + f.start.value + "–" + f.end.value); load();
+      close(); toast(room.name + " er booket kl. " + f.start.value + "–" + f.end.value + (j.catering ? ". Køkkenet har fået bestillingen." : "")); load();
     } catch (err) {
       $("err").textContent = "Ingen forbindelse. Prøv igen"; $("err").hidden = false;
     } finally { $("send").disabled = false; }
   });
+
+  async function saveFood() {
+    const body = foodBody();
+    if (!body) { close(); return; }
+    $("send").disabled = true;
+    try {
+      const r = await fetch(api + "/" + editing.id + "/catering", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok) { $("err").textContent = typeof j.detail === "string" ? j.detail : "Tjek felterne og prøv igen"; $("err").hidden = false; return; }
+      close(); toast(j.catering ? "Forplejningen er gemt. Køkkenet har fået besked." : "Forplejningen er fjernet"); load();
+    } catch (err) { $("err").textContent = "Ingen forbindelse. Prøv igen"; $("err").hidden = false; }
+    finally { $("send").disabled = false; }
+  }
 
   let toastT;
   function toast(msg) {

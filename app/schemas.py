@@ -259,6 +259,20 @@ class RoomUpdate(BaseModel):
     active: bool | None = None
 
 
+class CateringItemIn(BaseModel):
+    item_id: int
+    qty: int = Field(ge=1, le=1000)
+
+
+class CateringIn(BaseModel):
+    """Forplejning til en booking. Tom liste = ingen forplejning (en eksisterende bestilling annulleres)."""
+    kitchen_id: int
+    items: list[CateringItemIn] = Field(default_factory=list, max_length=60)
+    deliver_at: str = Field("", pattern=r"^(\d{2}:\d{2})?$")  # lokal tid samme dag som mødet, tom = mødets start
+    note: str = Field("", max_length=500)
+    cost_center: str = Field("", max_length=60)
+
+
 class BookingIn(BaseModel):
     room_id: int
     tenant_id: int | None = None  # det bookende firma (admin). Via værtens link er det værtens firma.
@@ -270,6 +284,7 @@ class BookingIn(BaseModel):
     setup: str = Field("", max_length=60)
     equipment: list[str] = Field(default_factory=list, max_length=30)
     note: str = Field("", max_length=500)
+    catering: CateringIn | None = None
 
 
 class QuickBookIn(BaseModel):
@@ -391,3 +406,53 @@ def partner_out(p: Partner, tenant_count: int = 0, user_count: int = 0) -> dict:
             "meeting_privacy": p.meeting_privacy,
             "user_count": user_count, "created_at": local_iso(p.created_at)}
 
+
+
+UNITS = ("pr. person", "stk.", "portion", "kande", "flaske", "fad", "kurv")
+TAGS = ("Vegetar", "Vegansk", "Glutenfri", "Laktosefri", "Økologisk", "Indeholder nødder")
+
+
+class KitchenIn(BaseModel):
+    tenant_id: int | None = None
+    partner_id: int | None = None
+    name: str = Field(min_length=1, max_length=120)
+    kind: Literal["internal", "external"] = "internal"
+    email: str = Field("", max_length=200)
+    phone: str = Field("", max_length=40)
+    lead_hours: int = Field(3, ge=0, le=168)
+    note: str = Field("", max_length=300)
+
+
+class KitchenUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=120)
+    kind: Literal["internal", "external"] | None = None
+    email: str | None = Field(None, max_length=200)
+    phone: str | None = Field(None, max_length=40)
+    lead_hours: int | None = Field(None, ge=0, le=168)
+    note: str | None = Field(None, max_length=300)
+    active: bool | None = None
+
+
+class MenuItemIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field("", max_length=300)
+    category: str = Field("", max_length=40)
+    price: float = Field(0, ge=0, le=100000)  # kroner
+    unit: Literal[UNITS] = "pr. person"  # type: ignore[valid-type]
+    tags: list[Literal[TAGS]] = Field(default_factory=list, max_length=10)  # type: ignore[valid-type]
+    active: bool = True
+
+
+class MenuItemUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=120)
+    description: str | None = Field(None, max_length=300)
+    category: str | None = Field(None, max_length=40)
+    price: float | None = Field(None, ge=0, le=100000)
+    unit: Literal[UNITS] | None = None  # type: ignore[valid-type]
+    tags: list[Literal[TAGS]] | None = Field(None, max_length=10)  # type: ignore[valid-type]
+    active: bool | None = None
+    sort_order: int | None = Field(None, ge=0, le=10000)
+
+
+class OrderStatusIn(BaseModel):
+    status: Literal["new", "confirmed", "delivered"]

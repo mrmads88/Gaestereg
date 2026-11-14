@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 from .auth import (COOKIE, MAX_AGE, Principal, access_problem, check_master_password, check_user_password,
                    current, hash_password, invite_token, require_platform, session_platform, session_user,
                    slow_down, user_from_invite)
-from . import ratelimit
+from . import catering, ratelimit
 from .config import settings
 from .db import get_db
 from .media import delete_media
-from .models import Partner, Room, Tenant, User, utcnow
+from .models import Kitchen, Partner, Room, Tenant, User, utcnow
 from .notify import send_email
 from .routes_admin import get_tenant_for
 from .schemas import (AcceptIn, ForgotIn, LoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
@@ -324,6 +324,7 @@ def delete_partner(pid: int, db: Session = Depends(get_db), p: Principal = Depen
     partner = _partner_for(db, pid, p)
     if db.scalar(select(func.count()).select_from(Tenant).where(Tenant.partner_id == pid)):
         raise HTTPException(409, "Partneren har stadig firmaer. Flyt eller slet dem først.")
+    catering.delete_kitchens(db, db.scalars(select(Kitchen).where(Kitchen.partner_id == pid)).all())
     for room in db.scalars(select(Room).where(Room.partner_id == pid)).all():
         delete_media(room.photo_path)
         db.delete(room)  # bookinger slettes af databasen (ON DELETE CASCADE)

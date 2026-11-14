@@ -196,3 +196,19 @@ def test_rooms_of_other_firms_and_houses_are_hidden(setup, platform):
                                                 "start": "2030-01-01T10:00", "end": "2030-01-01T11:00"}).status_code == 404
     assert new_client().get(f"/api/admin/rooms?tenant_id={other['id']}").status_code == 401
     platform.delete(f"/api/admin/tenants/{other['id']}")
+
+
+def test_kitchens_of_other_firms_are_hidden(setup, platform):
+    other = platform.post("/api/admin/tenants", json={"name": "Fremmed køkkenfirma"}).json()
+    k = platform.post("/api/admin/kitchens", json={"tenant_id": other["id"], "name": "Fremmed køkken"}).json()
+    item = platform.post(f"/api/admin/kitchens/{k['id']}/items", json={"name": "Kage", "price": 10}).json()
+    pa = setup["pa"]  # partner-admin for et andet hus
+    assert pa.get(f"/api/admin/kitchens?tenant_id={other['id']}").status_code == 404
+    assert pa.patch(f"/api/admin/kitchens/{k['id']}", json={"name": "x"}).status_code == 404
+    assert pa.delete(f"/api/admin/kitchens/{k['id']}").status_code == 404
+    assert pa.post(f"/api/admin/kitchens/{k['id']}/sample-menu").status_code == 404
+    assert pa.patch(f"/api/admin/menu-items/{item['id']}", json={"price": 1}).status_code == 404
+    assert pa.get(f"/api/admin/catering-orders?tenant_id={other['id']}").status_code == 404
+    assert pa.put("/api/admin/bookings/999999/catering", json={"kitchen_id": k["id"], "items": []}).status_code == 404
+    assert new_client().get(f"/api/admin/kitchens?tenant_id={other['id']}").status_code == 401
+    platform.delete(f"/api/admin/tenants/{other['id']}")

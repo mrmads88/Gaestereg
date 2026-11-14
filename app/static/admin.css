@@ -343,3 +343,23 @@ td .acts{display:flex;gap:6px;flex-wrap:wrap}
 .rm-b b{font-family:var(--f-display);font-size:1.05rem}
 .rm-photo img{height:56px;width:100px;object-fit:cover;border-radius:10px;display:block}
 .tag.house{background:#e8eefc;color:#2a4fa0}
+
+/* ---------- forplejning ---------- */
+.ct-list{display:flex;flex-direction:column;gap:14px}
+.ct-kit{border:1px solid var(--rule);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.ct-name{font-family:var(--f-display);font-size:1.05rem}
+.ct-menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.ct-item{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--rule);border-radius:12px;background:var(--card);padding:8px;cursor:pointer;min-height:60px}
+.ct-item:hover:not(:disabled){border-color:var(--accent)}
+.ct-item:disabled{cursor:default}
+.ct-item.off{opacity:.5}
+.ct-item .ct-pic{width:44px;height:44px;border-radius:9px;overflow:hidden;flex:none;background:var(--key);display:grid;place-items:center;font-size:1.4rem}
+.ct-item .ct-pic img{width:100%;height:100%;object-fit:cover}
+.ct-item .ct-t{min-width:0;display:flex;flex-direction:column}
+.ct-item b{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ct-item small{color:var(--soft);font-size:.78rem}
+.ct-add{justify-content:center;border-style:dashed;color:var(--accent);font-weight:700}
+.ct-photo img{height:56px;width:56px;object-fit:cover;border-radius:10px;display:block}
+.ct-kpi{display:flex;gap:24px;flex-wrap:wrap}
+.ct-kpi b{font:700 1.4rem var(--f-display)}
+tr.muted td{color:var(--soft);text-decoration:line-through}

@@ -79,7 +79,8 @@
       const name = (id) => (rooms.find((r) => r.id === id) || {}).name || "";
       $$(".rm-rows").innerHTML = rows.map((b) => '<tr data-bid="' + b.id + '"><td class="n">' + hm(b.start) + "–" + hm(b.end) + "</td><td>" + esc(name(b.room_id)) +
         "</td><td>" + esc(b.title || "Møde") + (b.full && b.setup ? '<div class="small muted">' + esc([b.setup, ...(b.equipment || [])].join(" · ")) + "</div>" : "") +
-        (b.full && b.note ? '<div class="small muted">' + esc(b.note) + "</div>" : "") + "</td><td>" + esc([b.organizer, b.firm].filter(Boolean).join(", ")) +
+        (b.full && b.note ? '<div class="small muted">' + esc(b.note) + "</div>" : "") +
+        (b.catering ? '<div class="small">🍽️ ' + esc(b.catering.lines.map((l) => l.qty + " × " + l.name).join(", ") + " · " + b.catering.total_text + " · " + b.catering.status_text) + "</div>" : "") + "</td><td>" + esc([b.organizer, b.firm].filter(Boolean).join(", ")) +
         (b.source === "screen" ? '<div class="small muted">på skærmen</div>' : "") + '</td><td class="n">' + (b.full && b.attendees ? b.attendees : "") +
         '</td><td><button class="btn ghost sm" type="button" data-cancelbook>Aflys</button></td></tr>').join("") ||
         '<tr><td colspan="6" class="muted">Ingen bookinger denne dag.</td></tr>';

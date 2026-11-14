@@ -285,3 +285,72 @@ class Booking(Base):
     source: Mapped[str] = mapped_column(Unicode(10), default="admin")      # admin | link | screen
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
+
+
+class Kitchen(Base):
+    """Et køkken eller en leverandør af forplejning (fase 5b). Hører til et firma eller til huset ligesom lokaler.
+    kind: internal (husets/firmaets eget køkken) eller external (fx en cateringvirksomhed).
+    Køkkenets egen ordreside (/kitchen/<order_token>) virker uden login."""
+    __tablename__ = "kitchens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    kind: Mapped[str] = mapped_column(Unicode(10), default="internal")
+    email: Mapped[str] = mapped_column(Unicode(200), default="")
+    phone: Mapped[str] = mapped_column(Unicode(40), default="")
+    lead_hours: Mapped[int] = mapped_column(Integer, default=3)  # bestil senest så mange timer før levering
+    note: Mapped[str] = mapped_column(Unicode(300), default="")  # vises for den, der bestiller
+    order_token: Mapped[str] = mapped_column(Unicode(40), unique=True, index=True, default=new_token)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class MenuItem(Base):
+    """En vare på køkkenets menu. Pris i øre."""
+    __tablename__ = "menu_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kitchen_id: Mapped[int] = mapped_column(ForeignKey("kitchens.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    description: Mapped[str] = mapped_column(Unicode(300), default="")
+    category: Mapped[str] = mapped_column(Unicode(40), default="")
+    price: Mapped[int] = mapped_column(Integer, default=0)
+    unit: Mapped[str] = mapped_column(Unicode(20), default="pr. person")
+    photo_path: Mapped[str] = mapped_column(Unicode(200), default="")
+    tags: Mapped[str] = mapped_column(UnicodeText, default="[]")  # JSON-liste, fx ["Vegetar", "Glutenfri"]
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CateringOrder(Base):
+    """Forplejning til en booking (højst én pr. booking). kitchen_id og tenant_id har ingen FK: SQL Server tillader kun
+    én kaskadevej (tenants -> rooms -> bookings -> catering_orders). Oprydning sker i koden."""
+    __tablename__ = "catering_orders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    booking_id: Mapped[int] = mapped_column(ForeignKey("bookings.id", ondelete="CASCADE"), unique=True, index=True)
+    kitchen_id: Mapped[int] = mapped_column(Integer, index=True)
+    tenant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    deliver_at: Mapped[datetime] = mapped_column(DateTime, index=True)  # UTC
+    status: Mapped[str] = mapped_column(Unicode(12), default="new")  # new | confirmed | delivered | cancelled
+    note: Mapped[str] = mapped_column(Unicode(500), default="")
+    cost_center: Mapped[str] = mapped_column(Unicode(60), default="")
+    total: Mapped[int] = mapped_column(Integer, default=0)  # øre
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CateringLine(Base):
+    """En linje på en bestilling. Navn og pris kopieres, så bestillingen ikke ændrer sig, hvis menuen gør."""
+    __tablename__ = "catering_lines"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("catering_orders.id", ondelete="CASCADE"), index=True)
+    menu_item_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    unit: Mapped[str] = mapped_column(Unicode(20), default="")
+    unit_price: Mapped[int] = mapped_column(Integer, default=0)
+    qty: Mapped[int] = mapped_column(Integer, default=1)
