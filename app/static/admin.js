@@ -121,6 +121,7 @@ async function boot() {
   $("banner").textContent = warn.join(" "); $("banner").hidden = !warn.length;
   await Promise.all([loadTenants(), loadPartners()]);
   if (location.hash === "#billing" && ME.role === "platform") return showBilling();
+  if (location.hash === "#crm" && ME.role === "platform") return showCrm();
   const h = location.hash.match(/^#([tp])(\d+)$/);
   if (h && h[1] === "p") return selectPartner(+h[2]);
   if (h && h[1] === "t") return selectTenant(+h[2]);
@@ -154,6 +155,7 @@ function setupRole() {
   $("newName").placeholder = r === "platform" ? "Kundens navn, fx Junckers" : "Firmaets navn";
   $("subTab").hidden = !can("subscription");
   $("billingBtn").hidden = r !== "platform";
+  $("crmBtn").hidden = r !== "platform";
   $("activeFld").hidden = !can("toggle_active");
   $("houseFld").hidden = !can("toggle_active");
   $("delRow").hidden = !can("delete_tenant");
@@ -204,7 +206,7 @@ $("newPartnerForm").addEventListener("submit", async (e) => {
   catch (err) { toast(err.message, true); }
 });
 
-function showView(v) { $("noTenant").hidden = true; $("editor").hidden = v !== "tenant"; $("partnerView").hidden = v !== "partner"; $("pv").hidden = v !== "tenant"; $("billingView").hidden = v !== "billing"; }
+function showView(v) { $("noTenant").hidden = true; $("editor").hidden = v !== "tenant"; $("partnerView").hidden = v !== "partner"; $("pv").hidden = v !== "tenant"; $("billingView").hidden = v !== "billing"; $("crmView").hidden = v !== "crm"; }
 function showBilling() {
   T = null; P = null; location.hash = "billing"; showView("billing"); renderList(); renderPartners();
   document.documentElement.style.setProperty("--accent", "#12352e");
@@ -212,6 +214,12 @@ function showBilling() {
   renderReadiness();
 }
 $("billingBtn").addEventListener("click", showBilling);
+function showCrm() {
+  T = null; P = null; location.hash = "crm"; showView("crm"); renderList(); renderPartners();
+  document.documentElement.style.setProperty("--accent", "#12352e");
+  window.NoddCrm.mount($("crmBox"), { api, toast, esc, openNodd: (kind, id) => (kind === "partner" ? selectPartner(id) : selectTenant(id)) });
+}
+$("crmBtn").addEventListener("click", showCrm);
 async function selectPartner(id) {
   P = partners.find((x) => x.id === id);
   if (!P) { await loadPartners(); P = partners.find((x) => x.id === id); }

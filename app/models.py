@@ -547,3 +547,73 @@ class EmergencyAlert(Base):
     notify: Mapped[bool] = mapped_column(Boolean, default=False)  # send også til personerne
     notified_count: Mapped[int] = mapped_column(Integer, default=0)  # beskeder sendt ved start
     cleared_count: Mapped[int] = mapped_column(Integer, default=0)  # "afblæst"-beskeder ved slut
+
+
+# ---------- CRM (kun leverandøren) ----------
+
+class CrmCompany(Base):
+    """Et firma i leverandørens CRM: et emne, en kunde eller en tidligere kunde. Kan kobles til et firma (tenant_id)
+    eller et hus (partner_id) i Nodd. Ingen FK på dem (én kaskadevej); delete_tenant/delete_partner fjerner koblingen."""
+    __tablename__ = "crm_companies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(Unicode(160))
+    status: Mapped[str] = mapped_column(Unicode(12), default="emne")  # emne | kunde | tidligere
+    segment: Mapped[str] = mapped_column(Unicode(20), default="firma")  # firma | kontorhotel | andet
+    cvr: Mapped[str] = mapped_column(Unicode(20), default="")
+    website: Mapped[str] = mapped_column(Unicode(200), default="")
+    phone: Mapped[str] = mapped_column(Unicode(40), default="")
+    email: Mapped[str] = mapped_column(Unicode(200), default="")
+    address: Mapped[str] = mapped_column(Unicode(300), default="")
+    source: Mapped[str] = mapped_column(Unicode(80), default="")  # hvor kom de fra, fx "anbefaling"
+    notes: Mapped[str] = mapped_column(UnicodeText, default="")
+    tenant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CrmContact(Base):
+    __tablename__ = "crm_contacts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("crm_companies.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(Unicode(120))
+    title: Mapped[str] = mapped_column(Unicode(120), default="")
+    email: Mapped[str] = mapped_column(Unicode(200), default="")
+    phone: Mapped[str] = mapped_column(Unicode(40), default="")
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str] = mapped_column(Unicode(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CrmDeal(Base):
+    """En salgsmulighed. stage: ny | kontakt | demo | tilbud | vundet | tabt. Beløb i øre ekskl. moms."""
+    __tablename__ = "crm_deals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("crm_companies.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(Unicode(160))
+    stage: Mapped[str] = mapped_column(Unicode(12), default="ny", index=True)
+    monthly: Mapped[int] = mapped_column(Integer, default=0)  # løbende pr. måned
+    once: Mapped[int] = mapped_column(Integer, default=0)  # opstart/hardware
+    expected_close: Mapped[date | None] = mapped_column(Date, nullable=True)
+    lost_reason: Mapped[str] = mapped_column(Unicode(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class CrmActivity(Base):
+    """Tidslinjen: note | opkald | møde | mail | opgave | system. En opgave har en dato (due_date) og kan klares (done_at).
+    deal_id og contact_id har ingen FK (kun én kaskadevej fra firmaet); de nulstilles i koden."""
+    __tablename__ = "crm_activities"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("crm_companies.id", ondelete="CASCADE"), index=True)
+    deal_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    contact_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    kind: Mapped[str] = mapped_column(Unicode(12), default="note")
+    text: Mapped[str] = mapped_column(UnicodeText, default="")
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)

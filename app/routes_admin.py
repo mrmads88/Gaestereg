@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
-from . import catering, modules, signage
+from . import catering, crm, modules, signage
 from .models import (Booking, Host, Invitation, Kitchen, Notification, Partner, Room, SignageScreen, Tenant, User, Visit,
                      VisitStat, new_token,
                      utcnow)
@@ -136,6 +136,7 @@ def delete_tenant(tid: int, db: Session = Depends(get_db), p: Principal = Depend
     db.query(Notification).filter(Notification.tenant_id == tid).delete()
     db.query(Visit).filter(Visit.tenant_id == tid).delete()
     db.query(User).filter(User.tenant_id == tid).delete()
+    crm.unlink_tenant(db, tid)
     db.delete(t)
     db.commit()
     for f in files:

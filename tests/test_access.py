@@ -277,3 +277,15 @@ def test_mfa_endpoints_need_login():
     for path in ("/api/admin/mfa/setup", "/api/admin/mfa/enable", "/api/admin/mfa/disable", "/api/admin/mfa/recovery",
                  "/api/admin/users/1/mfa-reset"):
         assert c.post(path, json={"code": "123456"}).status_code == 401, path
+
+
+def test_crm_only_for_platform(setup):
+    for method, url in [("GET", "/api/admin/crm/overview"), ("GET", "/api/admin/crm/companies"),
+                        ("GET", "/api/admin/crm/companies.csv"), ("POST", "/api/admin/crm/companies"),
+                        ("POST", "/api/admin/crm/sync"), ("GET", "/api/admin/crm/deals"),
+                        ("PATCH", "/api/admin/crm/deals/1"), ("DELETE", "/api/admin/crm/companies/1"),
+                        ("GET", "/api/admin/crm/nodd-options")]:
+        assert setup["pa"].request(method, url, json={"name": "X"}).status_code == 403, url
+    c = new_client()
+    assert c.get("/api/admin/crm/overview").status_code == 401
+    assert c.post("/api/admin/crm/companies", json={"name": "X"}).status_code == 401

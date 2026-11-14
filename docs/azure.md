@@ -160,6 +160,7 @@ ved næste login. Indstillingerne bliver stående, hvis opsætningsscriptet kør
 | `DPA_FINAL` | `1`, når databehandleraftalen er juridisk godkendt |
 | `AZURE_STORAGE_CONNECTION_STRING` | Sættes af scriptet (billeder i Blob) |
 | `REPORT_SCHEDULER` | Månedsrapporter den 1. kl. 7 (standard til) |
+| `CRM_DIGEST` / `CRM_EMAIL` | Morgenmail kl. 7.30 med dagens CRM-opfølgninger (standard til i prod). Modtager: `CRM_EMAIL`, ellers `OPS_EMAIL` |
 | `MFA_REQUIRED` | To-trins-login påkrævet for dig og husene (standard til i prod, fra på dev) |
 | `ADMIN_MFA_RESET` | Kun i nødstilfælde, se herunder. Skal ellers ikke findes |
 
