@@ -37,8 +37,18 @@ Alt skal kunne køre gratis i dev. Prod opgraderes først, når der er en betale
 - Besøgsstatistik gemmes som anonyme tællere pr. firma pr. måned (`visit_stats`), så den overlever, at besøgene slettes efter 30 dage.
 
 ## Fase 5: Mødelokaler og forplejning
-**5a (lokaler, booking og lokaleskærm) er bygget.** Mangler: 5b forplejning (menu, priser, køkkenets ordreliste),
-modul-til/fra under Abonnement og LED-test på en rigtig mødelokale-tablet.
+**5a (lokaler, booking og lokaleskærm) og 5b (forplejning) er bygget.** Mangler: modul-til/fra under Abonnement,
+bestilling af forplejning fra admins bookingformular og LED-test på en rigtig mødelokale-tablet.
+
+Bygget i 5b:
+- Køkkener (`Kitchen`) hos firmaet eller huset, eget køkken eller ekstern leverandør, med mail/SMS til bestillinger,
+  varsel i timer og en besked til dem, der bestiller. Menu (`MenuItem`) med billede, kategori, pris, enhed og mærker
+  (vegetar, glutenfri osv.). "Opret eksempelmenu" til hurtig start.
+- Bestilling i bookingskuffen: menukort med billeder og +/−. Varer "pr. person" følger antal deltagere.
+  Serveringstid, allergier og omkostningssted. Kan rettes eller fjernes bagefter fra "Dine bookinger".
+- Køkkenet får mail og SMS ved ny, ændret og annulleret bestilling, uden mødets titel. Køkkenets side `/kitchen/<token>`:
+  dagens bestillinger, samlet pakkeliste, Bekræft/Leveret og print. Svarer fra hukommelsen.
+- Bestillinger og faktureringsgrundlag pr. måned i admin med CSV til Excel.
 
 Bygget i 5a:
 - Lokaler hos firmaet eller huset (`Room`), bookinger (`Booking`), fanen "Lokaler" i admin og et kort på husets side.

@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
+from . import routes_catering
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -62,6 +63,9 @@ app.include_router(routes_house.pages)
 app.include_router(routes_rooms.admin)
 app.include_router(routes_rooms.public)
 app.include_router(routes_rooms.pages)
+app.include_router(routes_catering.admin)
+app.include_router(routes_catering.public)
+app.include_router(routes_catering.pages)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")

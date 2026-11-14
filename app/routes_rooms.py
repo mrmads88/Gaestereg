@@ -3,18 +3,18 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from . import invitations, presence, ratelimit, rooms
+from . import catering, invitations, presence, ratelimit, rooms
 from .auth import Principal, current
 from .db import SessionLocal, get_db
 from .media import delete_media, media_url, save_image
 from .models import Booking, Partner, Room, Tenant, new_token, utcnow
 from .routes_admin import get_tenant_for
-from .schemas import BookingIn, QuickBookIn, RoomIn, RoomUpdate
+from .schemas import BookingIn, CateringIn, QuickBookIn, RoomIn, RoomUpdate
 from .timeutil import TZ, local_iso
 
 STATIC = Path(__file__).parent / "static"
@@ -170,12 +170,19 @@ def list_bookings(tenant_id: int | None = None, partner_id: int | None = None, d
         start, end = rooms.day_bounds(date)
     except ValueError:
         raise HTTPException(422, "Ugyldig dato")
-    return [rooms.booking_out(db, b, by_id[b.room_id], _sees_booking(db, p, b, by_id[b.room_id]))
-            for b in rooms.bookings_between(db, list(by_id), start, end)]
+    bs = rooms.bookings_between(db, list(by_id), start, end)
+    out = [rooms.booking_out(db, b, by_id[b.room_id], _sees_booking(db, p, b, by_id[b.room_id])) for b in bs]
+    food = catering.orders_for_bookings(db, [b["id"] for b in out if b["full"]])
+    return [{**b, "catering": food.get(b["id"])} for b in out]
+
+
+def _notify(bg: BackgroundTasks, request: Request, order, event: str) -> None:
+    if order is not None and event:
+        bg.add_task(catering.notify_kitchen, order.id, event, _base(request))
 
 
 def _create_booking(db: Session, t: Tenant, room: Room, body: BookingIn, source: str, host_id: int | None,
-                    organizer: str) -> Booking:
+                    organizer: str) -> tuple[Booking, object, str]:
     if not room.active or not rooms.can_book(t, room):
         raise HTTPException(404, "Lokalet findes ikke")
     start, end = rooms.parse_slot(body.start, body.end)
@@ -190,13 +197,20 @@ def _create_booking(db: Session, t: Tenant, room: Room, body: BookingIn, source:
                 attendees=body.attendees, setup=body.setup, note=body.note.strip(), source=source,
                 equipment=_clean([x for x in body.equipment if x in json.loads(room.equipment or "[]")]))
     db.add(b)
+    db.flush()
+    order, event = catering.place(db, b, t, body.catering) if body.catering else (None, "")
     db.commit()
     rooms.clear_cache()
-    return b
+    return b, order, event
+
+
+def _with_food(db: Session, b: Booking, room: Room) -> dict:
+    return {**rooms.booking_out(db, b, room, True), "catering": catering.orders_for_bookings(db, [b.id]).get(b.id)}
 
 
 @admin.post("/bookings")
-def admin_book(body: BookingIn, db: Session = Depends(get_db), p: Principal = Depends(current)):
+def admin_book(body: BookingIn, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db),
+               p: Principal = Depends(current)):
     tid = body.tenant_id if body.tenant_id is not None else p.tenant_id
     if tid is None:
         raise HTTPException(422, "Vælg hvilket firma der booker")
@@ -205,20 +219,47 @@ def admin_book(body: BookingIn, db: Session = Depends(get_db), p: Principal = De
     if room is None:
         raise HTTPException(404, "Lokalet findes ikke")
     by = (p.user.name or p.user.email) if p.user else "Leverandør"
-    b = _create_booking(db, t, room, body, "admin", None, by)
-    return rooms.booking_out(db, b, room, True)
+    b, order, event = _create_booking(db, t, room, body, "admin", None, by)
+    _notify(bg, request, order, event)
+    return _with_food(db, b, room)
+
+
+@admin.put("/bookings/{bid}/catering")
+def admin_catering(bid: int, body: CateringIn, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db),
+                   p: Principal = Depends(current)):
+    b = db.get(Booking, bid)
+    room = db.get(Room, b.room_id) if b else None
+    if b is None or room is None or b.status != "confirmed" or b.tenant_id is None or not _sees_booking(db, p, b, room):
+        raise HTTPException(404, "Bookingen findes ikke")
+    return _set_food(db, b, room, body, request, bg)
+
+
+def _set_food(db: Session, b: Booking, room: Room, body: CateringIn, request: Request, bg: BackgroundTasks) -> dict:
+    t = db.get(Tenant, b.tenant_id)
+    order, event = catering.place(db, b, t, body)
+    db.commit()
+    rooms.clear_cache()
+    _notify(bg, request, order, event)
+    return _with_food(db, b, room)
 
 
 @admin.delete("/bookings/{bid}")
-def admin_cancel(bid: int, db: Session = Depends(get_db), p: Principal = Depends(current)):
+def admin_cancel(bid: int, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db),
+                 p: Principal = Depends(current)):
     b = db.get(Booking, bid)
     room = db.get(Room, b.room_id) if b else None
     if b is None or room is None or not _can_cancel(db, p, b, room):
         raise HTTPException(404, "Bookingen findes ikke")
+    _cancel(db, b, request, bg)
+    return {"ok": True}
+
+
+def _cancel(db: Session, b: Booking, request: Request, bg: BackgroundTasks) -> None:
     b.status = "cancelled"
+    order = catering.cancel_for_booking(db, b)
     db.commit()
     rooms.clear_cache()
-    return {"ok": True}
+    _notify(bg, request, order, "cancelled")
 
 
 # ---------- bookingside via værtens personlige link ----------
@@ -244,34 +285,48 @@ def book_info(token: str, date: str | None = None, db: Session = Depends(get_db)
         start, end = rooms.day_bounds(date)
     except ValueError:
         raise HTTPException(422, "Ugyldig dato")
+    bs = rooms.bookings_between(db, list(by_id), start, end)
+    food = catering.orders_for_bookings(db, [b.id for b in bs if b.tenant_id == t.id])
+    ks = catering.kitchens_for_tenant(db, t)
+    items = catering.items_of(db, [k.id for k in ks])
     return {"host": h.name, "firm": t.name, "color": t.color, "logo_url": media_url(t.logo_path),
             "date": date or datetime.now(TZ).date().isoformat(),
             "rooms": [rooms.room_out(r) for r in rs],
-            "bookings": [{**rooms.booking_out(db, b, by_id[b.room_id], b.tenant_id == t.id), "mine": b.host_id == h.id}
-                         for b in rooms.bookings_between(db, list(by_id), start, end)]}
+            "kitchens": [catering.kitchen_public(k, items) for k in ks if any(i.kitchen_id == k.id for i in items)],
+            "bookings": [{**rooms.booking_out(db, b, by_id[b.room_id], b.tenant_id == t.id), "mine": b.host_id == h.id,
+                          "catering": food.get(b.id)} for b in bs]}
 
 
 @public.post("/api/book/{token}")
-def book(token: str, body: BookingIn, db: Session = Depends(get_db)):
+def book(token: str, body: BookingIn, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db)):
     h, t = _host(db, token)
     ratelimit.check("book:" + str(h.id), 60, 3600)
     ratelimit.hit("book:" + str(h.id))
     room = db.get(Room, body.room_id)
     if room is None:
         raise HTTPException(404, "Lokalet findes ikke")
-    b = _create_booking(db, t, room, body, "link", h.id, h.name)
-    return rooms.booking_out(db, b, room, True)
+    b, order, event = _create_booking(db, t, room, body, "link", h.id, h.name)
+    _notify(bg, request, order, event)
+    return _with_food(db, b, room)
+
+
+@public.put("/api/book/{token}/{bid}/catering")
+def book_catering(token: str, bid: int, body: CateringIn, request: Request, bg: BackgroundTasks,
+                  db: Session = Depends(get_db)):
+    h, _ = _host(db, token)
+    b = db.get(Booking, bid)
+    if b is None or b.host_id != h.id or b.status != "confirmed":
+        raise HTTPException(404, "Bookingen findes ikke")
+    return _set_food(db, b, db.get(Room, b.room_id), body, request, bg)
 
 
 @public.delete("/api/book/{token}/{bid}")
-def book_cancel(token: str, bid: int, db: Session = Depends(get_db)):
+def book_cancel(token: str, bid: int, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db)):
     h, _ = _host(db, token)
     b = db.get(Booking, bid)
     if b is None or b.host_id != h.id:
         raise HTTPException(404, "Bookingen findes ikke")
-    b.status = "cancelled"
-    db.commit()
-    rooms.clear_cache()
+    _cancel(db, b, request, bg)
     return {"ok": True}
 
 
