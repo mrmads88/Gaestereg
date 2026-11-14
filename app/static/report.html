@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Overblik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Overblik til ledelsen: ét firma eller et hus, én periode, sammenlignet med forrige periode.
+   Kan printes eller gemmes som PDF (A4 på tværs). White-label: kundens logo og farve, ingen Nodd.
+   Grafer: tynde søjler (<=24px, 4px afrundet top), hårfine gitterlinjer, én tone (blå 450 = perioden, 250 = resten),
+   hover-tooltip på hver søjle og en tabelvisning af alle tal. Paletten er valideret (ordinal, lys flade). */
+:root{
+  --brand:#12352e; --ink:#14171d; --ink-2:#4b515c; --ink-3:#6b7280; --rule:#e6e7e3; --grid:#eceeea;
+  --paper:#f4f5f2; --surface:#fcfcfb; --card:#ffffff;
+  --accent:#2a78d6; --accent-soft:#86b6ef; --track:#e8f0fb;
+  --good:#0ca30c; --bad:#d03b3b;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+.bar{position:sticky;top:0;z-index:5;background:rgb(244 245 242 / .92);backdrop-filter:blur(6px);border-bottom:1px solid var(--rule)}
+.bar-in{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar a.back{color:var(--ink-2);text-decoration:none;font-weight:600;margin-right:6px}
+.seg{display:inline-flex;padding:3px;background:#e8eae6;border-radius:12px}
+.seg button{border:0;background:none;min-height:32px;padding:0 12px;border-radius:9px;font:600 .86rem var(--f-body);color:var(--ink-2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgb(0 0 0 / .1)}
+.nav{display:inline-flex;align-items:center;gap:4px}
+.nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--rule);background:#fff;cursor:pointer;font-size:1rem;color:var(--ink)}
+.nav button:disabled{opacity:.35;cursor:default}
+.nav span{min-width:150px;text-align:center;font-weight:700}
+.sp{flex:1}
+.btn{font:700 .86rem var(--f-body);border-radius:999px;border:1px solid var(--rule);background:#fff;min-height:34px;padding:0 14px;cursor:pointer;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+main{max-width:1180px;margin:0 auto;padding:22px 20px 60px;display:flex;flex-direction:column;gap:16px}
+.head{display:flex;align-items:center;gap:18px;padding:22px 24px;border-radius:20px;background:var(--brand);color:#fff}
+.head .logo{height:56px;min-width:56px;max-width:180px;background:#fff;border-radius:14px;display:grid;place-items:center;padding:8px 12px}
+.head .logo img{max-height:40px;max-width:156px;object-fit:contain}
+.head .logo b{font:700 1.4rem var(--f-display);color:var(--brand)}
+.head h1{font:800 clamp(1.5rem,3vw,2.2rem)/1.1 var(--f-display);margin:0;letter-spacing:-.02em}
+.head p{margin:4px 0 0;opacity:.85}
+.head .when{margin-left:auto;text-align:right;font-size:.85rem;opacity:.8}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:18px;padding:18px 20px;min-width:0;break-inside:avoid}
+.card h2{font:700 1.05rem var(--f-display);margin:0 0 2px}
+.card .sub{color:var(--ink-3);font-size:.85rem;margin:0 0 12px}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}.c3{grid-column:span 3}
+/* hero og nøgletal */
+.hero{display:flex;flex-direction:column;justify-content:center}
+.hero .lbl{color:var(--ink-2);font-weight:600}
+.hero .num{font:700 clamp(3rem,7vw,4.6rem)/1 var(--f-body);letter-spacing:-.03em;margin:6px 0}
+.delta{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink-2);font-size:.9rem}
+.delta i{font-style:normal;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;color:#fff;font-size:.7rem}
+.delta.up i{background:var(--good)} .delta.down i{background:var(--bad)} .delta.flat i{background:#9aa0a6}
+.tile .lbl{color:var(--ink-2);font-weight:600;font-size:.9rem}
+.tile .val{font:700 1.9rem/1.1 var(--f-body);letter-spacing:-.02em;margin:6px 0 4px}
+.tile .val small{font-size:.9rem;font-weight:600;color:var(--ink-3)}
+.tile svg{display:block;margin-top:8px}
+/* grafer */
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font:500 11px var(--f-body);fill:var(--ink-3);font-variant-numeric:tabular-nums}
+.chart .lab{fill:var(--ink-2);font-weight:600}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;border-radius:10px;padding:6px 10px;font-size:.82rem;white-space:nowrap;transform:translate(-50%,-100%);margin-top:-8px;z-index:3}
+.tip b{display:block;font-size:.95rem}
+.hit{fill:transparent;cursor:default}
+.hit:focus{outline:none}
+.hit:focus-visible{stroke:var(--accent);stroke-width:2}
+/* lister med målere */
+.rows{display:flex;flex-direction:column;gap:12px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:baseline}
+.row .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .v{font-variant-numeric:tabular-nums;font-weight:600}
+.row .v small{color:var(--ink-3);font-weight:500;margin-left:6px}
+.meter{grid-column:1/-1;height:8px;border-radius:8px;background:var(--track);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:8px;background:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th{text-align:left;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--rule)}
+td{padding:9px 6px;border-bottom:1px solid var(--grid)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.tv{display:none;margin-top:10px;overflow-x:auto}
+body.tables .tv{display:block}
+.empty{color:var(--ink-3);padding:18px 0}
+.note{color:var(--ink-3);font-size:.82rem;text-align:center}
+.msg{background:#fff;border:1px solid var(--rule);border-radius:18px;padding:28px;text-align:center}
+@media (max-width:900px){.c8,.c6,.c4{grid-column:span 12}.c3{grid-column:span 6}.head{flex-wrap:wrap}.head .when{margin-left:0;text-align:left}}
+@media (max-width:520px){.c3{grid-column:span 12}.nav span{min-width:110px}}
+@page{size:A4 landscape;margin:10mm}
+@media print{
+  body{background:#fff;font-size:12px}
+  .bar,.noprint{display:none!important}
+  main{max-width:none;padding:0;gap:10px}
+  .card{border-color:#ddd;padding:12px 14px}
+  .head{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .meter,.meter i,.delta i,.chart rect,.chart path{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pb{break-before:page}
+}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="bar"><div class="bar-in">
+  <a class="back" href="/admin" id="back">← Admin</a>
+  <div class="seg" id="ptype" role="group" aria-label="Periode">
+    <button type="button" data-t="month">Måned</button><button type="button" data-t="quarter">Kvartal</button><button type="button" data-t="year">År</button>
+  </div>
+  <div class="nav"><button type="button" id="prev" aria-label="Forrige periode">‹</button><span id="plabel"></span><button type="button" id="next" aria-label="Næste periode">›</button></div>
+  <span class="sp"></span>
+  <button class="btn" type="button" id="tables" aria-pressed="false">Vis tal som tabeller</button>
+  <a class="btn" id="csv">Hent som Excel (CSV)</a>
+  <button class="btn pri" type="button" id="print">Print / gem som PDF</button>
+</div></div>
+<main id="main"><div class="msg">Henter overblikket…</div></main>
+<div class="tip" id="tip" hidden></div>
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const qs = new URLSearchParams(location.search);
+  const scopeQ = qs.get("tenant_id") ? "tenant_id=" + encodeURIComponent(qs.get("tenant_id")) : "partner_id=" + encodeURIComponent(qs.get("partner_id") || "");
+  let period = qs.get("period") || "", R = null;
+  const nf = (n) => Number(n).toLocaleString("da-DK");
+  const krf = (o) => (o / 100).toLocaleString("da-DK", { maximumFractionDigits: 0 }) + " kr.";
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // ---------- perioder ----------
+  function convert(key, type) {
+    let y, m;
+    if (/^\d{4}-Q\d$/.test(key)) { y = +key.slice(0, 4); m = (+key[6] - 1) * 3 + 1; }
+    else if (/^\d{4}-\d{2}$/.test(key)) { y = +key.slice(0, 4); m = +key.slice(5); }
+    else { y = +key; m = 1; }
+    if (type === "year") return String(y);
+    if (type === "quarter") return y + "-Q" + (Math.floor((m - 1) / 3) + 1);
+    return y + "-" + String(m).padStart(2, "0");
+  }
+
+  // ---------- grafer (inline SVG) ----------
+  const tip = $("tip");
+  function showTip(el, html) {
+    const box = el.getBoundingClientRect();
+    tip.innerHTML = html; tip.hidden = false;
+    tip.style.left = (box.left + box.width / 2 + scrollX) + "px"; tip.style.top = (box.top + scrollY) + "px";
+  }
+  function hideTip() { tip.hidden = true; }
+  function niceMax(v) {
+    if (v <= 0) return 4;
+    const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  // Søjlediagram: én serie, perioden fremhævet. labels[i], values[i], cur[i], fmt(v)
+  function columns(box, labels, values, cur, fmt, name) {
+    const W = Math.max(300, box.clientWidth || 600), H = 190, L = 44, B = 26, T = 10;
+    const max = niceMax(Math.max(...values, 0)), n = values.length, band = (W - L - 8) / n;
+    const bw = Math.min(24, band * 0.62), y = (v) => T + (H - T - B) * (1 - v / max);
+    let s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(name) + '">';
+    for (let i = 0; i <= 4; i++) {
+      const v = max * i / 4, yy = y(v);
+      s += '<line x1="' + L + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)" stroke-width="1"/>' +
+        '<text x="' + (L - 6) + '" y="' + (yy + 4) + '" text-anchor="end">' + esc(fmt(v, true)) + "</text>";
+    }
+    values.forEach((v, i) => {
+      const x = L + band * i + (band - bw) / 2, top = y(v), h = (H - B) - top, r = Math.min(4, h);
+      const fill = cur[i] ? "var(--accent)" : "var(--accent-soft)";
+      if (v > 0) s += '<path d="M' + x + "," + (H - B) + "V" + (top + r) + "Q" + x + "," + top + " " + (x + r) + "," + top + "H" + (x + bw - r) + "Q" + (x + bw) + "," + top + " " + (x + bw) + "," + (top + r) + "V" + (H - B) + 'Z" fill="' + fill + '"/>';
+      // Smal skærm: vis hver anden måned (perioden altid), så etiketterne ikke løber ind i hinanden.
+      const every = band < 34 ? 2 : 1;
+      if (cur[i] || (n - 1 - i) % every === 0) s += '<text x="' + (L + band * i + band / 2) + '" y="' + (H - 8) + '" text-anchor="middle"' + (cur[i] ? ' class="lab"' : "") + ">" + esc(labels[i]) + "</text>";
+      s += '<rect class="hit" tabindex="0" x="' + (L + band * i) + '" y="' + T + '" width="' + band + '" height="' + (H - T - B) + '" data-i="' + i + '" aria-label="' + esc(labels[i] + ": " + fmt(v)) + '"/>';
+    });
+    s += '<line x1="' + L + '" x2="' + W + '" y1="' + (H - B) + '" y2="' + (H - B) + '" stroke="var(--rule)" stroke-width="1"/></svg>';
+    box.innerHTML = s;
+    box.querySelectorAll(".hit").forEach((h) => {
+      const i = +h.dataset.i, html = "<span>" + esc(labels[i]) + "</span><b>" + esc(fmt(values[i])) + "</b>";
+      h.addEventListener("mouseenter", () => showTip(h, html)); h.addEventListener("focus", () => showTip(h, html));
+      h.addEventListener("mouseleave", hideTip); h.addEventListener("blur", hideTip);
+    });
+  }
+  // Lille tendenslinje til nøgletal: grå tone, sidste punkter (perioden) i accent.
+  function spark(values, cur) {
+    const W = 160, H = 34, max = Math.max(...values, 1), step = W / Math.max(1, values.length - 1);
+    const pts = values.map((v, i) => [i * step, H - 3 - (H - 6) * v / max]);
+    const first = cur.indexOf(true);
+    const line = (a) => a.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join("");
+    const before = pts.slice(0, first + 1), during = pts.slice(Math.max(0, first));
+    return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" aria-hidden="true">' +
+      '<path d="' + line(before) + '" fill="none" stroke="#b9bdb6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="' + line(during) + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="' + pts[pts.length - 1][0] + '" cy="' + pts[pts.length - 1][1] + '" r="4" fill="var(--accent)" stroke="#fff" stroke-width="2"/></svg>';
+  }
+  function deltaHtml(d, prevLabel, upIsGood) {
+    if (d == null) return '<span class="delta flat"><i>–</i>Intet at sammenligne med</span>';
+    const up = d > 0, flat = d === 0, good = flat ? null : (up === (upIsGood !== false));
+    return '<span class="delta ' + (flat ? "flat" : good ? "up" : "down") + '"><i>' + (flat ? "■" : up ? "▲" : "▼") + "</i>" +
+      (up ? "+" : "") + String(d).replace(".", ",") + " % mod " + esc(prevLabel) + "</span>";
+  }
+  function table(head, rows) {
+    return '<div class="tv"><table><thead><tr>' + head.map((h, i) => "<th" + (i ? ' class="n"' : "") + ">" + esc(h) + "</th>").join("") + "</tr></thead><tbody>" +
+      rows.map((r) => "<tr>" + r.map((c, i) => "<td" + (i ? ' class="n"' : "") + ">" + esc(c) + "</td>").join("") + "</tr>").join("") + "</tbody></table></div>";
+  }
+  function meterRows(items, valueText, pctOf) {
+    const max = Math.max(1, ...items.map(pctOf));
+    return '<div class="rows">' + items.map((x) => '<div class="row"><span class="nm">' + esc(x.name) + '</span><span class="v">' + valueText(x) +
+      '</span><div class="meter" role="presentation"><i style="width:' + Math.max(0, Math.min(100, 100 * pctOf(x) / max)) + '%"></i></div></div>').join("") + "</div>";
+  }
+
+  // ---------- side ----------
+  function render() {
+    const r = R, p = r.period, M = r.months, cur = M.map((m) => m.current), labels = M.map((m) => m.label);
+    document.title = "Overblik · " + r.scope.name + " · " + p.label;
+    document.documentElement.style.setProperty("--brand", r.scope.color || "#12352e");
+    $("plabel").textContent = cap(p.label);
+    $("next").disabled = p.is_current;
+    document.querySelectorAll("#ptype [data-t]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === p.type)));
+    $("csv").href = "/api/admin/report?" + scopeQ + "&period=" + encodeURIComponent(p.key) + "&format=csv";
+    const g = r.guests, tiles = [];
+    tiles.push({ lbl: "Pakker modtaget", val: nf(r.deliveries.value), d: r.deliveries.delta, trend: r.deliveries.trend });
+    if (r.rooms) {
+      tiles.push({ lbl: "Mødebookinger", val: nf(r.rooms.bookings.value), d: r.rooms.bookings.delta, trend: r.rooms.bookings.trend });
+      if (r.rooms.utilization != null) tiles.push({ lbl: "Belægning i lokalerne", val: String(r.rooms.utilization).replace(".", ",") + " <small>%</small>", sub: nf(r.rooms.hours) + " timer booket" });
+    }
+    if (r.catering) tiles.push({ lbl: "Forplejning", val: krf(r.catering.revenue.value), d: r.catering.revenue.delta, trend: r.catering.revenue.trend });
+    const span = { 1: "c12", 2: "c6", 3: "c4" }[tiles.length] || "c3";  // nøgletallene på én række
+
+    let h = '<div class="head"><div class="logo">' + (r.scope.logo_url ? '<img src="' + esc(r.scope.logo_url) + '" alt="' + esc(r.scope.name) + '">' : "<b>" + esc(r.scope.name.slice(0, 1)) + "</b>") +
+      '</div><div><h1>' + esc(r.scope.name) + "</h1><p>Overblik · " + esc(cap(p.label)) + (p.is_current ? " (indtil nu)" : "") + '</p></div><div class="when">Sammenlignet med ' + esc(p.prev_label) + "<br>Udarbejdet " + esc(r.generated) + "</div></div>";
+    h += '<div class="grid">';
+    h += '<div class="card hero c4"><span class="lbl">Gæster i ' + esc(p.label) + '</span><span class="num">' + nf(g.value) + "</span>" + deltaHtml(g.delta, p.prev_label) +
+      '<span class="sub" style="margin-top:6px;color:var(--ink-3)">' + (r.firms ? "På tværs af " + r.firms.length + " firmaer i huset" : "Tjekket ind på skærmen") + "</span></div>";
+    h += '<div class="card c8"><h2>Gæster pr. måned</h2><p class="sub">De seneste ' + M.length + " måneder. Perioden er fremhævet.</p>" +
+      '<div class="chart" id="chGuests"></div>' + table(["Måned", "Gæster", "Pakker"], M.map((m, i) => [m.key, nf(g.trend[i]), nf(r.deliveries.trend[i])])) + "</div>";
+    h += tiles.map((t) => '<div class="card tile ' + span + '"><span class="lbl">' + esc(t.lbl) + '</span><div class="val">' + t.val + "</div>" +
+      (t.d !== undefined ? deltaHtml(t.d, p.prev_label) : '<span class="delta flat" style="padding-left:0">' + esc(t.sub || "") + "</span>") + (t.trend ? spark(t.trend, cur) : "") + "</div>").join("");
+
+    if (r.rooms) {
+      const x = r.rooms;
+      h += '<div class="card c6 pb"><h2>Belægning pr. lokale</h2><p class="sub">Bookede timer i forhold til hverdage kl. 8–17.</p>' +
+        (x.per_room.length ? meterRows(x.per_room, (y) => String(y.utilization).replace(".", ",") + " %<small>" + nf(y.bookings) + " bookinger</small>", (y) => y.utilization)
+          : '<p class="empty">' + (r.scope.kind === "tenant" ? "Firmaet har ingen egne lokaler. Bookinger i husets lokaler tæller med i nøgletallene." : "Ingen lokaler endnu.") + "</p>") +
+        table(["Lokale", "Bookinger", "Timer", "Belægning %"], x.per_room.map((y) => [y.name, nf(y.bookings), String(y.hours).replace(".", ","), String(y.utilization).replace(".", ",")])) + "</div>";
+      h += '<div class="card c6"><h2>Bookinger pr. ugedag</h2><p class="sub">' + nf(x.bookings.value) + " bookinger" + (x.avg_attendees ? ", i snit " + String(x.avg_attendees).replace(".", ",") + " deltagere" : "") + (x.on_screen ? ", heraf " + nf(x.on_screen) + " på skærmen ved døren" : "") + '.</p><div class="chart" id="chWeek"></div>' +
+        table(["Ugedag", "Bookinger"], x.weekdays.map((y) => [y.label, nf(y.value)])) + "</div>";
+    }
+    if (r.catering) {
+      const c = r.catering;
+      h += '<div class="card c12' + (r.rooms ? "" : " pb") + '"><h2>Forplejning pr. måned</h2><p class="sub">' + nf(c.orders) + " bestillinger i perioden" + (c.avg_text ? ", i snit " + esc(c.avg_text) + " pr. møde" : "") + '. Beløb ekskl. moms.</p><div class="chart" id="chFood"></div>' +
+        table(["Måned", "Forplejning"], M.map((m, i) => [m.key, krf(c.revenue.trend[i])])) + "</div>";
+      h += '<div class="card c6"><h2>Mest bestilte</h2>' + (c.top_items.length ? meterRows(c.top_items, (y) => esc(y.amount_text) + "<small>" + nf(y.qty) + " stk.</small>", (y) => y.amount) : '<p class="empty">Ingen bestillinger i perioden.</p>') + "</div>";
+      h += '<div class="card c6"><h2>' + esc(c.groups_title) + "</h2>" + (c.groups.length ? meterRows(c.groups, (y) => esc(y.amount_text), (y) => y.amount) : '<p class="empty">Ingen bestillinger i perioden.</p>') + "</div>";
+    }
+    if (r.firms) {
+      h += '<div class="card c12"><h2>Pr. firma i huset</h2><p class="sub">' + esc(cap(p.label)) + '.</p><div style="overflow-x:auto"><table><thead><tr><th>Firma</th><th class="n">Gæster</th><th class="n">Pakker</th>' +
+        (r.rooms ? '<th class="n">Bookinger</th>' : "") + (r.catering ? '<th class="n">Forplejning</th>' : "") + "</tr></thead><tbody>" +
+        r.firms.map((f) => "<tr><td>" + esc(f.name) + '</td><td class="n">' + nf(f.guests) + '</td><td class="n">' + nf(f.deliveries) + "</td>" +
+          (r.rooms ? '<td class="n">' + nf(f.bookings) + "</td>" : "") + (r.catering ? '<td class="n">' + esc(f.catering_text) + "</td>" : "") + "</tr>").join("") + "</tbody></table></div></div>";
+    }
+    h += '</div><p class="note">Overblikket indeholder ingen navne på gæster og ingen mødetitler. Gæster tælles ved check-in på skærmen.</p>';
+    $("main").innerHTML = h;
+    drawCharts();
+  }
+  function drawCharts() {
+    if (!R) return;
+    const M = R.months, cur = M.map((m) => m.current), labels = M.map((m) => m.label);
+    columns($("chGuests"), labels, R.guests.trend, cur, (v) => nf(Math.round(v)), "Gæster pr. måned");
+    if (R.rooms) columns($("chWeek"), R.rooms.weekdays.map((d) => d.label), R.rooms.weekdays.map((d) => d.value), R.rooms.weekdays.map(() => true), (v) => nf(Math.round(v)), "Bookinger pr. ugedag");
+    if (R.catering) columns($("chFood"), labels, R.catering.revenue.trend, cur, (v, axis) => axis ? (v >= 100000 ? (v / 100000).toLocaleString("da-DK", { maximumFractionDigits: 1 }) + "k" : nf(Math.round(v / 100))) : krf(v), "Forplejning pr. måned");
+  }
+
+  async function load() {
+    $("main").style.opacity = R ? ".55" : "1";
+    try {
+      const r = await fetch("/api/admin/report?" + scopeQ + (period ? "&period=" + encodeURIComponent(period) : ""), { cache: "no-store" });
+      if (r.status === 401) { location.href = "/admin"; return; }
+      const j = await r.json();
+      if (!r.ok) { $("main").innerHTML = '<div class="msg"><h2>Overblikket kan ikke vises</h2><p>' + esc(j.detail || "") + "</p></div>"; return; }
+      R = j; period = j.period.key;
+      history.replaceState(null, "", "?" + scopeQ + "&period=" + encodeURIComponent(period));
+      render();
+    } catch (e) { $("main").innerHTML = '<div class="msg">Ingen forbindelse. Prøv igen.</div>'; }
+    finally { $("main").style.opacity = "1"; }
+  }
+
+  $("ptype").addEventListener("click", (e) => { const b = e.target.closest("[data-t]"); if (!b || !R) return; period = convert(R.period.key, b.dataset.t); load(); });
+  $("prev").addEventListener("click", () => { if (R) { period = R.period.prev_key; load(); } });
+  $("next").addEventListener("click", () => { if (R && !R.period.is_current) { period = R.period.next_key; load(); } });
+  $("print").addEventListener("click", () => window.print());
+  $("tables").addEventListener("click", (e) => { const on = document.body.classList.toggle("tables"); e.currentTarget.setAttribute("aria-pressed", String(on)); e.currentTarget.textContent = on ? "Skjul tabeller" : "Vis tal som tabeller"; });
+  let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawCharts, 150); });
+  addEventListener("beforeprint", drawCharts);
+  load();
+})();
+</script>
+</body>
+</html>

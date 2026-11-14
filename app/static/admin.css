@@ -401,3 +401,7 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .bl-price-in{width:100px;min-height:34px;border:1px solid var(--rule);border-radius:8px;padding:4px 8px}
 .bl-sms-in{width:80px;min-height:34px;border:1px solid var(--rule);border-radius:8px;padding:4px 8px}
 .card.upsell{background:linear-gradient(135deg,#fffaf0,#fff);border-color:#f0dfb8}
+
+/* ---------- overblik ---------- */
+.rp-hero{flex-direction:row;align-items:center;flex-wrap:wrap;gap:16px}
+.rp-hero .grow{min-width:240px}

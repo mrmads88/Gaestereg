@@ -110,10 +110,18 @@ kontorhoteller har en grund til at samle firmaerne hos sig.
 Mangler: grænser (5 lokaler, 10 firmaer, skærme) håndhæves ikke automatisk endnu; integration med e-conomic eller
 Dinero, så fakturaer sendes derfra; kunden kan ikke selv se sin pakke i admin.
 
-## Fase 7: Overblik og månedsrapport
-Dashboard pr. firma og pr. hus til direktionsmøder (print/PDF): gæster, pakker, bookinger, belægning pr. lokale,
-forplejning pr. måned, top-varer, pr. firma i huset, udvikling mod sidste periode. Månedsrapport på mail med nøgletal
-og CSV til `report_email` (feltet og `report_runs` findes). Kræver modulet `reports` (Plus og op).
+## Fase 7: Overblik og månedsrapport (bygget)
+- Overblik `/admin/rapport?tenant_id=|partner_id=&period=` (måned `2026-11`, kvartal `2026-Q4` eller år `2026`):
+  gæster med udvikling mod forrige periode og 13 måneders tendens, pakker, mødebookinger, belægning pr. lokale
+  (hverdage kl. 8–17), bookinger pr. ugedag, forplejning pr. måned, mest bestilte, pr. omkostningssted eller firma, og
+  pr. firma i huset. Tabelvisning af alle tal, CSV til Excel og print/PDF i A4 på tværs (3 sider).
+- Ingen navne på gæster og ingen mødetitler, så det kan vises på direktionsmøder. White-label med kundens logo og farve.
+- Månedsrapport på mail den 1. kl. 7 til `report_email` (firmaets egne admins eller huset bestemmer), med nøgletal,
+  top-lister, link til overblikket og CSV vedhæftet. `report_runs` sikrer, at hver rapport kun sendes én gang.
+  Planlæggeren er en tråd i appen; den indhenter manglende rapporter ved opstart (F1 sover efter 20 min. uden trafik).
+- Kræver modulet `reports` (Plus, Komplet, Hus eller tilkøb). Leverandøren kan altid åbne overblikket og vise det.
+
+Senere: sammenligning mellem firmaer i et hus over tid, travleste tidspunkter for gæster (kræver statistik pr. time).
 
 ## Fase 8: Infoskærme
 Infoskærme som gæsteskærmen, hvor kunden selv bygger skærmen af blokke: velkomst og logo, dagens forventede gæster

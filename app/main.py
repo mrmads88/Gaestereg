@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
-from . import modules, routes_billing, routes_catering
+from . import modules, reports, routes_billing, routes_catering, routes_reports
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -28,6 +28,7 @@ async def lifespan(_app: FastAPI):
         seed_if_empty(db)
         for t in db.scalars(select(Tenant)).all():
             purge_old(db, t)
+    reports.start_scheduler(SessionLocal)  # månedsrapporter den 1. kl. 07
     if not settings.admin_password_effective:
         logging.warning("ADMIN_PASSWORD er ikke sat. Admin er lukket indtil den sættes.")
     yield
@@ -68,6 +69,8 @@ app.include_router(routes_catering.admin)
 app.include_router(routes_catering.public)
 app.include_router(routes_catering.pages)
 app.include_router(routes_billing.router)
+app.include_router(routes_reports.admin)
+app.include_router(routes_reports.pages)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")

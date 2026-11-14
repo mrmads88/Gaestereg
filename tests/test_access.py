@@ -224,3 +224,13 @@ def test_billing_is_platform_only(setup, platform):
                         ("GET", "/api/admin/billing/invoices.csv")]:
         assert pa.request(method, url, json={"period_start": "2030-01-01"}).status_code == 403, url
     assert new_client().get("/api/admin/billing/invoices").status_code == 401
+
+
+def test_reports_of_other_houses_are_hidden(setup, platform):
+    other = platform.post("/api/admin/partners", json={"name": "Fremmed rapporthus"}).json()
+    pa = setup["pa"]
+    for url in [f"/api/admin/report?partner_id={other['id']}", f"/api/admin/report/settings?partner_id={other['id']}",
+                f"/api/admin/report/mail-preview?partner_id={other['id']}"]:
+        assert pa.get(url).status_code == 404, url
+    assert pa.post(f"/api/admin/report/send-test?partner_id={other['id']}", json={"to": "x@y.dk"}).status_code == 404
+    platform.delete(f"/api/admin/partners/{other['id']}")
