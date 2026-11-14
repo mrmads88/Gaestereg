@@ -197,6 +197,10 @@ async function selectPartner(id) {
 }
 async function renderPartner(keepImport) {
   $("pName").textContent = P.name; $("pvInitials").textContent = initials(P.name);
+  if ($("pAlert").dataset.pid !== String(P.id)) {
+    $("pAlert").dataset.pid = P.id;
+    window.NoddAlerts.mount($("pAlert"), { scope: { partner_id: P.id }, api, toast, esc, name: () => P.name + " (hele huset)" });
+  }
   const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
   $("pSub").textContent = plural(P.tenant_count, "firma", "firmaer") + " · " + plural(P.user_count, "administrator", "administratorer");
   $("pNameIn").value = P.name; $("pActive").checked = P.active;
@@ -287,6 +291,10 @@ function renderAll() {
 }
 function renderHead() {
   document.documentElement.style.setProperty("--accent", T.color);
+  if ($("tAlert").dataset.tid !== String(T.id)) {  // nødbesked-knappen: én pr. valgt firma
+    $("tAlert").dataset.tid = T.id;
+    window.NoddAlerts.mount($("tAlert"), { scope: { tenant_id: T.id }, api, toast, esc, name: () => T.name });
+  }
   $("edName").textContent = T.name;
   $("edLogo").innerHTML = T.logo_url ? '<img src="' + esc(T.logo_url) + '" alt="">' : "<span>" + esc(initials(T.name)) + "</span>";
   const url = location.origin + T.kiosk_url;

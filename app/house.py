@@ -74,6 +74,13 @@ def evac_scope(db: Session, token: str) -> tuple[str, list[int]]:
     return t.name, [t.id]
 
 
+def evac_owner(db: Session, token: str) -> tuple[str, int, str]:
+    """("t" | "p", id, navn) for et gyldigt evakueringslink. 404 ellers."""
+    name, _ = evac_scope(db, token)
+    kind, oid, _ = _evac.loads(token)
+    return kind, oid, name
+
+
 def inside_out(db: Session, rows: list[Visit]) -> list[dict]:
     names = {t.id: t.name for t in db.scalars(select(Tenant).where(Tenant.id.in_({v.tenant_id for v in rows})))} if rows else {}
     return [{"id": v.id, "name": v.guest_name or "Gæst", "phone": v.guest_phone, "company": v.guest_company,

@@ -441,3 +441,29 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .warnbox{background:#fff4dd;border:1px solid #f0dfb8;border-radius:10px;padding:8px 12px;margin:0}
 .sg-wrap{container-type:inline-size}
 @container (max-width:860px){.sg-grid{grid-template-columns:1fr}.sg-right{position:static;order:-1}}
+
+/* ---------- nødbesked ---------- */
+.al-btn{background:#fff;border:1px solid #f0c4bf;color:#b42318}
+.al-btn.on{background:#b42318;border-color:#b42318;color:#fff;animation:al-pulse 1.6s ease-in-out infinite}
+@keyframes al-pulse{50%{box-shadow:0 0 0 6px rgb(180 35 24 / .2)}}
+.ed-head .al-slot{order:3;margin-left:auto}
+.al-veil{position:fixed;inset:0;z-index:60;background:rgb(15 18 22 / .5);display:grid;place-items:center;padding:16px}
+.al-box{background:var(--card);border-radius:20px;width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgb(0 0 0 / .3)}
+.al-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.al-h h2{margin:0;font:700 1.2rem var(--f-display)}
+.al-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.al-kind{text-align:left;border:2px solid var(--rule);border-radius:14px;background:#fff;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;font:inherit}
+.al-kind small{color:var(--soft);font-size:.76rem;line-height:1.3}
+.al-kind.evacuation[aria-pressed="true"]{border-color:#b42318;background:#fdecea}
+.al-kind.warning[aria-pressed="true"]{border-color:#a14f00;background:#fff4e5}
+.al-kind.info[aria-pressed="true"]{border-color:#1f4f9a;background:#eaf1fb}
+.al-box select,.al-box textarea{width:100%;border:1px solid var(--rule);border-radius:10px;padding:8px 10px;background:#fbfbfa;font:inherit}
+.al-go{min-height:50px;color:#fff;font-size:1rem}
+.al-go.evacuation{background:#b42318}.al-go.warning{background:#a14f00}.al-go.info{background:#1f4f9a}
+.al-active{border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px;color:#fff;background:#b42318}
+.al-active.warning{background:#a14f00}.al-active.info{background:#1f4f9a}
+.al-active small{opacity:.85}
+.al-end{background:#fff;color:#14171d;margin-top:8px;min-height:44px;align-self:flex-start}
+.al-hist{font-size:.85rem;color:var(--soft)}
+.al-hist div{padding:4px 0;border-top:1px solid var(--rule)}
+@media (max-width:520px){.al-kinds{grid-template-columns:1fr}}

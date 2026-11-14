@@ -48,6 +48,9 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
 .empty{background:var(--card);border-radius:16px;padding:22px;text-align:center;color:var(--soft)}
 .note{font-size:.8rem;color:var(--soft);text-align:center}
 .mono{font-family:var(--f-mono);font-size:.85rem}
+.alarm{width:100%;font:800 1.05rem var(--f-body);border-radius:16px;border:0;min-height:56px;padding:12px 16px;cursor:pointer;background:var(--alert);color:#fff;box-shadow:0 4px 14px rgb(180 35 24 / .3)}
+.alarm.on{background:#fff;color:var(--alert);border:2px solid var(--alert);box-shadow:none}
+.alarm-note{font-size:.82rem;color:var(--soft);text-align:center;margin-top:-4px}
 @media (prefers-reduced-motion: reduce){.bar i{transition:none}}
 [hidden]{display:none!important}
 </style>
@@ -61,6 +64,8 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
   </div>
 </header>
 <main>
+  <button type="button" class="alarm" id="alarm">Vis evakuering på alle skærme</button>
+  <p class="alarm-note" id="alarmNote">Alle gæsteskærme, lokaleskærme og infoskærme viser en rød evakueringsbesked.</p>
   <div class="tools"><input id="q" type="search" placeholder="Søg navn eller firma" aria-label="Søg navn eller firma"><button type="button" id="reset">Nulstil</button></div>
   <div id="list"></div>
   <p class="note">Tryk på en gæst, når de er talt ved mødestedet. Listen opdateres hvert 30. sekund. <span class="mono" id="updated"></span></p>
@@ -108,6 +113,31 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
   });
   $("q").addEventListener("input", render);
   $("reset").addEventListener("click", () => { safe.clear(); save(); render(); });
+  // Nødbesked på alle skærme: start og afslut herfra (brandvagten har ikke altid et admin-login).
+  let alarmOn = false;
+  function setAlarm(on) {
+    alarmOn = on;
+    $("alarm").classList.toggle("on", on);
+    $("alarm").textContent = on ? "Afslut evakuering på skærmene" : "Vis evakuering på alle skærme";
+    $("alarmNote").textContent = on ? "Skærmene viser evakuering nu. Afslut, når alle er talt, og der er givet besked." :
+      "Alle gæsteskærme, lokaleskærme og infoskærme viser en rød evakueringsbesked.";
+  }
+  async function loadAlarm() {
+    try { const r = await fetch("/api/evac/" + encodeURIComponent(token) + "/alert", { cache: "no-store" }); if (r.ok) setAlarm((await r.json()).active); } catch (e) {}
+  }
+  $("alarm").addEventListener("click", async () => {
+    const start = !alarmOn;
+    if (start && !confirm("Vis evakuering på alle skærme nu?")) return;
+    $("alarm").disabled = true;
+    try {
+      const r = await fetch("/api/evac/" + encodeURIComponent(token) + "/alert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: start ? "start" : "end" }) });
+      const j = await r.json();
+      if (r.ok) { setAlarm(j.active); $("alarmNote").textContent = (j.active ? "Vises nu på " : "Fjernet fra ") + j.screens + " skærme."; }
+      else alert(j.detail || "Det gik ikke. Prøv igen");
+    } catch (e) { alert("Ingen forbindelse. Prøv igen"); }
+    $("alarm").disabled = false;
+  });
+  loadAlarm(); setInterval(loadAlarm, 30000);
   load(); setInterval(load, 30000);
 })();
 </script>

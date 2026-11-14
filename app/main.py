@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
-from . import modules, reports, routes_billing, routes_catering, routes_reports, routes_signage
+from . import alerts, modules, reports, routes_alerts, routes_billing, routes_catering, routes_reports, routes_signage
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -46,6 +46,7 @@ async def _refresh_kiosk_config(request: Request, call_next):
         routes_kiosk.clear_config_cache()
         rooms.clear_cache()
         modules.clear_cache()
+        alerts.clear_token_cache()  # et nyt skærmlink skal slås op igen
     return response
 
 
@@ -74,6 +75,8 @@ app.include_router(routes_reports.pages)
 app.include_router(routes_signage.admin)
 app.include_router(routes_signage.public)
 app.include_router(routes_signage.pages)
+app.include_router(routes_alerts.admin)
+app.include_router(routes_alerts.public)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _MEDIA_NAME = re.compile(r"^[0-9a-f]{32}\.(png|jpg|svg)$")
