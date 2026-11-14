@@ -91,7 +91,7 @@ def copy_media_to_blob() -> dict:
             "message": f"{sent} billeder kopieret til Blob, {skipped} fandtes allerede."}
 
 
-def readiness() -> list[dict]:
+def readiness(db=None) -> list[dict]:
     """Hvad der mangler, før miljøet kan bruges med rigtige kunder. Vises for leverandøren i admin."""
     from .media import BlobStorage, storage
     live = settings.env == "prod"
@@ -107,4 +107,11 @@ def readiness() -> list[dict]:
         ("dpa", "Databehandleraftalen er godkendt af en jurist (DPA_FINAL=1)", settings.dpa_final),
         ("password", "Egen admin-adgangskode (ADMIN_PASSWORD)", bool(settings.admin_password)),
     ]
+    if db is not None:
+        from . import mfa
+        checks.append(("mfa", "To-trins-login på din egen leverandør-konto (Sikkerhed øverst til højre)",
+                       mfa.enabled(mfa.platform_account(db))))
+        checks.append(("mfa_required", "To-trins-login påkrævet for leverandør og huse (MFA_REQUIRED)", settings.mfa_required))
+    if settings.admin_mfa_reset:
+        checks.append(("mfa_reset", "Fjern ADMIN_MFA_RESET igen (nødknappen er stadig slået til)", False))
     return [{"key": k, "label": label, "ok": ok, "required": live} for k, label, ok in checks]

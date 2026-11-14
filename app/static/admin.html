@@ -26,6 +26,15 @@
     <p class="err" id="loginErr" hidden></p>
     <div class="login-links"><button class="linkbtn" type="button" id="forgotBtn">Glemt adgangskode?</button><button class="linkbtn" type="button" id="platformBtn">Leverandør-login</button></div>
   </form>
+  <form class="login-card" id="mfaForm" hidden>
+    <img class="brandmark" src="/static/brand/nodd-icon.svg" alt="" width="48" height="48">
+    <h1>To-trins-login</h1>
+    <p class="muted">Skriv den 6-cifrede kode fra din kodeapp. Har du mistet telefonen, så brug en af dine engangskoder.</p>
+    <label class="fld"><span>Kode</span><input id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="20" required></label>
+    <button class="btn pri wide" type="submit">Log ind</button>
+    <p class="err" id="mfaErr" hidden></p>
+    <div class="login-links"><button class="linkbtn" type="button" data-back>Tilbage til login</button></div>
+  </form>
   <form class="login-card" id="forgotForm" hidden>
     <img class="brandmark" src="/static/brand/nodd-icon.svg" alt="" width="48" height="48">
     <h1>Glemt adgangskode</h1>
@@ -53,7 +62,7 @@
   <header class="top">
     <div class="top-l"><img class="lockup" src="/static/brand/nodd-lockup.svg" alt="Nodd" width="104" height="29"><span class="envpill" id="envPill"></span>
       <button class="switcher" type="button" id="switchBtn" hidden aria-haspopup="dialog"><span class="sw-logo" id="swLogo"></span><span class="sw-name" id="swName">Vælg kunde</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg><kbd id="swKbd">Ctrl K</kbd></button></div>
-    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="billingBtn" hidden>Fakturering</button><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
+    <div class="top-r"><span class="saved" id="saved" hidden>Gemt</span><button class="btn ghost sm" type="button" id="billingBtn" hidden>Fakturering</button><span class="who" id="who"></span><button class="btn ghost sm" type="button" id="secBtn">Sikkerhed</button><button class="btn ghost sm" type="button" id="logout">Log ud</button></div>
   </header>
   <div class="banner" id="banner" hidden></div>
 

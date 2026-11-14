@@ -71,6 +71,9 @@ class Settings:
     operator_email: str = field(default_factory=lambda: os.getenv("OPERATOR_EMAIL", ""))
     # Sæt DPA_FINAL=1, når en jurist har godkendt teksten i app/texts/. Indtil da står den som udkast.
     dpa_final: bool = field(default_factory=lambda: _bool("DPA_FINAL", False))
+    # To-trins-login påkrævet for leverandøren og husene. Standard: kun i prod.
+    mfa_required: bool = field(default_factory=lambda: _bool("MFA_REQUIRED", os.getenv("APP_ENV", "local") == "prod"))
+    admin_mfa_reset: bool = field(default_factory=lambda: _bool("ADMIN_MFA_RESET", False))  # nødknap, se docs/azure.md
 
     def __post_init__(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)

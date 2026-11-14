@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
-from . import alerts, modules, ops, reports, routes_alerts, routes_legal, routes_billing, routes_catering, routes_reports, routes_signage
+from . import alerts, mfa, modules, ops, reports, routes_alerts, routes_legal, routes_mfa, routes_billing, routes_catering, routes_reports, routes_signage
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -25,6 +25,7 @@ STATIC = Path(__file__).parent / "static"
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
+    mfa.reset_platform_on_start()
     with SessionLocal() as db:
         seed_if_empty(db)
         for t in db.scalars(select(Tenant)).all():
@@ -79,6 +80,7 @@ app.include_router(routes_signage.pages)
 app.include_router(routes_alerts.admin)
 app.include_router(routes_alerts.public)
 app.include_router(routes_legal.admin)
+app.include_router(routes_mfa.router)
 app.include_router(routes_legal.public)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 

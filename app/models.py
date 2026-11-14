@@ -197,7 +197,26 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
-class User(Base):
+class MfaMixin:
+    """To-trins-login (TOTP). Hemmeligheden gemmes, når opsætningen starter; mfa_enabled_at sættes, når den første
+    kode er godkendt. Engangskoder gemmes som SHA-256 (JSON-liste). mfa_last_step forhindrer, at samme kode bruges to gange."""
+    mfa_secret: Mapped[str] = mapped_column(Unicode(64), default="", server_default=text("''"))
+    mfa_enabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    mfa_recovery: Mapped[str] = mapped_column(UnicodeText, default="", server_default=text("''"))
+    mfa_last_step: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+
+
+class PlatformAccount(MfaMixin, Base):
+    """Leverandørens (platform-admins) egen konto. Én række. Adgangskoden er stadig ADMIN_PASSWORD, men to-trins-login
+    og sessionsversionen ligger her, så en ny opsætning logger andre sessioner ud."""
+    __tablename__ = "platform_account"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class User(MfaMixin, Base):
     """En admin-bruger, der logger ind med e-mail og adgangskode.
 
     role = "partner": administrerer alle firmaer under partner_id og kan oprette nye.

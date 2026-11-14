@@ -9,14 +9,14 @@ from sqlalchemy.orm import Session
 from .auth import (COOKIE, MAX_AGE, Principal, access_problem, check_master_password, check_user_password,
                    current, hash_password, invite_token, require_platform, session_platform, session_user,
                    slow_down, user_from_invite)
-from . import catering, legal, ops, ratelimit, signage
+from . import catering, legal, mfa, ops, ratelimit, signage
 from .config import settings
 from .db import get_db
 from .media import delete_media
 from .models import BillingAccount, EmergencyAlert, Kitchen, Partner, Room, SignageScreen, Tenant, User, utcnow
 from .notify import send_email
 from .routes_admin import get_tenant_for
-from .schemas import (AcceptIn, ForgotIn, LoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
+from .schemas import (AcceptIn, ForgotIn, LoginIn, MfaLoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
 
 log = logging.getLogger("gaestereg.access")
 
@@ -64,7 +64,11 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
         if not check_master_password(body.password):
             failed("Forkert adgangskode")
         ratelimit.clear(email_key)
-        _set_cookie(response, session_platform())
+        acc = mfa.platform_account(db)
+        db.commit()
+        if mfa.enabled(acc):
+            return {"ok": True, "mfa": True, "ticket": mfa.ticket_for(acc)}
+        _set_cookie(response, session_platform(acc.token_version))
         return {"ok": True}
 
     u = db.scalar(select(User).where(func.lower(User.email) == email))
@@ -74,10 +78,40 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
     problem = access_problem(db, u)
     if problem:
         raise HTTPException(403, problem)
+    if mfa.enabled(u):
+        return {"ok": True, "mfa": True, "ticket": mfa.ticket_for(u)}
     u.last_login_at = utcnow()
     db.commit()
     _set_cookie(response, session_user(u))
     return {"ok": True}
+
+
+@public.post("/login/mfa")
+def login_mfa(body: MfaLoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Andet trin: kode fra appen eller en engangskode, med billetten fra første trin."""
+    ip_key = "login-ip:" + _ip(request)
+    ratelimit.check(ip_key, LOGIN_IP_LIMIT, LOGIN_WINDOW)
+    holder = mfa.holder_from_ticket(db, body.ticket)
+    if holder is None:
+        raise HTTPException(401, "Login er udløbet. Start forfra.")
+    key = f"mfa:{'u' if isinstance(holder, User) else 'p'}:{holder.id}"
+    ratelimit.check(key, LOGIN_EMAIL_LIMIT, LOGIN_WINDOW)
+    if not mfa.verify(holder, body.code):
+        ratelimit.hit(ip_key)
+        ratelimit.hit(key)
+        slow_down()
+        raise HTTPException(401, "Forkert kode. Prøv den næste kode fra appen.")
+    ratelimit.clear(key)
+    if isinstance(holder, User):
+        problem = access_problem(db, holder)
+        if problem:
+            raise HTTPException(403, problem)
+        holder.last_login_at = utcnow()
+        _set_cookie(response, session_user(holder))
+    else:
+        _set_cookie(response, session_platform(holder.token_version))
+    db.commit()
+    return {"ok": True, "recovery_left": mfa.recovery_left(holder)}
 
 
 @public.post("/logout")
@@ -107,8 +141,9 @@ def media_to_blob(p: Principal = Depends(require_platform)):
 def me(db: Session = Depends(get_db), p: Principal = Depends(current)):
     partner = db.get(Partner, p.partner_id) if p.partner_id else None
     return {
-        **({"readiness": ops.readiness()} if p.is_platform else {}),
+        **({"readiness": ops.readiness(db)} if p.is_platform else {}),
         "dpa_required": legal.required(db, p),
+        "mfa": {"enabled": mfa.enabled(mfa.holder_of(db, p)), "required": mfa.required_for(p.role)},
         "role": p.role,
         "name": p.user.name if p.user else "Platform-admin",
         "email": p.user.email if p.user else "",
@@ -197,6 +232,8 @@ def accept_invite(body: AcceptIn, response: Response, db: Session = Depends(get_
     if problem:
         # Adgangskoden er gemt, men brugeren kan ikke logge ind endnu (fx selvbetjening ikke slået til).
         raise HTTPException(403, "Din adgangskode er gemt. " + problem)
+    if mfa.enabled(u):  # et link til ny adgangskode springer ikke to-trins-login over
+        return {"ok": True, "mfa": True, "ticket": mfa.ticket_for(u)}
     _set_cookie(response, session_user(u))
     return {"ok": True}
 

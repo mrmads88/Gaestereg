@@ -269,3 +269,11 @@ def test_dpa_endpoints_need_login():
 
 def test_media_to_blob_only_for_platform():
     assert new_client().post("/api/admin/ops/media-to-blob").status_code == 401
+
+
+def test_mfa_endpoints_need_login():
+    c = new_client()
+    assert c.get("/api/admin/mfa").status_code == 401
+    for path in ("/api/admin/mfa/setup", "/api/admin/mfa/enable", "/api/admin/mfa/disable", "/api/admin/mfa/recovery",
+                 "/api/admin/users/1/mfa-reset"):
+        assert c.post(path, json={"code": "123456"}).status_code == 401, path
