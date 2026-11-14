@@ -12,11 +12,12 @@ import time
 from datetime import datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.orm import Session
 
-from .models import EmergencyAlert, Room, SignageScreen, Tenant, utcnow
-from .timeutil import local_iso
+from .models import EmergencyAlert, Host, Notification, Partner, Product, Room, SignageScreen, Tenant, utcnow
+from .notify import deliver, normalize_msisdn, valid_email
+from .timeutil import local_iso, to_local
 
 KINDS = {
     "evacuation": ("Evakuering", "Forlad bygningen ad nærmeste nødudgang. Brug ikke elevatoren. Gå til mødestedet, "
@@ -48,6 +49,7 @@ def out(a: EmergencyAlert) -> dict:
     return {"id": a.id, "kind": a.kind, "title": a.title, "message": a.message, "tenant_id": a.tenant_id,
             "partner_id": a.partner_id, "created_by": a.created_by, "started_at": local_iso(a.started_at),
             "ends_at": local_iso(a.ends_at), "ended_at": local_iso(a.ended_at), "ended_by": a.ended_by,
+            "notify": bool(a.notify), "notified_count": max(0, a.notified_count or 0), "cleared_count": max(0, a.cleared_count or 0),
             "_ends": a.ends_at}
 
 
@@ -114,7 +116,9 @@ def for_screen(db_factory, kind: str, token: str) -> dict | None:
 # ---------- start og stop ----------
 
 def start(db: Session, kind: str, title: str, message: str, minutes: int | None, by: str,
-          tenant_id: int | None = None, partner_id: int | None = None) -> EmergencyAlert:
+          tenant_id: int | None = None, partner_id: int | None = None, notify: bool = False) -> EmergencyAlert:
+    """Start en nødbesked. notify: send også SMS/mail/Teams til personerne (kun evakuering og vigtig besked, og kun
+    når det er slået til for firmaet eller huset). Selve afsendelsen sker i notify_people (baggrundsopgave)."""
     if kind not in KINDS:
         raise HTTPException(422, "Ukendt type")
     now = utcnow()
@@ -125,21 +129,25 @@ def start(db: Session, kind: str, title: str, message: str, minutes: int | None,
         old.ended_at, old.ended_by = now, by
     a = EmergencyAlert(tenant_id=tenant_id, partner_id=partner_id, kind=kind,
                        title=(title or KINDS[kind][0]).strip()[:120], message=(message or KINDS[kind][1]).strip()[:600],
-                       created_by=by[:200], started_at=now, ends_at=now + timedelta(minutes=minutes) if minutes else None)
+                       created_by=by[:200], started_at=now, ends_at=now + timedelta(minutes=minutes) if minutes else None,
+                       notify=bool(notify and kind != "info" and notify_allowed(db, tenant_id, partner_id)))
     db.add(a)
     db.commit()
     refresh(db)
     return a
 
 
-def end(db: Session, a: EmergencyAlert, by: str) -> None:
+def end(db: Session, a: EmergencyAlert, by: str) -> bool:
+    """Afslut. Returnerer True, hvis personerne skal have besked om, at det er afblæst."""
     if a.ended_at is None:
         a.ended_at, a.ended_by = utcnow(), by[:200]
         db.commit()
     refresh(db)
+    return bool(a.notify and a.notified_count and not a.cleared_count)
 
 
-def end_scope(db: Session, by: str, tenant_id: int | None = None, partner_id: int | None = None) -> int:
+def end_scope(db: Session, by: str, tenant_id: int | None = None, partner_id: int | None = None) -> list[int]:
+    """Afslut alle aktive i omfanget. Returnerer id'er på dem, hvor personerne skal have besked om afblæsning."""
     rows = db.scalars(select(EmergencyAlert).where(
         EmergencyAlert.ended_at.is_(None),
         EmergencyAlert.tenant_id == tenant_id if tenant_id is not None else EmergencyAlert.partner_id == partner_id)).all()
@@ -148,7 +156,7 @@ def end_scope(db: Session, by: str, tenant_id: int | None = None, partner_id: in
         a.ended_at, a.ended_by = now, by[:200]
     db.commit()
     refresh(db)
-    return len(rows)
+    return [a.id for a in rows if a.notify and a.notified_count and not a.cleared_count]
 
 
 def history(db: Session, tenant_id: int | None = None, partner_id: int | None = None) -> list[dict]:
@@ -175,3 +183,115 @@ def screen_count(db: Session, tenant_id: int | None = None, partner_id: int | No
     rooms_n = db.scalar(select(func.count()).select_from(Room).where(room_cond))
     sig_n = db.scalar(select(func.count()).select_from(SignageScreen).where(sig_cond))
     return int(kiosks or 0) + int(rooms_n or 0) + int(sig_n or 0)
+
+
+# ---------- besked til personerne (slukket som standard) ----------
+
+def notify_allowed(db: Session, tenant_id: int | None = None, partner_id: int | None = None) -> bool:
+    """Er SMS/mail/Teams ved nødbesked slået til? Huset slår det til for alle sine firmaer."""
+    if tenant_id is not None:
+        t = db.get(Tenant, tenant_id)
+        return bool(t and (t.alert_notify or (t.partner is not None and t.partner.alert_notify)))
+    p = db.get(Partner, partner_id) if partner_id else None
+    return bool(p and p.alert_notify)
+
+
+def _firms(db: Session, tenant_id: int | None, partner_id: int | None) -> list[Tenant]:
+    if tenant_id is not None:
+        t = db.get(Tenant, tenant_id)
+        return [t] if t else []
+    return list(db.scalars(select(Tenant).where(Tenant.partner_id == partner_id, Tenant.active == true())))
+
+
+def recipients(db: Session, tenant_id: int | None = None, partner_id: int | None = None) -> dict:
+    """Hvem der får besked: SMS til alle aktive personer med mobil, mail til dem med mail og Teams til firmaer med en
+    Teams-kanal. Hvert nummer og hver adresse kun én gang."""
+    firms = _firms(db, tenant_id, partner_id)
+    by_id = {t.id: t for t in firms}
+    sms, mail, seen_p, seen_m = [], [], set(), set()
+    firm_ids = select(Tenant.id).where(Tenant.id == tenant_id) if tenant_id is not None else \
+        select(Tenant.id).where(Tenant.partner_id == partner_id, Tenant.active == true())
+    for h in db.scalars(select(Host).where(Host.tenant_id.in_(firm_ids), Host.active == true()).order_by(Host.id)).all():
+        t = by_id.get(h.tenant_id)
+        if t is None:
+            continue
+        num = normalize_msisdn(h.phone) if h.phone else ""
+        if len(num) >= 8 and num not in seen_p:
+            seen_p.add(num)
+            sms.append((t, h.phone))
+        addr = (h.email or "").strip().lower()
+        if addr and valid_email(addr) and addr not in seen_m:
+            seen_m.add(addr)
+            mail.append((t, h.email.strip()))
+    teams = [t for t in firms if t.teams_webhook]
+    return {"sms": sms, "email": mail, "teams": teams}
+
+
+def _scope_name(db: Session, a: EmergencyAlert) -> str:
+    if a.tenant_id is not None:
+        t = db.get(Tenant, a.tenant_id)
+        return t.name if t else ""
+    p = db.get(Partner, a.partner_id) if a.partner_id else None
+    return p.name if p else ""
+
+
+def texts(a: EmergencyAlert, name: str, phase: str) -> tuple[str, str, str]:
+    """(SMS, mailens emne, mailens tekst)."""
+    when = to_local(a.started_at if phase == "start" else (a.ended_at or utcnow())).strftime("%H:%M")
+    if phase == "start":
+        sms = f"{a.title.upper()} ({name}): {a.message}".strip()
+        return sms[:459], f"{a.title} · {name}", f"{a.message}\n\nSendt kl. {when} fra skærmene i {name}."
+    sms = f"Afblæst ({name}): {a.title} er slut kl. {when}. Du kan vende tilbage."
+    return sms, f"Afblæst: {a.title} · {name}", f"{a.title} er afblæst kl. {when}. Du kan vende tilbage."
+
+
+def sms_segments(text: str) -> int:
+    return 1 if len(text) <= 160 else -(-len(text) // 153)
+
+
+def preview(db: Session, tenant_id: int | None = None, partner_id: int | None = None, kind: str = "evacuation") -> dict:
+    """Til vinduet i admin: antal modtagere og anslået pris for SMS'erne."""
+    r = recipients(db, tenant_id, partner_id)
+    title, msg = KINDS.get(kind, KINDS["evacuation"])
+    seg = sms_segments(f"{title.upper()} (x): {msg}")
+    price = db.scalar(select(Product.price).where(Product.code == "sms")) or 39
+    cost = len(r["sms"]) * seg * price
+    return {"enabled": notify_allowed(db, tenant_id, partner_id), "sms": len(r["sms"]), "email": len(r["email"]),
+            "teams": len(r["teams"]), "segments": seg, "cost": cost,
+            "cost_text": f"{cost / 100:.2f}".replace(".", ",") + " kr."}
+
+
+def notify_people(alert_id: int, phase: str = "start") -> int:
+    """Baggrundsopgave: send nødbeskeden (phase="start") eller afblæsningen (phase="clear") som SMS, mail og Teams.
+    Sendes højst én gang pr. fase. Alle forsøg gemmes i beskedloggen (Notification), så SMS'erne tæller med i forbruget."""
+    from .db import SessionLocal
+    with SessionLocal() as db:
+        a = db.get(EmergencyAlert, alert_id)
+        if a is None or not a.notify:
+            return 0
+        if phase == "start" and a.notified_count:
+            return 0
+        if phase == "clear" and (not a.notified_count or a.cleared_count):
+            return 0
+        name = _scope_name(db, a)
+        sms, subject, body = texts(a, name, phase)
+        r = recipients(db, a.tenant_id, a.partner_id)
+        rows: list[tuple[Notification, Tenant]] = []
+        for t, phone in r["sms"]:
+            rows.append((Notification(tenant_id=t.id, channel="sms", recipient=phone, subject=subject, body=sms), t))
+        for t, addr in r["email"]:
+            rows.append((Notification(tenant_id=t.id, channel="email", recipient=addr, subject=subject, body=body), t))
+        for t in r["teams"]:
+            rows.append((Notification(tenant_id=t.id, channel="teams", recipient="Teams", subject=subject, body=body), t))
+        # Tæl op først, så en genstart midt i afsendelsen ikke sender det hele igen.
+        if phase == "start":
+            a.notified_count = len(rows) or -1
+        else:
+            a.cleared_count = len(rows) or -1
+        for n, _ in rows:
+            db.add(n)
+        db.commit()
+        for n, t in rows:
+            deliver(n, t)
+            db.commit()
+        return len(rows)

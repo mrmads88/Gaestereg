@@ -145,7 +145,12 @@ Senere: video, RSS/nyheder fra en hjemmeside, kantinens rigtige menu (når kanti
 - Brandvagten kan starte og afslutte evakuering fra evakueringslisten på telefonen uden login.
 - Svarer fra hukommelsen (`alerts.py`), så skærmenes polling ikke rammer databasen. Gælder alle pakker.
 
-Senere: SMS/Teams til alle personer i huset ved evakuering, lyd på skærmene, skabeloner pr. hus.
+- SMS, mail og Teams til personerne ved Evakuering og Vigtig besked (aldrig Information). **Slukket som standard**:
+  slås til pr. hus eller firma af leverandøren eller huset (`alert_notify`). Vinduet viser antal og anslået SMS-pris,
+  og personerne får "Afblæst", når beskeden slutter. Hvert nummer/hver adresse én gang. Brandvagtens knap følger
+  indstillingen. SMS'erne logges i beskedloggen og tæller med i forbruget på fakturaen. Kræver GatewayAPI og live i prod.
+
+Senere: lyd på skærmene, skabeloner pr. hus.
 
 ## Venter på prod / en kunde
 - Oppetids-tjek og fejlmails. Et tjek hver anden time ville vække dev-databasen og bruge det gratis forbrug op.

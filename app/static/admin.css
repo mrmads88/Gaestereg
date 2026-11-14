@@ -467,3 +467,9 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .al-hist{font-size:.85rem;color:var(--soft)}
 .al-hist div{padding:4px 0;border-top:1px solid var(--rule)}
 @media (max-width:520px){.al-kinds{grid-template-columns:1fr}}
+.al-notify{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--rule);border-radius:12px;padding:10px 12px;background:#fbfbfa;cursor:pointer}
+.al-notify input{width:20px;height:20px;margin-top:2px;accent-color:#b42318}
+.al-notify span{display:flex;flex-direction:column;gap:2px}
+.al-notify small{color:var(--soft);font-size:.8rem}
+.al-notify.off{flex-direction:column;cursor:default;font-size:.88rem;color:var(--soft)}
+.al-off{font-size:.82rem}

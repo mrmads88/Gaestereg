@@ -41,6 +41,7 @@ class Partner(Base):
     # Hvad lokaleskærme viser om møder: title | organizer | busy. Tom = standard (busy). Se rooms.privacy_for.
     meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))
     report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
+    alert_notify: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))  # hele huset
 
     tenants: Mapped[list["Tenant"]] = relationship(back_populates="partner")
 
@@ -121,6 +122,8 @@ class Tenant(Base):
     sub_note: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
     # Månedsrapport på mail (firmaets egne admins bestemmer). Flere adresser adskilles med komma.
     report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
+    # Nødbesked sendes også som SMS/mail/Teams til firmaets personer. Slukket som standard (koster SMS).
+    alert_notify: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="tenant", cascade="all, delete-orphan", order_by="Host.sort_order"
@@ -514,3 +517,6 @@ class EmergencyAlert(Base):
     ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     ended_by: Mapped[str] = mapped_column(Unicode(200), default="")
+    notify: Mapped[bool] = mapped_column(Boolean, default=False)  # send også til personerne
+    notified_count: Mapped[int] = mapped_column(Integer, default=0)  # beskeder sendt ved start
+    cleared_count: Mapped[int] = mapped_column(Integer, default=0)  # "afblæst"-beskeder ved slut
