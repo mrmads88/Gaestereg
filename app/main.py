@@ -111,6 +111,13 @@ def root():
     return RedirectResponse("/admin")
 
 
+@app.get("/hjaelp", include_in_schema=False)
+@app.get("/help", include_in_schema=False)
+def help_page():
+    """Hjælpecentret med guides (offentligt, så kunder og medarbejdere kan finde det uden login)."""
+    return FileResponse(STATIC / "help.html", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/admin", include_in_schema=False)
 def admin_page():
     return FileResponse(STATIC / "admin.html", headers={"Cache-Control": "no-cache"})

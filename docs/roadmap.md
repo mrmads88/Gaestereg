@@ -201,9 +201,14 @@ Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét s
 - Dansk er stadig kildeteksten. Ordbogen ligger i `app/static/i18n-en.js`, og en test sikrer, at nye tekster kommer med.
 - Senere: flere sprog (svensk, norsk, tysk) med samme ordbog-format; priser og fakturaer forbliver på dansk.
 
-## Hjælp og guides (næste)
-Mads' ønske (november 2026): flotte, nemme guides til funktionerne, som kunderne selv kan finde, og "?"-knapper med
-hurtig hjælp, når man holder musen over (eller trykker på telefonen). Også en guide til leverandørens eget login.
+## Hjælp og guides (bygget)
+- Hjælpecentret på `/hjaelp`: 15 guides (kom i gang, skærm, personer, invitationer, QR til døren, besøg og GDPR,
+  nødbesked, lokaler, forplejning, infoskærme, tidsregistrering, stempling for medarbejdere, overblik, adgang og
+  kontorhotel) med søgning, filter pr. rolle, dansk/engelsk, print og direkte links (`/hjaelp#tid`).
+- "?" ved de vigtigste overskrifter i admin med en kort forklaring og et link til guiden. Knappen "Hjælp" i topbaren
+  og et link på login-siden.
+- Leverandørens egen guide (login, ny kode, mistet telefon): `docs/leverandoer-guide.md`.
+- Senere: korte videoer/GIF'er i guiderne, en "første gang"-rundvisning i admin og hjælp i lokale- og bookingsiden.
 
 ## Venter på prod / en kunde
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).

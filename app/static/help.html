@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nodd · Hjælp</title>
+<meta name="description" content="Guides til Nodd: gæsteskærm, personer, invitationer, mødelokaler, forplejning, infoskærme, nødbesked og tidsregistrering.">
+<link rel="icon" href="/static/brand/nodd-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/brand/nodd-icon-180.png">
+<meta name="theme-color" content="#12352e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+/* Hjælpecentret: guides til hver funktion. Indholdet ligger i help-content.js (dansk og engelsk). */
+:root{--brand:#12352e;--brand-soft:#e4eeea;--brass:#c99a3e;--ink:#14171d;--soft:#5d6470;--paper:#f4f5f2;--card:#fff;--rule:#e2e4e0;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;--f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+header{background:var(--brand);color:#fff;padding:22px max(16px,env(safe-area-inset-left,0px)) 34px}
+.wrap{max-width:1080px;margin:0 auto}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top img{height:30px;width:auto;filter:brightness(0) invert(1)}
+.top .sp{flex:1}
+.top a,.top button{color:#fff;background:none;border:0;font:600 .92rem var(--f-body);cursor:pointer;text-decoration:none;opacity:.85;padding:6px 4px}
+.top a:hover,.top button:hover{opacity:1;text-decoration:underline}
+.top button[aria-pressed="true"]{opacity:1;font-weight:800;text-decoration:underline;text-underline-offset:4px}
+h1{font:800 clamp(2rem,5vw,3rem)/1.05 var(--f-display);letter-spacing:-.02em;margin:26px 0 8px}
+header p{margin:0 0 20px;opacity:.85;max-width:60ch}
+.search{position:relative;max-width:560px}
+.search input{width:100%;min-height:52px;border-radius:14px;border:0;padding:0 18px 0 46px;font:500 1.02rem var(--f-body);color:var(--ink)}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--soft)}
+main{padding:24px max(16px,env(safe-area-inset-left,0px)) 60px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chips button{border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:7px 14px;font:600 .9rem var(--f-body);color:var(--ink);cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start}
+nav{position:sticky;top:16px;display:flex;flex-direction:column;gap:6px}
+nav button{display:flex;gap:12px;align-items:center;text-align:left;border:1px solid transparent;background:none;border-radius:12px;padding:10px 12px;
+  font:600 .96rem var(--f-body);color:var(--ink);cursor:pointer}
+nav button:hover{background:var(--card);border-color:var(--rule)}
+nav button[aria-current="true"]{background:var(--card);border-color:var(--rule);box-shadow:0 1px 2px rgb(16 20 28 / .05)}
+nav .ic{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);display:grid;place-items:center;font-size:1.05rem;flex:none}
+article{background:var(--card);border:1px solid var(--rule);border-radius:22px;padding:30px 32px;box-shadow:0 1px 2px rgb(16 20 28 / .04),0 18px 40px -28px rgb(16 20 28 / .25)}
+article .ic{width:52px;height:52px;border-radius:14px;background:var(--brand-soft);display:grid;place-items:center;font-size:1.6rem}
+article h2{font:800 2rem/1.1 var(--f-display);letter-spacing:-.015em;margin:14px 0 6px}
+.intro{color:var(--soft);font-size:1.08rem;margin:0 0 6px}
+.roles{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 18px}
+.roles span{font-size:.78rem;font-weight:700;background:var(--paper);border-radius:999px;padding:3px 10px;color:var(--soft)}
+ol.steps{list-style:none;counter-reset:s;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:38px 1fr;gap:14px;align-items:start}
+ol.steps li::before{content:counter(s);width:38px;height:38px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 1rem var(--f-display)}
+ol.steps li span{padding-top:6px}
+.tips{margin-top:24px;background:#fbf6ea;border:1px solid #efe2c2;border-radius:16px;padding:14px 18px}
+.tips b{display:block;margin-bottom:4px}
+.tips ul{margin:0;padding-left:20px}
+.acts{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.acts button,.acts a{border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:8px 16px;font:600 .9rem var(--f-body);color:var(--ink);cursor:pointer;text-decoration:none}
+.empty{color:var(--soft);padding:20px 4px}
+footer{color:var(--soft);font-size:.9rem;text-align:center;padding:10px 16px 40px}
+@media (max-width:820px){.layout{grid-template-columns:1fr}nav{position:static;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  article{padding:22px 20px}article h2{font-size:1.6rem}}
+@media (max-width:460px){nav{grid-template-columns:1fr}}
+@media print{header .search,.chips,nav,.acts,.top .sp~*{display:none}header{background:#fff;color:var(--ink);padding:0}.top img{filter:none}
+  body{background:#fff}.layout{display:block}article{border:0;box-shadow:none;padding:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top"><img src="/static/brand/nodd-lockup.svg" alt="Nodd" width="107" height="30"><span class="sp"></span>
+      <button type="button" data-lang="da">Dansk</button><button type="button" data-lang="en">English</button><a href="/admin" id="toAdmin">Til admin</a></div>
+    <h1 id="h1">Hjælp og guides</h1>
+    <p id="lead">Korte guides til alt i Nodd. Vælg en guide eller søg.</p>
+    <div class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" autocomplete="off" aria-label="Søg"></div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="chips" id="chips" role="group"></div>
+  <div class="layout"><nav id="nav" aria-label="Guides"></nav><div id="content"></div></div>
+</main>
+<footer id="foot"></footer>
+<script src="/static/help-content.js"></script>
+<script>
+(function () {
+  "use strict";
+  const H = window.NODD_HELP;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const UI = {
+    da: { h1: "Hjælp og guides", lead: "Korte guides til alt i Nodd. Vælg en guide eller søg.", search: "Søg, fx \"PIN\", \"booking\" eller \"evakuering\"", all: "Alle",
+      admin: "Til admin", tips: "Godt at vide", print: "Print guiden", none: "Ingen guides passer på søgningen.", copy: "Kopiér link", copied: "Link kopieret",
+      foot: "Fandt du ikke svaret? Kontakt din leverandør.", forWho: "Til" },
+    en: { h1: "Help and guides", lead: "Short guides to everything in Nodd. Choose a guide or search.", search: "Search, e.g. \"PIN\", \"booking\" or \"evacuation\"", all: "All",
+      admin: "To admin", tips: "Good to know", print: "Print the guide", none: "No guides match your search.", copy: "Copy link", copied: "Link copied",
+      foot: "Didn't find the answer? Contact your provider.", forWho: "For" },
+  };
+  function pickLang() {
+    const q = new URLSearchParams(location.search).get("lang");
+    if (q === "da" || q === "en") return q;
+    try { const s = localStorage.getItem("nodd-lang"); if (s === "da" || s === "en") return s; } catch (e) { /* privat tilstand */ }
+    return /^da\b/i.test(navigator.language || "da") ? "da" : "en";
+  }
+  let lang = pickLang(), role = "", cur = null;
+  const L = (o) => (o && (o[lang] || o.da)) || "";
+  const text = (g) => [L(g.title), L(g.intro), ...(g.steps[lang] || []), ...(g.tips[lang] || [])].join(" ").toLowerCase();
+
+  function frame() {
+    const u = UI[lang];
+    document.documentElement.lang = lang;
+    document.title = "Nodd · " + (lang === "en" ? "Help" : "Hjælp");
+    $("h1").textContent = u.h1; $("lead").textContent = u.lead; $("q").placeholder = u.search; $("toAdmin").textContent = u.admin;
+    $("foot").textContent = u.foot;
+    document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    $("chips").innerHTML = [["", u.all], ...Object.entries(H.roles).map(([k, v]) => [k, L(v)])]
+      .map(([k, t]) => '<button type="button" data-role="' + k + '" aria-pressed="' + (role === k) + '">' + esc(t) + "</button>").join("");
+  }
+  function visible() {
+    const q = $("q").value.trim().toLowerCase();
+    return H.guides.filter((g) => (!role || g.roles.includes(role)) && (!q || q.split(/\s+/).every((w) => text(g).includes(w))));
+  }
+  function render() {
+    const gs = visible();
+    if (!gs.some((g) => g.id === cur)) cur = gs.length ? gs[0].id : null;
+    $("nav").innerHTML = gs.map((g) => '<button type="button" data-id="' + g.id + '" aria-current="' + (g.id === cur) + '"><span class="ic" aria-hidden="true">' + g.icon + "</span>" + esc(L(g.title)) + "</button>").join("");
+    const g = H.guides.find((x) => x.id === cur);
+    const u = UI[lang];
+    $("content").innerHTML = !g ? '<p class="empty">' + esc(u.none) + "</p>" :
+      '<article id="' + g.id + '"><div class="ic" aria-hidden="true">' + g.icon + "</div><h2>" + esc(L(g.title)) + '</h2><p class="intro">' + esc(L(g.intro)) + "</p>" +
+      '<div class="roles">' + g.roles.map((r) => "<span>" + esc(u.forWho + " " + L(H.roles[r]).toLowerCase()) + "</span>").join("") + "</div>" +
+      '<ol class="steps">' + (g.steps[lang] || []).map((s) => "<li><span>" + esc(s) + "</span></li>").join("") + "</ol>" +
+      ((g.tips[lang] || []).length ? '<div class="tips"><b>' + esc(u.tips) + "</b><ul>" + g.tips[lang].map((t) => "<li>" + esc(t) + "</li>").join("") + "</ul></div>" : "") +
+      '<div class="acts"><button type="button" data-act="print">' + esc(u.print) + '</button><button type="button" data-act="copy">' + esc(u.copy) + "</button></div></article>";
+  }
+  function open(id, scroll) {
+    cur = id; history.replaceState(null, "", "#" + id); render();
+    if (scroll && window.innerWidth <= 820) $("content").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.addEventListener("click", (e) => {
+    const n = e.target.closest("[data-id]"); if (n) return open(n.dataset.id, true);
+    const r = e.target.closest("[data-role]"); if (r) { role = r.dataset.role; frame(); render(); return; }
+    const l = e.target.closest("[data-lang]");
+    if (l) { lang = l.dataset.lang; try { localStorage.setItem("nodd-lang", lang); } catch (err) { /* privat tilstand */ }
+      const u = new URL(location.href); u.searchParams.set("lang", lang); history.replaceState(null, "", u.toString()); frame(); render(); return; }
+    const a = e.target.closest("[data-act]"); if (!a) return;
+    if (a.dataset.act === "print") window.print();
+    if (a.dataset.act === "copy") (navigator.clipboard ? navigator.clipboard.writeText(location.href) : Promise.reject()).then(() => { a.textContent = UI[lang].copied; }, () => {});
+  });
+  $("q").addEventListener("input", render);
+  window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (H.guides.some((g) => g.id === id)) open(id, true); });
+  const start = location.hash.slice(1);
+  if (H.guides.some((g) => g.id === start)) cur = start;
+  frame(); render();
+})();
+</script>
+</body>
+</html>

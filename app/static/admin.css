@@ -595,3 +595,14 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .tm-staff{min-width:640px}
 .login-lang{display:flex;justify-content:center;gap:8px;align-items:center;color:var(--soft);font-size:.85rem;margin-top:-4px}
 .login-lang [aria-pressed="true"]{font-weight:800;text-decoration:none;color:var(--ink)}
+/* "?"-hjælp */
+.help-q{display:inline-grid;place-items:center;width:18px;height:18px;margin-left:6px;border-radius:50%;border:1px solid var(--rule);background:var(--card);
+  color:var(--soft);font:700 .72rem/1 var(--f-body);cursor:help;vertical-align:middle;padding:0;flex:none}
+.help-q:hover,.help-q:focus-visible{background:var(--accent);border-color:var(--accent);color:#fff;outline:none}
+.help-pop{position:absolute;z-index:120;background:var(--ink);color:#fff;border-radius:12px;padding:12px 14px;font-size:.88rem;line-height:1.45;
+  box-shadow:0 12px 30px -10px rgb(0 0 0 / .45)}
+.help-pop p{margin:0 0 6px}
+.help-pop a{color:#bfe5d4;font-weight:700;text-decoration:none}
+.help-pop a:hover{text-decoration:underline}
+.login-help{text-align:center;margin:-4px 0 0;font-size:.85rem}
+.login-help a{color:var(--accent);font-weight:700}
