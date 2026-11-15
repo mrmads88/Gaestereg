@@ -14,7 +14,7 @@ from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
 from . import catering, crm, modules, signage
-from .models import (Booking, Host, Invitation, Kitchen, Notification, Partner, Room, SignageScreen, Tenant, TimeEntry, User, Visit,
+from .models import (BillingAccount, Booking, Host, Invitation, Kitchen, Notification, Partner, Room, SignageScreen, Tenant, TimeEntry, User, Visit,
                      VisitStat, new_token,
                      utcnow)
 from .notify import build_messages, deliver
@@ -123,7 +123,13 @@ def update_subscription(tid: int, body: SubscriptionIn, db: Session = Depends(ge
 
 @router.delete("/tenants/{tid}")
 def delete_tenant(tid: int, db: Session = Depends(get_db), p: Principal = Depends(require_platform)):
-    t = get_tenant_for(db, tid, p)
+    remove_tenant(db, get_tenant_for(db, tid, p))
+    return {"ok": True}
+
+
+def remove_tenant(db: Session, t: Tenant) -> None:
+    """Slet et firma og alt, der hører til (bruges også, når demoen nulstilles)."""
+    tid = t.id
     files = [t.logo_path, t.background_path] + [h.photo_path for h in t.hosts]
     # Rækker, der peger på personerne, skal væk før personerne (ORM'en sletter personerne før kunden).
     db.query(Invitation).filter(Invitation.tenant_id == tid).delete()
@@ -138,11 +144,11 @@ def delete_tenant(tid: int, db: Session = Depends(get_db), p: Principal = Depend
     db.query(User).filter(User.tenant_id == tid).delete()
     crm.unlink_tenant(db, tid)
     db.query(TimeEntry).filter(TimeEntry.tenant_id == tid).delete()
+    db.query(BillingAccount).filter(BillingAccount.tenant_id == tid).delete()  # pakker og fakturaer følger med
     db.delete(t)
     db.commit()
     for f in files:
         delete_media(f)
-    return {"ok": True}
 
 
 @router.post("/tenants/{tid}/new-link")

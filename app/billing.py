@@ -15,7 +15,7 @@ import json
 from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 from sqlalchemy.orm import Session
 
 from .models import (AccountProduct, Adjustment, BillingAccount, Invoice, InvoiceLine, Notification, Partner, Product,
@@ -290,7 +290,11 @@ def finalize(db: Session, inv: Invoice) -> None:
 def due_accounts(db: Session, ps: date) -> list[BillingAccount]:
     """Kunder, hvis periode starter på denne dag (måned hver måned, kvartal i jan/apr/jul/okt, år i januar)."""
     out = []
+    demo_t = set(db.scalars(select(Tenant.id).where(Tenant.is_demo == true())).all())
+    demo_p = set(db.scalars(select(Partner.id).where(Partner.is_demo == true())).all())
     for acc in db.scalars(select(BillingAccount)).all():
+        if acc.tenant_id in demo_t or acc.partner_id in demo_p:
+            continue  # demo-kunder faktureres aldrig
         if period_of(ps, acc.interval)[0] == ps:
             out.append(acc)
     return out

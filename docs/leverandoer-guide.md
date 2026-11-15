@@ -22,6 +22,23 @@ Denne guide er til dig som leverandør af Nodd. Kundernes guides ligger i hjælp
 | Mistet telefon og engangskoder | Sæt `ADMIN_MFA_RESET=1`, gem, log ind og sæt to-trins-login op igen under **Sikkerhed**. Slet derefter indstillingen. |
 | En kunde-admin er låst ude | Under kundens **Adgang**: "Link til ny adgangskode" eller "Nulstil to-trins". |
 
+## Ny kunde
+
+Tryk **+ Ny kunde**. Guiden tager navn og pakke (og tilkøb), logo og farve, de første personer, skærmlink/QR-plakat og
+kundens administrator. Bagefter viser **Kom i gang** øverst på kunden, hvad der mangler.
+
+## Demo til salgsmøder
+
+I venstre side under kunderne: **Opret demo** (eller **Nulstil** før et møde). Demoen er:
+
+- **Nordlys Arkitekter (demo)**: Komplet + Tidsregistrering, 8 personer, besøg de sidste 60 dage og et års statistik,
+  3 mødelokaler med bookinger, kantine med menu og bestillinger, infoskærm og arbejdstid. Skærm: `/k/demo-nordlys`.
+  Medarbejdernes PIN er `1234`.
+- **Havnehuset (demo)**: kontorhotel med to lejere og fælles husskærm (`/k/demo-havnehus`), husets lokaler og café.
+
+Demo-kunderne sender aldrig rigtige SMS'er eller mails (heller ikke i prod), faktureres ikke, får ingen månedsrapport
+og kommer ikke med i CRM'et.
+
 ## Daglige steder
 
 - **CRM**: knappen CRM i topbaren.

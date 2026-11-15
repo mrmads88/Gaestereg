@@ -390,6 +390,7 @@ def tenant_admin(t: Tenant, with_hosts: bool = True, platform: bool = False, hos
     d["self_service"] = modules.tenant_has(t, "self_service")  # så admins kan se, om kunde-login virker
     d["modules"] = modules.of_tenant(t)
     d["dpa"] = legal.status(t)
+    d["is_demo"] = t.is_demo
     if platform:
         d["subscription"] = {f: getattr(t, f) for f in SUBSCRIPTION_FIELDS}
         d["subscription"]["sub_paid_until"] = t.sub_paid_until.isoformat() if t.sub_paid_until else None
@@ -449,7 +450,7 @@ def user_out(u: User) -> dict:
 def partner_out(p: Partner, tenant_count: int = 0, user_count: int = 0) -> dict:
     return {"id": p.id, "name": p.name, "active": p.active, "tenant_count": tenant_count,
             "meeting_privacy": p.meeting_privacy, "report_email": p.report_email, "modules": modules.of_partner(p),
-            "dpa": legal.status(p),
+            "dpa": legal.status(p), "is_demo": p.is_demo,
             "user_count": user_count, "created_at": local_iso(p.created_at)}
 
 

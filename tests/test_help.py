@@ -39,7 +39,7 @@ def test_tips_point_to_guides_and_real_headings():
     h = help_data()
     ids = {g["id"] for g in h["guides"]}
     admin = (STATIC / "admin.html").read_text(encoding="utf-8") + "".join(
-        f.read_text(encoding="utf-8") for f in STATIC.glob("admin-*.js"))
+        f.read_text(encoding="utf-8") for f in STATIC.glob("admin*.js"))
     for key, tip in h["tips"].items():
         assert tip["guide"] in ids, key
         assert tip["da"] and tip["en"], key

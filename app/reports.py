@@ -17,7 +17,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import false, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -423,8 +423,8 @@ def send_due(db_factory, today: date | None = None) -> int:
     key = f"{last.year}-{last.month:02d}"
     sent = 0
     with db_factory() as db:
-        targets = [("tenant", t) for t in db.scalars(select(Tenant).where(Tenant.report_email != "")).all()] + \
-                  [("partner", p) for p in db.scalars(select(Partner).where(Partner.report_email != "")).all()]
+        targets = [("tenant", t) for t in db.scalars(select(Tenant).where(Tenant.report_email != "", Tenant.is_demo == false())).all()] + \
+                  [("partner", p) for p in db.scalars(select(Partner).where(Partner.report_email != "", Partner.is_demo == false())).all()]
         for kind, obj in targets:
             to = recipients(obj.report_email)
             ok = modules.tenant_has(obj, "reports") if kind == "tenant" else modules.partner_has(obj, "reports")

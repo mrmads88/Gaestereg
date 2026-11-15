@@ -407,6 +407,13 @@ def delete_partner(pid: int, db: Session = Depends(get_db), p: Principal = Depen
     partner = _partner_for(db, pid, p)
     if db.scalar(select(func.count()).select_from(Tenant).where(Tenant.partner_id == pid)):
         raise HTTPException(409, "Partneren har stadig firmaer. Flyt eller slet dem først.")
+    remove_partner(db, partner)
+    return {"ok": True}
+
+
+def remove_partner(db: Session, partner: Partner) -> None:
+    """Slet et hus (uden firmaer) og alt, der hører til. Bruges også, når demoen nulstilles."""
+    pid = partner.id
     catering.delete_kitchens(db, db.scalars(select(Kitchen).where(Kitchen.partner_id == pid)).all())
     for room in db.scalars(select(Room).where(Room.partner_id == pid)).all():
         delete_media(room.photo_path)
@@ -423,7 +430,6 @@ def delete_partner(pid: int, db: Session = Depends(get_db), p: Principal = Depen
     db.flush()
     db.delete(partner)
     db.commit()
-    return {"ok": True}
 
 
 @router.get("/partners/{pid}/users")

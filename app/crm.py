@@ -14,7 +14,7 @@ import threading
 import time
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import false, func, or_, select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -231,13 +231,16 @@ def overview(db: Session) -> dict:
     won = db.execute(select(func.count(), func.sum(CrmDeal.monthly)).where(CrmDeal.stage == "vundet",
                                                                           CrmDeal.closed_at >= month_start)).one()
     counts = dict(db.execute(select(CrmCompany.status, func.count()).group_by(CrmCompany.status)).all())
-    total_mrr = sum(mrr(db, acc, t) for acc in db.scalars(select(BillingAccount)).all())
+    demo_t = set(db.scalars(select(Tenant.id).where(Tenant.is_demo == true())).all())
+    demo_p = set(db.scalars(select(Partner.id).where(Partner.is_demo == true())).all())
+    total_mrr = sum(mrr(db, acc, t) for acc in db.scalars(select(BillingAccount)).all()
+                    if acc.tenant_id not in demo_t and acc.partner_id not in demo_p)  # demo tæller ikke
     recent = db.scalars(select(CrmActivity).where(CrmActivity.kind != "opgave")
                         .order_by(CrmActivity.created_at.desc()).limit(8)).all()
     unlinked = db.scalar(select(func.count()).select_from(Tenant).where(
-        Tenant.partner_id.is_(None), ~Tenant.id.in_(select(CrmCompany.tenant_id).where(CrmCompany.tenant_id.isnot(None))))) + \
+        Tenant.partner_id.is_(None), Tenant.is_demo == false(), ~Tenant.id.in_(select(CrmCompany.tenant_id).where(CrmCompany.tenant_id.isnot(None))))) + \
         db.scalar(select(func.count()).select_from(Partner).where(
-            ~Partner.id.in_(select(CrmCompany.partner_id).where(CrmCompany.partner_id.isnot(None)))))
+            Partner.is_demo == false(), ~Partner.id.in_(select(CrmCompany.partner_id).where(CrmCompany.partner_id.isnot(None)))))
     return {"today": t.isoformat(), "due": due, "later": later, "stages": stages, "weighted": weighted,
             "open_monthly": sum(stages[k]["monthly"] for k in OPEN),
             "won_month": {"count": won[0] or 0, "monthly": int(won[1] or 0)},
@@ -278,7 +281,7 @@ def sync_from_nodd(db: Session) -> int:
     have_p = set(db.scalars(select(CrmCompany.partner_id).where(CrmCompany.partner_id.isnot(None))).all())
     accs = {a.tenant_id or -a.partner_id: a for a in db.scalars(select(BillingAccount)).all()}
     n = 0
-    for p in db.scalars(select(Partner).order_by(Partner.name)).all():
+    for p in db.scalars(select(Partner).where(Partner.is_demo == false()).order_by(Partner.name)).all():
         if p.id not in have_p:
             acc = accs.get(-p.id)
             c = CrmCompany(name=p.name, status="kunde" if p.active else "tidligere", segment="kontorhotel",
@@ -286,7 +289,7 @@ def sync_from_nodd(db: Session) -> int:
                            source="Nodd")
             db.add(c)
             n += 1
-    for t in db.scalars(select(Tenant).where(Tenant.partner_id.is_(None)).order_by(Tenant.name)).all():
+    for t in db.scalars(select(Tenant).where(Tenant.partner_id.is_(None), Tenant.is_demo == false()).order_by(Tenant.name)).all():
         if t.id not in have_t:
             acc = accs.get(t.id)
             db.add(CrmCompany(name=t.name, status="kunde" if t.active else "tidligere", segment="firma",
