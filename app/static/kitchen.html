@@ -69,6 +69,8 @@ aside li .q{font:600 1rem var(--f-mono);min-width:44px;text-align:right}
   <div class="list" id="list"></div>
   <aside id="pack" hidden><h2>Samlet for dagen</h2><ul id="packList"></ul><div class="upd" id="upd"></div></aside>
 </main>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
 <script>
 (function () {
   "use strict";
@@ -85,7 +87,7 @@ aside li .q{font:600 1rem var(--f-mono);min-width:44px;text-align:right}
     const d = new Date(), out = [];
     for (let i = 0; i < 5; i++) {
       const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i);
-      const label = i === 0 ? "I dag" : i === 1 ? "I morgen" : x.toLocaleDateString("da-DK", { weekday: "short", day: "numeric" }).replace(".", "");
+      const label = i === 0 ? "I dag" : i === 1 ? "I morgen" : x.toLocaleDateString(NODD_LOC(), { weekday: "short", day: "numeric" }).replace(".", "");
       out.push('<button type="button" data-day="' + iso(x) + '" aria-pressed="' + (iso(x) === day) + '">' + esc(label) + "</button>");
     }
     $("days").innerHTML = out.join("");
@@ -96,7 +98,7 @@ aside li .q{font:600 1rem var(--f-mono);min-width:44px;text-align:right}
   function render() {
     const os = data.orders;
     const live = os.filter((o) => o.status !== "cancelled");
-    const dl = new Date(day + "T12:00").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+    const dl = new Date(day + "T12:00").toLocaleDateString(NODD_LOC(), { weekday: "long", day: "numeric", month: "long" });
     $("sub").textContent = dl.charAt(0).toUpperCase() + dl.slice(1) + " · " + live.length + (live.length === 1 ? " bestilling" : " bestillinger");
     $("list").innerHTML = os.length ? os.map((o) => '<article class="o ' + esc(o.status) + '" data-id="' + o.id + '"><div class="t">' + hm(o.deliver_at) +
       "<small>Møde " + esc(o.meeting) + '</small></div><div class="w"><b>' + esc(o.room) + "</b>" + (o.location ? ' <span class="m">· ' + esc(o.location) + "</span>" : "") +
@@ -123,7 +125,7 @@ aside li .q{font:600 1rem var(--f-mono);min-width:44px;text-align:right}
       if (!r.ok) { document.querySelector("main").innerHTML = '<div class="empty">' + esc(j.detail || "Linket virker ikke") + "</div>"; return; }
       data = j; $("name").textContent = j.kitchen.name; document.title = j.kitchen.name + " · bestillinger";
       render();
-      $("upd").textContent = "Opdateret " + new Date().toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+      $("upd").textContent = "Opdateret " + new Date().toLocaleTimeString(NODD_LOC(), { hour: "2-digit", minute: "2-digit" });
     } catch (e) { $("upd").textContent = "Ingen forbindelse. Listen vises som sidst."; }
   }
 
@@ -135,8 +137,8 @@ aside li .q{font:600 1rem var(--f-mono);min-width:44px;text-align:right}
     b.disabled = true;
     try {
       const r = await fetch(api + "/orders/" + id, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: b.dataset.set }) });
-      if (!r.ok) { const j = await r.json().catch(() => ({})); alert(j.detail || "Det gik ikke. Prøv igen"); }
-    } catch (err) { alert("Ingen forbindelse. Prøv igen"); }
+      if (!r.ok) { const j = await r.json().catch(() => ({})); alert(NODD_I18N.tr(j.detail || "Det gik ikke. Prøv igen")); }
+    } catch (err) { alert(NODD_I18N.tr("Ingen forbindelse. Prøv igen")); }
     load();
   });
   days(); load();

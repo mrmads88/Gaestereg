@@ -6,9 +6,9 @@
   const iso = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   const hm = (m) => (m < 0 ? "-" : "") + Math.floor(Math.abs(m) / 60) + ":" + pad(Math.abs(m) % 60);
   const hhmm = (s) => (s ? s.slice(11, 16) : "");
-  const dayLong = (s) => new Date(s + "T12:00").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+  const dayLong = (s) => new Date(s + "T12:00").toLocaleDateString(NODD_LOC(), { weekday: "long", day: "numeric", month: "long" });
   const span = (a) => { const d = new Date(a + "T12:00"), e = new Date(d); e.setDate(e.getDate() + 6);
-    return d.getDate() + "." + (d.getMonth() !== e.getMonth() ? " " + d.toLocaleDateString("da-DK", { month: "short" }) : "") + "–" + e.toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }); };
+    return d.getDate() + "." + (d.getMonth() !== e.getMonth() ? " " + d.toLocaleDateString(NODD_LOC(), { month: "short" }) : "") + "–" + e.toLocaleDateString(NODD_LOC(), { day: "numeric", month: "short", year: "numeric" }); };
   const addDays = (s, n) => { const d = new Date(s + "T12:00"); d.setDate(d.getDate() + n); return iso(d); };
   const fresh = (outer) => { const el = document.createElement("div"); el.className = "stack tm"; outer.replaceChildren(el); return el; };
 
@@ -62,7 +62,7 @@
           '<label class="fld grow"><span>Note</span><input name="note" maxlength="300" value="' + esc(e.note) + '"' + (locked(e) ? " disabled" : "") + "></label>" +
           '<div class="tm-acts">' + (locked(e) ? '<span class="pill sendt">Godkendt</span>' : '<button class="btn pri sm" type="submit">Gem</button><button class="btn ghost sm" type="button" data-act="del">Slet</button>') + "</div>" +
           '<p class="tm-meta">' + esc(hm(e.minutes)) + " · " + ({ kiosk: "stemplet på skærmen", phone: "stemplet på telefonen", admin: "oprettet i admin" }[e.source] || e.source) +
-          (e.edits.filter((x) => x.what !== "oprettet").length ? " · " + e.edits.filter((x) => x.what !== "oprettet").map((x) => esc(x.what) + " af " + esc(x.by) + " " + esc(new Date(x.at).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))).join(", ") : "") + "</p></form>").join("")
+          (e.edits.filter((x) => x.what !== "oprettet").length ? " · " + e.edits.filter((x) => x.what !== "oprettet").map((x) => esc(x.what) + " af " + esc(x.by) + " " + esc(new Date(x.at).toLocaleString(NODD_LOC(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))).join(", ") : "") + "</p></form>").join("")
           : '<p class="muted small">Ingen registreringer denne dag.</p>') +
         '<form class="tm-entry tm-add" data-form="add"><label class="fld"><span>Ind</span><input type="time" name="start" required></label><label class="fld"><span>Ud</span><input type="time" name="end"></label>' +
         '<label class="fld"><span>Pause, min.</span><input type="number" name="break_min" min="0" max="600" value="0"></label><label class="fld grow"><span>Note</span><input name="note" maxlength="300" placeholder="Fx glemt at stemple"></label>' +

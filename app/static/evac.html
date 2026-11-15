@@ -70,6 +70,8 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
   <div id="list"></div>
   <p class="note">Tryk på en gæst, når de er talt ved mødestedet. Listen opdateres hvert 30. sekund. <span class="mono" id="updated"></span></p>
 </main>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
 <script>
 (function () {
   "use strict";
@@ -104,7 +106,7 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
       $("where").textContent = j.name;
       guests = j.guests.map((g) => ({ ...g, key: "g" + g.id })).concat((j.staff || []).map((x) => ({ key: "s" + x.id, staff: true, name: x.name, firm: x.firm, time: x.since_hhmm, company: "", host: "" })));
       render();
-      $("updated").textContent = "Opdateret " + new Date().toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+      $("updated").textContent = "Opdateret " + new Date().toLocaleTimeString(NODD_LOC(), { hour: "2-digit", minute: "2-digit" });
     } catch (e) { $("updated").textContent = "Ingen forbindelse. Listen vises som sidst."; }
   }
   $("list").addEventListener("click", (e) => {
@@ -131,14 +133,14 @@ main{max-width:640px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-rig
   }
   $("alarm").addEventListener("click", async () => {
     const start = !alarmOn;
-    if (start && !confirm("Vis evakuering på alle skærme nu?")) return;
+    if (start && !confirm(NODD_I18N.tr("Vis evakuering på alle skærme nu?"))) return;
     $("alarm").disabled = true;
     try {
       const r = await fetch("/api/evac/" + encodeURIComponent(token) + "/alert", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: start ? "start" : "end" }) });
       const j = await r.json();
       if (r.ok) { setAlarm(j.active); $("alarmNote").textContent = (j.active ? "Vises nu på " : "Fjernet fra ") + j.screens + " skærme."; }
-      else alert(j.detail || "Det gik ikke. Prøv igen");
-    } catch (e) { alert("Ingen forbindelse. Prøv igen"); }
+      else alert(NODD_I18N.tr(j.detail || "Det gik ikke. Prøv igen"));
+    } catch (e) { alert(NODD_I18N.tr("Ingen forbindelse. Prøv igen")); }
     $("alarm").disabled = false;
   });
   loadAlarm(); setInterval(loadAlarm, 30000);

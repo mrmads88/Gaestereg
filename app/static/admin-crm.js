@@ -2,14 +2,16 @@
    NoddCrm.mount(box, { api, toast, esc, openNodd(kind, id) }) */
 (function () {
   "use strict";
-  const STATUS = { emne: "Emne", kunde: "Kunde", tidligere: "Tidligere kunde" };
+  // "Emne" betyder også en mails emne, så CRM-status har sin egen engelske tekst (ordbogen oversætter "Emne" til "Subject").
+  const EN = window.NODD_I18N && window.NODD_I18N.lang === "en";
+  const STATUS = EN ? { emne: "Lead", kunde: "Customer", tidligere: "Former customer" } : { emne: "Emne", kunde: "Kunde", tidligere: "Tidligere kunde" };
   const SEGMENT = { firma: "Firma", kontorhotel: "Kontorhotel", andet: "Andet" };
   const KIND = { note: "Note", opkald: "Opkald", moede: "Møde", mail: "Mail", opgave: "Opgave", system: "Ændring", nodd: "Nodd" };
   const pad = (n) => String(n).padStart(2, "0");
   const isoToday = () => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
-  const money = (o) => Math.round((o || 0) / 100).toLocaleString("da-DK") + " kr.";
-  const day = (s) => s ? new Date(s.length === 10 ? s + "T12:00" : s).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";
-  const when = (s) => s ? new Date(s).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  const money = (o) => Math.round((o || 0) / 100).toLocaleString(NODD_LOC()) + " kr.";
+  const day = (s) => s ? new Date(s.length === 10 ? s + "T12:00" : s).toLocaleDateString(NODD_LOC(), { day: "numeric", month: "short", year: "numeric" }) : "";
+  const when = (s) => s ? new Date(s).toLocaleString(NODD_LOC(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
   // "1.250", "1250,50" og "649" → øre
   const toOre = (v) => { const s = String(v || "").replace(/\s|kr\.?/gi, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."); const n = parseFloat(s); return isFinite(n) && n > 0 ? Math.round(n * 100) : 0; };
   const kr = (o) => o ? String(Math.round(o / 100)) : "";

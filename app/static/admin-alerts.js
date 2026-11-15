@@ -7,7 +7,7 @@
     ["warning", "Vigtig besked", "Orange besked på hele skærmen, fx strømsvigt eller vandskade."],
     ["info", "Information", "Et bånd øverst. Skærmen kan stadig bruges."],
   ];
-  const fmt = (s) => s ? new Date(s).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  const fmt = (s) => s ? new Date(s).toLocaleString(NODD_LOC(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
   let modal = null;
 
   function ensureModal() {

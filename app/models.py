@@ -220,6 +220,7 @@ class PlatformAccount(MfaMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    lang: Mapped[str] = mapped_column(Unicode(5), default="da", server_default=text("'da'"))  # sprog i admin
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -245,6 +246,7 @@ class User(MfaMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    lang: Mapped[str] = mapped_column(Unicode(5), default="da", server_default=text("'da'"))  # sprog i admin og mails
 
 
 class Invitation(Base):

@@ -191,6 +191,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
   </div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
 <script>
 (function () {
   "use strict";
@@ -204,7 +206,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
   const hm = (d) => pad(d.getHours()) + ":" + pad(d.getMinutes());
   let day = iso(new Date()), data = null, room = null, sel = { setup: "", equipment: new Set() };
   let editing = null, kitchen = null, cart = new Map(), cat = "", deliverTouched = false;  // forplejning: valgt køkken, kurv (id -> {qty, follow})
-  const money = (o) => (o / 100).toLocaleString("da-DK", { style: "currency", currency: "DKK" });
+  const money = (o) => (o / 100).toLocaleString(NODD_LOC(), { style: "currency", currency: "DKK" });
   const ICON = (c, n) => { const s = (n || "") + " " + (c || "");  // ikon ud fra varens navn, ellers kategorien
     return /vand|juice|sodavand|saft/i.test(s) ? "🥤" : /salat/i.test(s) ? "🥗" : /frugt/i.test(s) ? "🍎" : /kage|cookie|sød|snack/i.test(s) ? "🍰"
       : /kaffe|\bte\b/i.test(s) ? "☕" : /brød|morgen|croissant/i.test(s) ? "🥐" : /sandwich|frokost|mad/i.test(s) ? "🥪" : /drik/i.test(s) ? "🥤" : "🍽️"; };
@@ -214,9 +216,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     const out = [], d = new Date();
     for (let i = 0; i < 21; i++) {
       const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i);
-      const wd = i === 0 ? "I dag" : i === 1 ? "I morgen" : x.toLocaleDateString("da-DK", { weekday: "short" }).replace(".", "");
+      const wd = i === 0 ? "I dag" : i === 1 ? "I morgen" : x.toLocaleDateString(NODD_LOC(), { weekday: "short" }).replace(".", "");
       out.push('<button type="button" class="day" data-day="' + iso(x) + '" aria-pressed="' + (iso(x) === day) + '"><small>' + wd +
-        "</small><b>" + x.getDate() + "</b><small>" + x.toLocaleDateString("da-DK", { month: "short" }).replace(".", "") + "</small></button>");
+        "</small><b>" + x.getDate() + "</b><small>" + x.toLocaleDateString(NODD_LOC(), { month: "short" }).replace(".", "") + "</small></button>");
     }
     $("days").innerHTML = out.join("");
   }
@@ -419,7 +421,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     const f = $("form");
     const s = fromTime(f.start.value || "00:00"), e = fromTime(f.end.value || "00:00");
     $("dur").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(e - s === +b.dataset.m)));
-    const dlabel = new Date(day + "T12:00").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+    const dlabel = new Date(day + "T12:00").toLocaleDateString(NODD_LOC(), { weekday: "long", day: "numeric", month: "long" });
     const clash = !editing && data.bookings.find((b) => b.room_id === room.id && fromMin(b.start) < e && fromMin(b.end) > s);
     $("sum").innerHTML = "<b>" + esc(room.name) + "</b> · " + esc(dlabel) + " kl. <span class=\"tm\">" + esc(f.start.value) + "–" + esc(f.end.value) + "</span>" +
       (+f.attendees.value ? " · " + (+f.attendees.value) + " pers." : "") + (sel.setup ? " · " + esc(sel.setup) : "") +
@@ -454,7 +456,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);b
     const fb = e.target.closest("[data-food]"); if (fb) return openFood(+fb.dataset.food);
     const b = e.target.closest("[data-cancel]"); if (!b) return;
     const bk = data.bookings.find((x) => x.id === +b.dataset.cancel);
-    if (!confirm(bk && bk.catering ? "Aflys bookingen? Køkkenet får besked om, at forplejningen er annulleret." : "Aflys bookingen?")) return;
+    if (!confirm(NODD_I18N.tr(bk && bk.catering ? "Aflys bookingen? Køkkenet får besked om, at forplejningen er annulleret." : "Aflys bookingen?"))) return;
     const r = await fetch(api + "/" + b.dataset.cancel, { method: "DELETE" });
     toast(r.ok ? "Bookingen er aflyst" : "Det gik ikke. Prøv igen");
     load();

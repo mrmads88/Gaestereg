@@ -123,7 +123,7 @@
         return;
       }
       if (!cur) return;
-      if (b("[data-back]")) { if (dirty && !confirm("Du har ændringer, der ikke er gemt. Gå tilbage alligevel?")) return; cur = null; return load(); }
+      if (b("[data-back]")) { if (dirty && !confirm(NODD_I18N.tr("Du har ændringer, der ikke er gemt. Gå tilbage alligevel?"))) return; cur = null; return load(); }
       if (b("[data-save]")) return save();
       if ((x = b("[data-seg] [data-v]"))) { cur[x.closest("[data-seg]").dataset.seg] = x.dataset.v; mark(); return renderEditor(); }
       if ((x = b("[data-add]"))) { cur.content.slides.push(Object.assign({ type: x.dataset.add, duration: 12, title: "", text: "", image: "", url: "", week: [], guest_mode: "company", days: [], from_time: "", to_time: "" }, NEW[x.dataset.add])); open = cur.content.slides.length - 1; mark(); return renderEditor(); }

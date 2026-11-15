@@ -117,6 +117,8 @@ body.tables .tv{display:block}
 </div></div>
 <main id="main"><div class="msg">Henter overblikket…</div></main>
 <div class="tip" id="tip" hidden></div>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/i18n.js"></script>
 <script>
 (function () {
   "use strict";
@@ -125,8 +127,8 @@ body.tables .tv{display:block}
   const qs = new URLSearchParams(location.search);
   const scopeQ = qs.get("tenant_id") ? "tenant_id=" + encodeURIComponent(qs.get("tenant_id")) : "partner_id=" + encodeURIComponent(qs.get("partner_id") || "");
   let period = qs.get("period") || "", R = null;
-  const nf = (n) => Number(n).toLocaleString("da-DK");
-  const krf = (o) => (o / 100).toLocaleString("da-DK", { maximumFractionDigits: 0 }) + " kr.";
+  const nf = (n) => Number(n).toLocaleString(NODD_LOC());
+  const krf = (o) => (o / 100).toLocaleString(NODD_LOC(), { maximumFractionDigits: 0 }) + " kr.";
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
   // ---------- perioder ----------
@@ -268,7 +270,7 @@ body.tables .tv{display:block}
     const M = R.months, cur = M.map((m) => m.current), labels = M.map((m) => m.label);
     columns($("chGuests"), labels, R.guests.trend, cur, (v) => nf(Math.round(v)), "Gæster pr. måned");
     if (R.rooms) columns($("chWeek"), R.rooms.weekdays.map((d) => d.label), R.rooms.weekdays.map((d) => d.value), R.rooms.weekdays.map(() => true), (v) => nf(Math.round(v)), "Bookinger pr. ugedag");
-    if (R.catering) columns($("chFood"), labels, R.catering.revenue.trend, cur, (v, axis) => axis ? (v >= 100000 ? (v / 100000).toLocaleString("da-DK", { maximumFractionDigits: 1 }) + "k" : nf(Math.round(v / 100))) : krf(v), "Forplejning pr. måned");
+    if (R.catering) columns($("chFood"), labels, R.catering.revenue.trend, cur, (v, axis) => axis ? (v >= 100000 ? (v / 100000).toLocaleString(NODD_LOC(), { maximumFractionDigits: 1 }) + "k" : nf(Math.round(v / 100))) : krf(v), "Forplejning pr. måned");
   }
 
   async function load() {

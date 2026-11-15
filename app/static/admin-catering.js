@@ -83,7 +83,7 @@
       let r;
       try { r = await api("GET", "/api/admin/catering-orders?" + q + "&month=" + month); } catch (err) { toast(err.message, true); return; }
       $$(".ct-sum").innerHTML = r.count ? '<div class="ct-kpi"><span><b>' + r.count + "</b> " + (r.count === 1 ? "bestilling" : "bestillinger") + "</span><span><b>" + esc(r.total_text) + "</b> i alt</span></div>" : "";
-      const fmt = (s) => new Date(s).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const fmt = (s) => new Date(s).toLocaleString(NODD_LOC(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       $$(".ct-rows").innerHTML = r.orders.map((x) => '<tr class="' + (x.status === "cancelled" ? "muted" : "") + '"><td class="n">' + esc(fmt(x.deliver_at)) + "</td><td>" + esc(x.firm) +
         (x.cost_center ? '<div class="small muted">' + esc(x.cost_center) + "</div>" : "") + "</td><td>" + esc(x.room) + '<div class="small muted">' + esc(x.kitchen) + "</div></td><td>" +
         esc(x.lines.map((l) => l.qty + " × " + l.name).join(", ")) + '</td><td class="n">' + esc(x.total_text) + '</td><td><span class="pill ' + (x.status === "cancelled" ? "fejl" : x.status === "new" ? "venter" : "sendt") + '">' +
