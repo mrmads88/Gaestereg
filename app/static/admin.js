@@ -121,6 +121,7 @@ async function boot() {
   if (STATUS.default_password && ME.role === "platform") warn.push("Standard-adgangskoden bruges. Sæt ADMIN_PASSWORD.");
   $("banner").textContent = warn.join(" "); $("banner").hidden = !warn.length;
   await Promise.all([loadTenants(), loadPartners()]);
+  renderDemo();
   if (location.hash === "#billing" && ME.role === "platform") return showBilling();
   if (location.hash === "#crm" && ME.role === "platform") return showCrm();
   const h = location.hash.match(/^#([tp])(\d+)$/);
@@ -169,6 +170,7 @@ function setupRole() {
 async function loadTenants() { tenants = await api("GET", "/api/admin/tenants"); renderList(); }
 function tenantTags(t) {
   let out = "";
+  if (t.is_demo) out += '<span class="tag demo">demo</span>';
   if (!t.active) out += '<span class="tag off">slået fra</span>';
   else if (t.screen && t.screen.seen_at && !t.screen.online) out += '<span class="tag offline">skærm offline</span>';
   if (can("subscription")) {
@@ -287,7 +289,11 @@ $("delPartner").addEventListener("click", async (e) => {
 });
 $("pInvite").addEventListener("submit", (e) => invite(e, "/api/admin/partners/" + P.id + "/users", $("pLink"), () => renderPartner()));
 $("tList").addEventListener("click", (e) => { const b = e.target.closest("[data-id]"); if (b) selectTenant(+b.dataset.id); });
-$("newTenant").addEventListener("click", () => { $("newForm").hidden = !$("newForm").hidden; if (!$("newForm").hidden) $("newName").focus(); });
+// "+ Ny kunde" åbner opsætningsguiden (navn og pakke, udseende, personer, skærm, administrator).
+$("newTenant").addEventListener("click", () => window.NoddOnboard.wizard({
+  api, toast, esc, platform: ME.role === "platform", partners: ME.role === "platform" ? partners : [], partnerId: P ? P.id : null,
+  onDone: async (id) => { await loadTenants(); if (ME.role !== "tenant") await loadPartners(); selectTenant(id); },
+}));
 $("newForm").addEventListener("submit", async (e) => {
   e.preventDefault(); const name = $("newName").value.trim(); if (!name) return;
   try {
@@ -303,6 +309,28 @@ async function selectTenant(id) {
   P = null; location.hash = "t" + id; showView("tenant"); remember("t", id); updateSwitcher();
   if (tab === "sub" && !can("subscription")) tab = "people";
   renderList(); renderPartners(); renderAll(); setTab(tab); loadPreview(true);
+  window.NoddOnboard.checklist($("tChecklist"), { api, esc, tenantId: id, setTab });
+}
+
+// ---------- demo til salgsmøder (kun leverandøren) ----------
+async function renderDemo() {
+  const box = $("demoBox");
+  if (ME.role !== "platform") { box.hidden = true; return; }
+  let st; try { st = await api("GET", "/api/admin/demo"); } catch (err) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = '<span class="lbl">Demo til salgsmøder</span><p class="muted small">' + (st.exists
+    ? "Nordlys Arkitekter og Havnehuset med fiktive data. Sender aldrig rigtige beskeder og faktureres ikke."
+    : "Et fiktivt firma og et kontorhotel med personer, besøg, lokaler, menu og tidsregistrering.") + '</p><div class="row">' +
+    (st.exists ? '<button class="btn ghost sm" type="button" data-demo="open">Åbn demo</button><button class="btn ghost sm" type="button" data-demo="reset">Nulstil</button>'
+      : '<button class="btn pri sm" type="button" data-demo="reset">Opret demo</button>') + "</div>";
+  box.onclick = async (e) => {
+    const b = e.target.closest("[data-demo]"); if (!b) return;
+    if (b.dataset.demo === "open") return selectTenant(st.firm_id);
+    if (st.exists && !b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tryk igen"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Nulstil"; }, 3500); return; }
+    b.disabled = true; b.textContent = "Bygger …";
+    try { const r = await api("POST", "/api/admin/demo"); await Promise.all([loadTenants(), loadPartners()]); await renderDemo(); selectTenant(r.firm_id); toast("Demoen er klar"); }
+    catch (err) { toast(err.message, true); b.disabled = false; }
+  };
 }
 function upsertList() { const i = tenants.findIndex((x) => x.id === T.id); if (i > -1) tenants[i] = Object.assign({}, T, { host_count: T.hosts.length }); renderList(); }
 

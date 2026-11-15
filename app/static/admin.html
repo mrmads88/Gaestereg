@@ -79,6 +79,7 @@
       <form class="newform" id="newForm" hidden><input id="newName" placeholder="Kundens navn, fx Junckers" maxlength="120" aria-label="Kundens navn"><button class="btn pri sm" type="submit">Opret</button></form>
       <input class="tfilter" id="tFilter" type="search" placeholder="Søg" aria-label="Søg i kunder" hidden>
       <nav class="tlist" id="tList"></nav>
+      <div class="demo-box" id="demoBox" hidden></div>
     </aside>
 
     <main class="main" id="main">
@@ -151,6 +152,7 @@
           </div>
         </div>
 
+        <div class="card ob-card" id="tChecklist" hidden></div>
         <div class="tabs" role="tablist" id="tabs">
           <button role="tab" type="button" data-tab="people" aria-selected="true">Personer</button>
           <button role="tab" type="button" data-tab="look" aria-selected="false">Udseende</button>
@@ -473,6 +475,7 @@
 <script src="/static/admin-alerts.js"></script>
 <script src="/static/admin-crm.js"></script>
 <script src="/static/admin-time.js"></script>
+<script src="/static/admin-onboard.js"></script>
 <script src="/static/admin.js"></script>
 <script src="/static/help-content.js"></script>
 <script src="/static/admin-help.js"></script>

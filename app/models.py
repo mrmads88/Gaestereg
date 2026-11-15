@@ -2,7 +2,7 @@ import secrets
 from datetime import date, datetime, timezone
 
 # Unicode/UnicodeText bliver NVARCHAR på SQL Server (æøå og emoji) og VARCHAR/TEXT på SQLite.
-from sqlalchemy import (Boolean, Date, DateTime, ForeignKey, Integer, Unicode, UnicodeText, UniqueConstraint,
+from sqlalchemy import (Boolean, Date, DateTime, ForeignKey, Index, Integer, Unicode, UnicodeText, UniqueConstraint,
                         text)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,6 +42,7 @@ class Partner(Base):
     meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))
     report_email: Mapped[str] = mapped_column(Unicode(500), default="", server_default=text("''"))
     alert_notify: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))  # hele huset
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     # Databehandleraftalen: hvilken version kundens admin har accepteret, hvornår og af hvem. Se legal.py.
     dpa_version: Mapped[str] = mapped_column(Unicode(40), default="", server_default=text("''"))
     dpa_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -97,6 +98,9 @@ class Tenant(Base):
 
     # kontorhotel (fase 4): denne skærm viser alle partnerens firmaer, og gæsten vælger firma først
     house_screen: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    # Demo til salgsmøder (demo.py): sender aldrig rigtige beskeder og kommer ikke med i fakturering, CRM eller rapporter.
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    checklist_hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))  # "Kom i gang" skjult
     meeting_privacy: Mapped[str] = mapped_column(Unicode(10), default="", server_default=text("''"))  # se Partner
     evac_version: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))  # evakueringslink
 
@@ -443,8 +447,17 @@ class BillingAccount(Base):
     __tablename__ = "billing_accounts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, unique=True)
-    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True, unique=True)
+    # Én konto pr. firma og pr. hus. Filtrerede unikke indeks (ikke UNIQUE på kolonnen): SQL Server tillader kun én NULL
+    # i en unik kolonne, og alle huse har tenant_id = NULL (migration 0019).
+    __table_args__ = (
+        Index("uq_billing_accounts_tenant", "tenant_id", unique=True, mssql_where=text("tenant_id IS NOT NULL"),
+              sqlite_where=text("tenant_id IS NOT NULL")),
+        Index("uq_billing_accounts_partner", "partner_id", unique=True, mssql_where=text("partner_id IS NOT NULL"),
+              sqlite_where=text("partner_id IS NOT NULL")),
+    )
+
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True)
+    partner_id: Mapped[int | None] = mapped_column(ForeignKey("partners.id"), nullable=True)
     interval: Mapped[str] = mapped_column(Unicode(10), default="month")
     discount_pct: Mapped[int] = mapped_column(Integer, default=0)  # fast rabat på alt løbende
     cvr: Mapped[str] = mapped_column(Unicode(20), default="")

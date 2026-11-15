@@ -28,6 +28,23 @@ window.NODD_HELP = {
       },
     },
     {
+      id: "ny-kunde", roles: ["hus"], icon: "✨",
+      title: { da: "Sæt et nyt firma op", en: "Set up a new company" },
+      intro: { da: "Opsætningsguiden fører dig gennem et nyt firma på få minutter.", en: "The setup guide takes you through a new company in a few minutes." },
+      steps: {
+        da: ["Tryk \"+ Nyt firma\" i venstre side.", "Skriv navnet (og vælg pakke, hvis du kan).", "Upload logo og vælg farve og velkomsttekst.",
+          "Tilføj de første personer. Mange personer kan importeres fra Excel bagefter.", "Kopiér skærmlinket til tabletten, eller print QR-plakaten.",
+          "Invitér firmaets egen administrator, hvis de selv skal kunne rette."],
+        en: ["Click \"+ New company\" on the left.", "Enter the name (and choose a package, if you can).", "Upload the logo and choose colour and welcome text.",
+          "Add the first people. Many people can be imported from Excel afterwards.", "Copy the screen link to the tablet, or print the QR poster.",
+          "Invite the company's own administrator if they should be able to edit things themselves."],
+      },
+      tips: {
+        da: ["Tjeklisten \"Kom i gang\" øverst på firmaet viser, hvad der mangler, og krydser selv af."],
+        en: ["The \"Get started\" checklist at the top of the company shows what's missing and ticks itself off."],
+      },
+    },
+    {
       id: "skaerm", roles: ["firma", "hus"], icon: "🖥️",
       title: { da: "Sæt gæsteskærmen op", en: "Set up the guest screen" },
       intro: { da: "Gæsteskærmen er en tablet i receptionen, hvor gæsterne tjekker ind.", en: "The guest screen is a tablet in the reception where guests check in." },
@@ -238,6 +255,8 @@ window.NODD_HELP = {
     "Aftale": { guide: "kom-i-gang", da: "Abonnement, pakke og databehandleraftalens status.", en: "Subscription, package and the status of the data processing agreement." },
     "Opsætning": { guide: "tid", da: "Medarbejderknappen på skærmen og automatisk pause ved lange dage.", en: "The staff button on the screen and automatic break on long days." },
     "Medarbejdere": { guide: "tid", da: "Slå tidsregistrering til pr. person, sæt normtid, lav PIN og send telefonlinket.", en: "Turn on time tracking per person, set standard hours, create a PIN and send the phone link." },
+    "Kom i gang": { guide: "ny-kunde", da: "Det, der mangler, før kunden er i gang. Punkterne krydses af af sig selv, efterhånden som de sker.", en: "What's missing before the customer is up and running. Items tick themselves off as they happen." },
+    "Demo til salgsmøder": { guide: "ny-kunde", da: "Et fiktivt firma og et kontorhotel med data, du kan vise frem. Sender aldrig rigtige beskeder og faktureres ikke. Nulstil før hvert møde.", en: "A fictional company and office hotel with data to show. Never sends real messages and is never invoiced. Reset before each meeting." },
     "Eksport til løn": { guide: "tid", da: "CSV pr. måned med ind, ud, pause og timer, klar til Danløn, Salary eller Excel.", en: "Monthly CSV with in, out, break and hours, ready for Danløn, Salary or Excel." },
   },
 };

@@ -210,6 +210,17 @@ Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét s
 - Leverandørens egen guide (login, ny kode, mistet telefon): `docs/leverandoer-guide.md`.
 - Senere: korte videoer/GIF'er i guiderne, en "første gang"-rundvisning i admin og hjælp i lokale- og bookingsiden.
 
+## Opsætningsguide og demo (bygget)
+- "+ Ny kunde" åbner en guide i fem trin: navn og pakke (med tilkøb), logo/farve/velkomst, de første personer,
+  skærmlink og QR-plakat, og kundens administrator. Huse ("+ Nyt firma") får samme guide uden pakker.
+- "Kom i gang"-tjeklisten øverst på kunden krydser selv af: logo, personer, skærm tændt, første gæst, administrator,
+  databehandleraftale og pakke. Kan skjules.
+- Demo til salgsmøder (venstre side, kun leverandøren): Nordlys Arkitekter med alle moduler og et års data, og
+  Havnehuset med to lejere og fælles skærm. Nulstilles med ét klik. Sender aldrig rigtige beskeder, faktureres ikke
+  og er ikke i CRM eller månedsrapporter.
+- Senere: hent logo og farve fra kundens hjemmeside, en kundevendt demo med eget login (kun læse), rundvisning første
+  gang en kunde logger ind.
+
 ## Venter på prod / en kunde
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).
 - Juridisk godkendelse af databehandleraftalens tekst (`DPA_FINAL=1`).

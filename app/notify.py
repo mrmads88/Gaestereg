@@ -210,7 +210,8 @@ def send_teams(url: str, title: str, text: str) -> None:
 
 def deliver(n: Notification, tenant: Tenant) -> None:
     """Send one notification and record the outcome on the row."""
-    if settings.notify_mode != "live":
+    # Demo-kunder (salgsdemo) sender aldrig rigtige beskeder, heller ikke i prod.
+    if settings.notify_mode != "live" or getattr(tenant, "is_demo", False):
         n.status = "test"
         return
     try:

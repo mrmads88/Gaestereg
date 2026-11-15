@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
-from . import alerts, crm, mfa, modules, ops, reports, routes_alerts, routes_crm, routes_legal, routes_mfa, routes_time, timereg, routes_billing, routes_catering, routes_reports, routes_signage
+from . import alerts, crm, mfa, modules, ops, reports, routes_alerts, routes_crm, routes_legal, routes_mfa, routes_onboarding, routes_time, timereg, routes_billing, routes_catering, routes_reports, routes_signage
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -84,6 +84,7 @@ app.include_router(routes_alerts.public)
 app.include_router(routes_legal.admin)
 app.include_router(routes_mfa.router)
 app.include_router(routes_crm.router)
+app.include_router(routes_onboarding.router)
 app.include_router(routes_time.pages)
 app.include_router(routes_time.public)
 app.include_router(routes_time.admin)

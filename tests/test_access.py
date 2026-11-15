@@ -312,3 +312,15 @@ def test_time_of_other_firms_is_hidden(setup, platform):
     assert pa.get(f"/api/admin/tenants/{setup['firm']['id']}/time/week").status_code == 403
     assert new_client().get(f"/api/admin/tenants/{other['id']}/time/week").status_code == 401
     platform.delete(f"/api/admin/tenants/{other['id']}")
+
+
+def test_demo_and_checklist_access(setup, platform):
+    other = platform.post("/api/admin/tenants", json={"name": "Fremmed tjeklistefirma"}).json()
+    pa = setup["pa"]
+    assert pa.get(f"/api/admin/tenants/{other['id']}/checklist").status_code == 404
+    assert pa.post(f"/api/admin/tenants/{other['id']}/checklist/hide", json={"hidden": True}).status_code == 404
+    assert pa.get(f"/api/admin/tenants/{setup['firm']['id']}/checklist").status_code == 200
+    for method in ("GET", "POST", "DELETE"):
+        assert pa.request(method, "/api/admin/demo").status_code == 403
+        assert new_client().request(method, "/api/admin/demo").status_code == 401
+    platform.delete(f"/api/admin/tenants/{other['id']}")
