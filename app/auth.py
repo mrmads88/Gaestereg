@@ -170,7 +170,7 @@ def current(request: Request, db: Session = Depends(get_db)) -> Principal:
     _mfa_gate(request, db, p, u)
     # I prod skal firmaet eller huset have accepteret databehandleraftalen, før der kan gemmes noget.
     if settings.env == "prod" and request.method != "GET" and not request.url.path.startswith(
-            ("/api/admin/dpa", "/api/admin/logout")):
+            ("/api/admin/dpa", "/api/admin/logout", "/api/admin/me/lang")):
         from . import legal
         if legal.required(db, p):
             raise HTTPException(403, "Accepter databehandleraftalen først. Genindlæs siden.")

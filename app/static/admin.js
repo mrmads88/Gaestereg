@@ -104,6 +104,7 @@ async function boot() {
   if (m) return showInvite(decodeURIComponent(m[1]));
   try { [STATUS, ME] = await Promise.all([api("GET", "/api/admin/status"), api("GET", "/api/admin/me")]); }
   catch (e) { if (!/Log ind/.test(e.message)) showLogin(e.message); return; }
+  if (syncLang()) return;
   $("loginView").hidden = true; $("appView").hidden = false;
   setupRole();
   if (ME.mfa && ME.mfa.required && !ME.mfa.enabled) return showMfa(true);  // resten kræver to-trins-login
@@ -594,7 +595,7 @@ $("chips").addEventListener("click", (e) => {
 });
 
 // ---------- log ----------
-const fmt = (iso) => iso ? new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+const fmt = (iso) => iso ? new Date(iso).toLocaleString(NODD_LOC(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
 // ---------- i huset nu, evakuering og statistik ----------
 const MONTHS_DA = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 function renderInside(tbody, nEl, list, showFirm) {
@@ -786,7 +787,7 @@ function loadRooms() {
 }
 
 // ---------- databehandleraftale og klar til prod ----------
-const dpaText = (d) => d && d.accepted_at ? "Databehandleraftale: accepteret " + new Date(d.accepted_at).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" }) +
+const dpaText = (d) => d && d.accepted_at ? "Databehandleraftale: accepteret " + new Date(d.accepted_at).toLocaleDateString(NODD_LOC(), { day: "numeric", month: "long", year: "numeric" }) +
   " af " + d.accepted_by + " (version " + d.version + ")" + (d.current ? "" : ". En nyere version venter på accept.") : "Databehandleraftale: ikke accepteret endnu.";
 async function showDpa() {
   let d;
@@ -809,6 +810,34 @@ async function showDpa() {
     catch (err) { toast(err.message, true); }
   });
 }
+// ---------- sprog ----------
+// Valget gemmes i browseren og på brugeren (så det følger med til andre enheder). Siden genindlæses i det nye sprog.
+const I18N = window.NODD_I18N;
+function setLang(l, onServer) {
+  I18N.set(l);
+  try { sessionStorage.setItem("nodd-lang-chosen", "1"); } catch (e) { /* privat tilstand */ }
+  const go = () => {
+    const u = new URL(location.href);
+    if (u.searchParams.has("lang")) { u.searchParams.delete("lang"); history.replaceState(null, "", u.toString()); }
+    location.reload();
+  };
+  if (onServer) api("PATCH", "/api/admin/me/lang", { lang: l }).catch(() => {}).finally(go); else go();
+}
+document.querySelectorAll("[data-lang]").forEach((b) => {
+  b.setAttribute("aria-pressed", String(b.dataset.lang === I18N.lang));
+  b.addEventListener("click", () => { if (b.dataset.lang !== I18N.lang) setLang(b.dataset.lang, false); });
+});
+$("langBtn").textContent = I18N.lang === "en" ? "Dansk" : "English";
+$("langBtn").addEventListener("click", () => setLang(I18N.lang === "en" ? "da" : "en", true));
+// Efter login: et valg på login-siden gemmes på brugeren; ellers følger siden brugerens gemte sprog.
+function syncLang() {
+  let chosen = false;
+  try { chosen = sessionStorage.getItem("nodd-lang-chosen") === "1"; sessionStorage.removeItem("nodd-lang-chosen"); } catch (e) { /* privat tilstand */ }
+  if (!ME.lang || ME.lang === I18N.lang) return false;
+  if (chosen) { api("PATCH", "/api/admin/me/lang", { lang: I18N.lang }).catch(() => {}); return false; }
+  I18N.set(ME.lang); location.reload(); return true;
+}
+
 // ---------- to-trins-login ----------
 $("secBtn").addEventListener("click", () => showMfa(false));
 async function showMfa(forced) {
@@ -888,7 +917,7 @@ function renderReadiness() {
 }
 
 // ---------- users (adgang) ----------
-const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";
+const fmtDay = (iso) => iso ? new Date(iso).toLocaleDateString(NODD_LOC(), { day: "numeric", month: "short", year: "numeric" }) : "";
 function renderUsers(box, users) {
   const myEmail = ME.email;
   box.innerHTML = users.map((u) => '<div class="urow" data-uid="' + u.id + '"><span class="av">' + esc(initials(u.name || u.email)) + '</span><span class="grow"><b>' +
@@ -949,7 +978,7 @@ function renderSub() {
   });
   const old = (S.sub_yearly_price || 0) + (S.self_service_monthly_price || 0) * 12;
   $("dpaStatus").textContent = dpaText(T.dpa);
-  $("subSummary").textContent = old ? "Tidligere aftale uden pakke: " + old.toLocaleString("da-DK") + " kr. pr. år. Flyt den over i en pakke ovenfor." : "";
+  $("subSummary").textContent = old ? "Tidligere aftale uden pakke: " + old.toLocaleString(NODD_LOC()) + " kr. pr. år. Flyt den over i en pakke ovenfor." : "";
 }
 function mountBilling() {
   if (!T || ME.role !== "platform") return;

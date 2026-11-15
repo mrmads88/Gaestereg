@@ -203,6 +203,10 @@ class MfaCodeIn(BaseModel):
     code: str = Field(max_length=20)
 
 
+class LangIn(BaseModel):
+    lang: Literal["da", "en"]
+
+
 class LoginIn(BaseModel):
     email: str = Field("", max_length=200)  # tom = platform-admin med ADMIN_PASSWORD
     password: str = Field(max_length=200)

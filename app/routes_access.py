@@ -16,7 +16,7 @@ from .media import delete_media
 from .models import BillingAccount, EmergencyAlert, Kitchen, Partner, Room, SignageScreen, Tenant, User, utcnow
 from .notify import send_email
 from .routes_admin import get_tenant_for
-from .schemas import (AcceptIn, ForgotIn, LoginIn, MfaLoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
+from .schemas import (AcceptIn, ForgotIn, LangIn, LoginIn, MfaLoginIn, PartnerIn, PartnerUpdate, UserIn, partner_out, user_out)
 
 log = logging.getLogger("gaestereg.access")
 
@@ -137,6 +137,19 @@ def media_to_blob(p: Principal = Depends(require_platform)):
     return ops.copy_media_to_blob()
 
 
+@router.patch("/me/lang")
+def set_lang(body: LangIn, db: Session = Depends(get_db), p: Principal = Depends(current)):
+    """Sproget i admin (og i mails til brugeren). Gemmes på brugeren, så det følger med til andre enheder."""
+    holder = mfa.holder_of(db, p)
+    holder.lang = body.lang
+    db.commit()
+    return {"lang": holder.lang}
+
+
+def _lang_of(db: Session, p: Principal) -> str:
+    return mfa.holder_of(db, p).lang or "da"
+
+
 @router.get("/me")
 def me(db: Session = Depends(get_db), p: Principal = Depends(current)):
     partner = db.get(Partner, p.partner_id) if p.partner_id else None
@@ -144,6 +157,7 @@ def me(db: Session = Depends(get_db), p: Principal = Depends(current)):
         **({"readiness": ops.readiness(db)} if p.is_platform else {}),
         "dpa_required": legal.required(db, p),
         "mfa": {"enabled": mfa.enabled(mfa.holder_of(db, p)), "required": mfa.required_for(p.role)},
+        "lang": mfa.holder_of(db, p).lang or "da",
         "role": p.role,
         "name": p.user.name if p.user else "Platform-admin",
         "email": p.user.email if p.user else "",
@@ -168,7 +182,9 @@ def _invite_url(request: Request, u: User) -> str:
 
 
 def link_email(u: User, url: str, kind: str) -> tuple[str, str, str]:
-    """Emne, tekst og HTML til en invitation eller et link til ny adgangskode."""
+    """Emne, tekst og HTML til en invitation eller et link til ny adgangskode (på brugerens sprog)."""
+    if (u.lang or "da") == "en":
+        return _link_email_en(u, url, kind)
     hello = f"Hej {u.name}" if u.name else "Hej"
     if kind == "invite":
         subject = f"Du er inviteret til {PRODUCT}"
@@ -180,20 +196,40 @@ def link_email(u: User, url: str, kind: str) -> tuple[str, str, str]:
         lead = "Du har bedt om en ny adgangskode. Vælg den her."
         button = "Vælg ny adgangskode"
         after = "Linket virker i 7 dage og kun én gang. Har du ikke bedt om det, kan du se bort fra denne e-mail."
+    return _link_page(subject, hello, lead, button, after, url, "Virker knappen ikke, så kopiér linket:", "da")
+
+
+def _link_page(subject: str, hello: str, lead: str, button: str, after: str, url: str, fallback: str,
+               lang: str) -> tuple[str, str, str]:
     text = f"{hello}\n\n{lead}\n\n{url}\n\n{after}\n\n{PRODUCT}"
     base = url.split("/admin", 1)[0]
     e = html.escape
-    page = f"""<!doctype html><html lang="da"><body style="margin:0;padding:24px 12px;background:#f4f2ea;font-family:Helvetica,Arial,sans-serif;color:#16191d">
+    page = f"""<!doctype html><html lang="{lang}"><body style="margin:0;padding:24px 12px;background:#f4f2ea;font-family:Helvetica,Arial,sans-serif;color:#16191d">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px">
 <tr><td style="padding:28px 28px 8px"><img src="{e(base)}/static/brand/nodd-lockup.png" width="160" height="45" alt="{PRODUCT}" style="display:block;border:0"></td></tr>
 <tr><td style="padding:12px 28px 0;font-size:16px;line-height:1.55"><p style="margin:0 0 12px">{e(hello)}</p><p style="margin:0 0 22px">{e(lead)}</p>
 <a href="{e(url)}" style="display:inline-block;background:#12352e;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">{e(button)}</a>
 <p style="margin:22px 0 0;font-size:13px;color:#5b616b">{e(after)}</p>
-<p style="margin:14px 0 0;font-size:12px;color:#5b616b;word-break:break-all">Virker knappen ikke, så kopiér linket: {e(url)}</p></td></tr>
+<p style="margin:14px 0 0;font-size:12px;color:#5b616b;word-break:break-all">{e(fallback)} {e(url)}</p></td></tr>
 <tr><td style="padding:24px 28px 28px;font-size:12px;color:#5b616b">{PRODUCT}</td></tr>
 </table></td></tr></table></body></html>"""
     return subject, text, page
+
+
+def _link_email_en(u: User, url: str, kind: str) -> tuple[str, str, str]:
+    hello = f"Hi {u.name}" if u.name else "Hi"
+    if kind == "invite":
+        subject = f"You have been invited to {PRODUCT}"
+        lead = f"You have been invited as an administrator in {PRODUCT}. Choose your password to get started."
+        button = "Choose password"
+        after = "The link works for 7 days and only once. Afterwards you sign in with your email and password."
+    else:
+        subject = f"New password for {PRODUCT}"
+        lead = "You asked for a new password. Choose it here."
+        button = "Choose new password"
+        after = "The link works for 7 days and only once. If you didn't ask for it, you can ignore this email."
+    return _link_page(subject, hello, lead, button, after, url, "If the button doesn't work, copy the link:", "en")
 
 
 def _send_link(u: User, url: str, kind: str) -> None:
@@ -254,10 +290,11 @@ def forgot(body: ForgotIn, request: Request, bg: BackgroundTasks, db: Session = 
 
 # ---------- users ----------
 
-def _create_user(db: Session, body: UserIn, role: str, partner_id=None, tenant_id=None) -> User:
+def _create_user(db: Session, body: UserIn, role: str, partner_id=None, tenant_id=None, lang: str = "da") -> User:
     if db.scalar(select(User).where(func.lower(User.email) == body.email)) is not None:
         raise HTTPException(409, "Der findes allerede en bruger med den e-mail")
-    u = User(email=body.email, name=body.name.strip(), role=role, partner_id=partner_id, tenant_id=tenant_id)
+    # Den nye bruger får samme sprog som den, der inviterer (invitationsmailen sendes på det sprog).
+    u = User(email=body.email, name=body.name.strip(), role=role, partner_id=partner_id, tenant_id=tenant_id, lang=lang)
     db.add(u)
     db.flush()
     return u
@@ -286,7 +323,7 @@ def tenant_users(tid: int, db: Session = Depends(get_db), p: Principal = Depends
 def add_tenant_user(tid: int, body: UserIn, request: Request, bg: BackgroundTasks,
                     db: Session = Depends(get_db), p: Principal = Depends(current)):
     t = get_tenant_for(db, tid, p)
-    u = _create_user(db, body, "tenant", tenant_id=t.id)
+    u = _create_user(db, body, "tenant", tenant_id=t.id, lang=_lang_of(db, p))
     return _new_link(request, bg, db, u)
 
 
@@ -400,5 +437,5 @@ def partner_users(pid: int, db: Session = Depends(get_db), p: Principal = Depend
 def add_partner_user(pid: int, body: UserIn, request: Request, bg: BackgroundTasks,
                      db: Session = Depends(get_db), p: Principal = Depends(current)):
     partner = _partner_for(db, pid, p)
-    u = _create_user(db, body, "partner", partner_id=partner.id)
+    u = _create_user(db, body, "partner", partner_id=partner.id, lang=_lang_of(db, p))
     return _new_link(request, bg, db, u)

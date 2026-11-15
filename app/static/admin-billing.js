@@ -6,8 +6,8 @@
   const MOD = { rooms: "Mødelokaler", catering: "Forplejning", self_service: "Selvbetjening", reports: "Rapporter", signage: "Infoskærm", time: "Tidsregistrering" };
   const pad = (n) => String(n).padStart(2, "0");
   const isoToday = () => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
-  const dk = (s) => s ? new Date(s + "T12:00").toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric" }) : "";
-  const money = (o) => (o / 100).toLocaleString("da-DK", { minimumFractionDigits: o % 100 ? 2 : 0, maximumFractionDigits: 2 }) + " kr.";
+  const dk = (s) => s ? new Date(s + "T12:00").toLocaleDateString(NODD_LOC(), { day: "numeric", month: "short", year: "numeric" }) : "";
+  const money = (o) => (o / 100).toLocaleString(NODD_LOC(), { minimumFractionDigits: o % 100 ? 2 : 0, maximumFractionDigits: 2 }) + " kr.";
   const STATE = { active: "Aktiv", ending: "Opsagt", future: "Starter", ended: "Stoppet" };
   const fresh = (outer) => { const el = document.createElement("div"); el.className = "stack"; outer.replaceChildren(el); return el; };
 

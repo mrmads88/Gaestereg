@@ -193,12 +193,17 @@ Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét s
 4. Andre moduler, der passer: adgangskort og nøgler, gæsteparkering, helpdesk til huset (fejlmeldinger), skabe,
    kantine/POS.
 
-## Admin på engelsk (næste store punkt)
-Mads' ønske (november 2026): admin skal kunne bruges på engelsk. Sproget vælges på login-siden og kan skiftes
-bagefter (under "Sikkerhed"/profil). Plan: `User.lang` (og leverandørens konto), en `t()`-funktion med da/en-tekster
-i admin-JS (som `kiosk.js` allerede har), fejlbeskeder fra serveren efter brugerens sprog, og mails til brugeren
-på samme sprog. Medarbejdersiden (`/t/`), bookingsiden og evakueringslisten følger med. Skærmen er allerede på flere
-sprog.
+## Admin på engelsk (bygget)
+- Sproget vælges på login-siden (Dansk · English) og skiftes med knappen i topbaren. Det gemmes på brugeren og følger
+  med til andre enheder. Nye brugere arver sproget fra den, der inviterer, og invitationsmails følger sproget.
+- Alt i admin oversættes, også fejlbeskeder fra serveren og prislistens tekster. Medarbejdernes sider (tid, booking,
+  køkken, rapport, evakuering) følger browserens sprog (eller `?lang=en`).
+- Dansk er stadig kildeteksten. Ordbogen ligger i `app/static/i18n-en.js`, og en test sikrer, at nye tekster kommer med.
+- Senere: flere sprog (svensk, norsk, tysk) med samme ordbog-format; priser og fakturaer forbliver på dansk.
+
+## Hjælp og guides (næste)
+Mads' ønske (november 2026): flotte, nemme guides til funktionerne, som kunderne selv kan finde, og "?"-knapper med
+hurtig hjælp, når man holder musen over (eller trykker på telefonen). Også en guide til leverandørens eget login.
 
 ## Venter på prod / en kunde
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).

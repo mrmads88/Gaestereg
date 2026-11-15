@@ -119,7 +119,8 @@ def test_only_platform_handles_billing(plat, house):
     assert pa.post(f"/api/admin/billing/account/subscriptions?tenant_id={a['id']}", json={"product": "catering"}).status_code == 403
     assert pa.get("/api/admin/billing/products").status_code == 403
     mine = pa.get("/api/admin/partners").json()[0]
-    assert mine["modules"]["rooms"]["on"] and "34" not in str({k: v for k, v in mine.items() if k != "id"})
+    shown = str({k: v for k, v in mine.items() if k != "id"})
+    assert mine["modules"]["rooms"]["on"] and "34900" not in shown and "price" not in shown  # ingen priser (øre)
     # Huset må selv vælge, hvem der får månedsrapporten.
     r = pa.patch(f"/api/admin/partners/{pid}", json={"report_email": "chef@modulhuset.dk; Bogholderi@modulhuset.dk"})
     assert r.status_code == 200 and r.json()["report_email"] == "chef@modulhuset.dk, Bogholderi@modulhuset.dk"

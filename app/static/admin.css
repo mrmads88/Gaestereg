@@ -593,3 +593,5 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .tm-pin small{flex-basis:100%;color:var(--soft)}
 .tm-norm{width:80px;min-height:34px;border:1px solid var(--rule);border-radius:9px;padding:4px 8px;background:#fbfbfa;font:inherit}
 .tm-staff{min-width:640px}
+.login-lang{display:flex;justify-content:center;gap:8px;align-items:center;color:var(--soft);font-size:.85rem;margin-top:-4px}
+.login-lang [aria-pressed="true"]{font-weight:800;text-decoration:none;color:var(--ink)}
