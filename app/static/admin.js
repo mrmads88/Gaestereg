@@ -828,6 +828,7 @@ document.querySelectorAll("[data-lang]").forEach((b) => {
   b.addEventListener("click", () => { if (b.dataset.lang !== I18N.lang) setLang(b.dataset.lang, false); });
 });
 $("langBtn").textContent = I18N.lang === "en" ? "Dansk" : "English";
+$("helpBtn").href = "/hjaelp?lang=" + I18N.lang;
 $("langBtn").addEventListener("click", () => setLang(I18N.lang === "en" ? "da" : "en", true));
 // Efter login: et valg på login-siden gemmes på brugeren; ellers følger siden brugerens gemte sprog.
 function syncLang() {

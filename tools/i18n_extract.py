@@ -27,7 +27,7 @@ HTML_FILES = [STATIC / n for n in ("admin.html", "time.html", "booking.html", "e
 _LIT = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|`(?:\\.|[^`\\])*`')
 _TAG = re.compile(r"<[^>]*>")
 _ATTR = re.compile(r'(?:placeholder|title|aria-label|alt)="([^"<>{}]*)"')
-_DANISH = re.compile(r"[æøåÆØÅ]")
+_DANISH = re.compile(r"[æøåÆØÅé]")
 _CODEY = re.compile(r"[{};]|\w=|=[\"\'\w]|=>|&&|\|\||^\s*[#/]|^\s*\.\w|https?:|/api/|\bpx\b|^\w+\(|\$\{|\\u")
 
 
@@ -50,7 +50,7 @@ def is_text(raw: str) -> bool:
         return True
     if " " in raw.strip() or raw != raw.strip():
         return True
-    return bool(re.fullmatch(r"[A-ZÆØÅ][a-zæøå]+[.!?:…]*", s))
+    return bool(re.fullmatch(r"[A-ZÆØÅ][a-zæøåéèüö]+[.!?:…]*", s))
 
 
 def text_pieces(literal: str) -> list[str]:
