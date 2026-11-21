@@ -89,7 +89,7 @@
       </div>
 
       <div id="crmView" class="pview" hidden><div id="crmBox"></div></div>
-      <div id="billingView" class="pview" hidden><div id="readyBox"></div><div id="billingBox"></div></div>
+      <div id="billingView" class="pview" hidden><div id="readyBox"></div><div id="billingBox"></div><div id="platformInt"></div></div>
       <div id="partnerView" class="pview" hidden>
         <div class="ed-head">
           <div class="ed-logo"><span id="pvInitials"></span></div>
@@ -125,6 +125,7 @@
         </div>
         <div class="stack" id="pReport" hidden></div>
         <div class="stack" id="pSignage" hidden></div>
+        <div class="stack" id="pInt" hidden></div>
         <div class="card upsell" id="pModNote" hidden></div>
         <div class="stack" id="pRooms"></div>
         <div class="stack" id="pFood"></div>
@@ -163,6 +164,7 @@
           <button role="tab" type="button" data-tab="signage" aria-selected="false" id="signageTab">Infoskærme</button>
           <button role="tab" type="button" data-tab="report" aria-selected="false" id="reportTab">Overblik</button>
           <button role="tab" type="button" data-tab="time" aria-selected="false" id="timeTab">Tid</button>
+          <button role="tab" type="button" data-tab="int" aria-selected="false" id="intTab">Integrationer</button>
           <button role="tab" type="button" data-tab="log" aria-selected="false">Besøg</button>
           <button role="tab" type="button" data-tab="access" aria-selected="false">Adgang</button>
           <button role="tab" type="button" data-tab="sub" aria-selected="false" id="subTab" hidden>Abonnement</button>
@@ -390,6 +392,7 @@
         <!-- SIGNAGE -->
         <section class="tab" id="tab-signage" hidden><div class="stack" id="tSignage"></div></section>
         <section class="tab" id="tab-time" hidden><div class="stack" id="tTime"></div></section>
+        <section class="tab" id="tab-int" hidden><div class="stack" id="tInt"></div></section>
 
         <!-- REPORT -->
         <section class="tab" id="tab-report" hidden><div class="stack" id="tReport"></div></section>
@@ -476,6 +479,7 @@
 <script src="/static/admin-crm.js"></script>
 <script src="/static/admin-time.js"></script>
 <script src="/static/admin-onboard.js"></script>
+<script src="/static/admin-integrations.js"></script>
 <script src="/static/admin.js"></script>
 <script src="/static/help-content.js"></script>
 <script src="/static/admin-help.js"></script>

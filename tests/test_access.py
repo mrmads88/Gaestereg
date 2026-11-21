@@ -324,3 +324,25 @@ def test_demo_and_checklist_access(setup, platform):
         assert pa.request(method, "/api/admin/demo").status_code == 403
         assert new_client().request(method, "/api/admin/demo").status_code == 401
     platform.delete(f"/api/admin/tenants/{other['id']}")
+
+
+def test_integrations_of_other_firms_are_hidden(setup, platform):
+    other = platform.post("/api/admin/tenants", json={"name": "Fremmed integrationsfirma"}).json()
+    platform.post(f"/api/admin/billing/account/subscriptions?tenant_id={other['id']}", json={"product": "integrations"})
+    hook = platform.post("/api/admin/integrations", json={"tenant_id": other["id"], "url": "https://x.example.com",
+                                                          "events": ["visit.checked_in"]}).json()
+    key = platform.post("/api/admin/api-keys", json={"tenant_id": other["id"], "name": "x"}).json()
+    plat_hook = platform.post("/api/admin/integrations", json={"platform": True, "url": "https://y.example.com",
+                                                               "events": ["invoice.finalized"]}).json()
+    pa = setup["pa"]
+    assert pa.get("/api/admin/integrations", params={"tenant_id": other["id"]}).status_code == 404
+    assert pa.get("/api/admin/integrations", params={"platform": True}).status_code == 403
+    for method, url in [("PATCH", f"/api/admin/integrations/{hook['id']}"), ("DELETE", f"/api/admin/integrations/{hook['id']}"),
+                        ("POST", f"/api/admin/integrations/{hook['id']}/test"), ("POST", f"/api/admin/integrations/{hook['id']}/secret"),
+                        ("DELETE", f"/api/admin/api-keys/{key['id']}"), ("PATCH", f"/api/admin/integrations/{plat_hook['id']}"),
+                        ("POST", "/api/admin/integrations")]:
+        r = pa.request(method, url, json={"tenant_id": other["id"], "url": "https://z.example.com", "events": ["visit.checked_in"]})
+        assert r.status_code == 404, (url, r.status_code)
+    assert new_client().get("/api/admin/integrations", params={"platform": True}).status_code == 401
+    platform.delete(f"/api/admin/integrations/{plat_hook['id']}")
+    platform.delete(f"/api/admin/tenants/{other['id']}")

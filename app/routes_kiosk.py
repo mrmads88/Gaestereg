@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from . import house, invitations, presence, ratelimit, replies
+from . import integrations, house, invitations, presence, ratelimit, replies
 from .config import settings
 from .db import SessionLocal, get_db
 from .models import Host, Invitation, Notification, Tenant, Visit, utcnow
@@ -129,6 +129,8 @@ def checkin(token: str, body: CheckinIn, bg: BackgroundTasks, request: Request, 
     if host is not None:
         replies.register(v.id, token)
         replies.schedule(v.id, firm.escalate_minutes, escalate)
+    for x in visits:
+        integrations.emit(db, "visit.checked_in", integrations.visit_data(x), tenant=firm)
     purge_old(db, firm)
     return {"visit_id": v.id, "badge_no": f"G-{v.id:04d}", "guest_name": name, "host_name": host_name,
             "time": local_hhmm(v.checked_in_at), "preview": False,
@@ -175,6 +177,7 @@ def delivery(token: str, body: DeliveryIn, bg: BackgroundTasks, db: Session = De
     house.bump(db, firm.id, "delivery", utcnow())
     db.commit()
     bg.add_task(notify_visit, v.id)
+    integrations.emit(db, "delivery.received", integrations.visit_data(v), tenant=firm)
     return {"ok": True, "to": to, "preview": False}
 
 
@@ -205,4 +208,5 @@ def checkout(token: str, visit_id: int, db: Session = Depends(get_db)):
     if v.checked_out_at is None:
         v.checked_out_at = utcnow()
         db.commit()
+        integrations.emit(db, "visit.checked_out", integrations.visit_data(v), tenant=db.get(Tenant, v.tenant_id))
     return {"ok": True, "name": (v.guest_name or "").split(" ")[0]}

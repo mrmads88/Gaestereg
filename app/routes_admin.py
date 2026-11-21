@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from .auth import Principal, current, require_platform
 from .db import get_db
 from .media import delete_media, media_url, save_image
-from . import catering, crm, modules, signage
+from . import catering, crm, integrations, modules, signage
 from .models import (BillingAccount, Booking, Host, Invitation, Kitchen, Notification, Partner, Room, SignageScreen, Tenant, TimeEntry, User, Visit,
                      VisitStat, new_token,
                      utcnow)
@@ -145,6 +145,7 @@ def remove_tenant(db: Session, t: Tenant) -> None:
     crm.unlink_tenant(db, tid)
     db.query(TimeEntry).filter(TimeEntry.tenant_id == tid).delete()
     db.query(BillingAccount).filter(BillingAccount.tenant_id == tid).delete()  # pakker og fakturaer følger med
+    integrations.remove_for(db, tenant_id=tid)
     db.delete(t)
     db.commit()
     for f in files:

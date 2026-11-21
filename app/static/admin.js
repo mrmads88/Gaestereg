@@ -214,6 +214,7 @@ function showBilling() {
   T = null; P = null; location.hash = "billing"; showView("billing"); renderList(); renderPartners();
   document.documentElement.style.setProperty("--accent", "#12352e");
   window.NoddBilling.mountAdmin($("billingBox"), { api, toast, esc });
+  window.NoddIntegrations.mount($("platformInt"), { scope: { platform: true }, api, toast, esc });
   renderReadiness();
 }
 $("billingBtn").addEventListener("click", showBilling);
@@ -259,6 +260,9 @@ async function renderPartner(keepImport) {
   $("pReport").hidden = !repOn;
   const sigOn = ME.role === "platform" || (pm.signage && pm.signage.on);
   $("pSignage").hidden = !sigOn;
+  const intOn = ME.role === "platform" || (pm.integrations && pm.integrations.on);
+  $("pInt").hidden = !intOn;
+  if (!keepImport && intOn) window.NoddIntegrations.mount($("pInt"), { scope: { partner_id: P.id }, api, toast, esc });
   if (!keepImport && sigOn) window.NoddSignage.mount($("pSignage"), { scope: { partner_id: P.id }, api, toast, esc, platform: ME.role === "platform" });
   if (!keepImport && repOn) window.NoddReports.mount($("pReport"), { scope: { partner_id: P.id }, api, toast, esc, platform: ME.role === "platform",
     onEmail: (v) => api("PATCH", "/api/admin/partners/" + P.id, { report_email: v }).then((x) => { Object.assign(P, x); saved(); }) });
@@ -344,6 +348,8 @@ function renderAll() {
   $("signageTab").hidden = ME.role !== "platform" && !(tm.signage && tm.signage.on);
   if (tab === "signage" && $("signageTab").hidden) tab = "people";
   $("timeTab").hidden = ME.role !== "platform" && !(tm.time && tm.time.on);
+  $("intTab").hidden = ME.role !== "platform" && !(tm.integrations && tm.integrations.on);
+  if (tab === "int" && $("intTab").hidden) tab = "people";
   if (tab === "time" && $("timeTab").hidden) tab = "people";
   if (tab === "report" && $("reportTab").hidden) tab = "people";
   renderHead(); bindFields(); renderHosts(); renderImages(); renderMsg(); renderSub();
@@ -497,6 +503,7 @@ function setTab(name) {
   if (name === "exp") loadExpected();
   if (name === "rooms") loadRooms();
   if (name === "sub") mountBilling();
+  if (name === "int" && T) window.NoddIntegrations.mount($("tInt"), { scope: { tenant_id: T.id }, api, toast, esc });
   if (name === "time" && T) window.NoddTime.mount($("tTime"), { tenant: T, api, toast, esc });
   if (name === "signage" && T) window.NoddSignage.mount($("tSignage"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform" });
   if (name === "report" && T) window.NoddReports.mount($("tReport"), { scope: { tenant_id: T.id }, api, toast, esc, platform: ME.role === "platform",

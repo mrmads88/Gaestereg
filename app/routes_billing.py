@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import billing, modules
+from . import integrations, billing, modules
 from .auth import Principal, require_platform
 from .db import get_db
 from .models import AccountProduct, Adjustment, BillingAccount, Invoice, InvoiceLine, Partner, Product, Tenant
@@ -333,7 +333,12 @@ def finalize(iid: int, db: Session = Depends(get_db)):
     inv = _inv(db, iid)
     billing.finalize(db, inv)
     db.commit()
-    return billing.invoice_out(db, inv, _customer_names(db).get(inv.account_id, ("", ""))[0])
+    out = billing.invoice_out(db, inv, _customer_names(db).get(inv.account_id, ("", ""))[0])
+    acc = db.get(BillingAccount, inv.account_id)
+    integrations.emit(db, "invoice.finalized", {"invoice": {**out, "customer_cvr": acc.cvr if acc else "",
+                                                            "invoice_email": acc.invoice_email if acc else "",
+                                                            "reference": acc.reference if acc else ""}}, platform=True)
+    return out
 
 
 @router.post("/invoices/{iid}/paid")

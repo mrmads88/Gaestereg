@@ -3,7 +3,7 @@
    NoddBilling.mountAdmin(box, { api, toast, esc }) – prisliste og fakturakørsel */
 (function () {
   "use strict";
-  const MOD = { rooms: "Mødelokaler", catering: "Forplejning", self_service: "Selvbetjening", reports: "Rapporter", signage: "Infoskærm", time: "Tidsregistrering" };
+  const MOD = { rooms: "Mødelokaler", catering: "Forplejning", self_service: "Selvbetjening", reports: "Rapporter", signage: "Infoskærm", time: "Tidsregistrering", integrations: "Integrationer og API" };
   const pad = (n) => String(n).padStart(2, "0");
   const isoToday = () => { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
   const dk = (s) => s ? new Date(s + "T12:00").toLocaleDateString(NODD_LOC(), { day: "numeric", month: "short", year: "numeric" }) : "";

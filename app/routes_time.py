@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import invitations, modules, ratelimit, timereg
+from . import integrations, invitations, modules, ratelimit, timereg
 from .auth import Principal, current
 from .db import get_db
 from .media import media_url
@@ -285,6 +285,13 @@ def admin_approve(tid: int, body: ApproveIn, db: Session = Depends(get_db), p: P
                 e.approved_at, e.approved_by = None, ""
                 n += 1
     db.commit()
+    if body.approve and n:
+        totals: dict[str, int] = {}
+        for e in rows:
+            totals[e.name] = totals.get(e.name, 0) + timereg.minutes(e)
+        integrations.emit(db, "time.week_approved", {"week": {
+            "monday": monday.isoformat(), "number": monday.isocalendar()[1], "approved_by": _who(p),
+            "employees": [{"name": k, "minutes": v, "hours": round(v / 60, 2)} for k, v in sorted(totals.items())]}}, tenant=t)
     return {"changed": n}
 
 
