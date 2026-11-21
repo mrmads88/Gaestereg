@@ -660,3 +660,62 @@ class TimeEntry(Base):
     approved_by: Mapped[str] = mapped_column(Unicode(200), default="")
     edit_log: Mapped[str] = mapped_column(UnicodeText, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+# ---------- integrationer ----------
+
+class Integration(Base):
+    """En forbindelse til et andet system. scope: platform (leverandørens egne, fx regnskab) | tenant | partner.
+    kind: webhook | economic | dinero | billy. config er JSON uden hemmeligheder; secret er krypteret (integrations.py).
+    events er JSON-listen af hændelser, den skal have. tenant_id/partner_id har ingen FK; remove_tenant/remove_partner
+    rydder op."""
+    __tablename__ = "integrations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scope: Mapped[str] = mapped_column(Unicode(10), default="tenant")
+    tenant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(Unicode(20))
+    name: Mapped[str] = mapped_column(Unicode(120), default="")
+    config: Mapped[str] = mapped_column(UnicodeText, default="{}")
+    secret: Mapped[str] = mapped_column(UnicodeText, default="")
+    events: Mapped[str] = mapped_column(UnicodeText, default="[]")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[str] = mapped_column(Unicode(500), default="")
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class IntegrationDelivery(Base):
+    """Én afsendelse af en hændelse til en integration. status: pending | ok | failed (prøves igen) | dead (opgivet)."""
+    __tablename__ = "integration_deliveries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    integration_id: Mapped[int] = mapped_column(ForeignKey("integrations.id", ondelete="CASCADE"), index=True)
+    event: Mapped[str] = mapped_column(Unicode(40))
+    payload: Mapped[str] = mapped_column(UnicodeText, default="{}")
+    status: Mapped[str] = mapped_column(Unicode(10), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    response_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error: Mapped[str] = mapped_column(Unicode(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ApiKey(Base):
+    """API-nøgle til /api/v1 for et firma eller et hus. Kun SHA-256 af nøglen gemmes; prefix vises i admin."""
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    partner_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    name: Mapped[str] = mapped_column(Unicode(120), default="")
+    prefix: Mapped[str] = mapped_column(Unicode(16))
+    key_hash: Mapped[str] = mapped_column(Unicode(64), unique=True, index=True)
+    scopes: Mapped[str] = mapped_column(Unicode(200), default='["read"]')
+    created_by: Mapped[str] = mapped_column(Unicode(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

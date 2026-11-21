@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
 from . import routes_access, routes_admin, routes_house, routes_import, routes_invite, routes_kiosk, routes_reply, routes_rooms, rooms
-from . import alerts, crm, mfa, modules, ops, reports, routes_alerts, routes_crm, routes_legal, routes_mfa, routes_onboarding, routes_time, timereg, routes_billing, routes_catering, routes_reports, routes_signage
+from . import alerts, crm, mfa, modules, ops, reports, routes_alerts, routes_crm, routes_legal, routes_mfa, routes_integrations, routes_api, routes_onboarding, integrations, routes_time, timereg, routes_billing, routes_catering, routes_reports, routes_signage
 from .config import settings
 from .db import SessionLocal, init_db
 from .media import storage
@@ -31,6 +31,7 @@ async def lifespan(_app: FastAPI):
         for t in db.scalars(select(Tenant)).all():
             purge_old(db, t)
         timereg.purge(db)  # arbejdstid gemmes i 5 år
+        integrations.resume(db)  # webhooks, der ventede på et nyt forsøg
     crm.start_digest(SessionLocal)  # morgenmail med CRM-opfølgninger (standard kun i prod)
     reports.start_scheduler(SessionLocal)  # månedsrapporter den 1. kl. 07
     if not settings.admin_password_effective:
@@ -85,6 +86,8 @@ app.include_router(routes_legal.admin)
 app.include_router(routes_mfa.router)
 app.include_router(routes_crm.router)
 app.include_router(routes_onboarding.router)
+app.include_router(routes_integrations.router)
+app.include_router(routes_api.router)
 app.include_router(routes_time.pages)
 app.include_router(routes_time.public)
 app.include_router(routes_time.admin)

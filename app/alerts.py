@@ -134,6 +134,8 @@ def start(db: Session, kind: str, title: str, message: str, minutes: int | None,
     db.add(a)
     db.commit()
     refresh(db)
+    from . import integrations
+    integrations.emit_alert(db, "alert.started", a)
     return a
 
 
@@ -142,6 +144,8 @@ def end(db: Session, a: EmergencyAlert, by: str) -> bool:
     if a.ended_at is None:
         a.ended_at, a.ended_by = utcnow(), by[:200]
         db.commit()
+        from . import integrations
+        integrations.emit_alert(db, "alert.ended", a)
     refresh(db)
     return bool(a.notify and a.notified_count and not a.cleared_count)
 
@@ -155,6 +159,9 @@ def end_scope(db: Session, by: str, tenant_id: int | None = None, partner_id: in
     for a in rows:
         a.ended_at, a.ended_by = now, by[:200]
     db.commit()
+    from . import integrations
+    for a in rows:
+        integrations.emit_alert(db, "alert.ended", a)
     refresh(db)
     return [a.id for a in rows if a.notify and a.notified_count and not a.cleared_count]
 

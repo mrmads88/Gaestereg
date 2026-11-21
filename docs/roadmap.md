@@ -221,6 +221,23 @@ Mads' ønske (november 2026): flere moduler i samme system, så alt samles ét s
 - Senere: hent logo og farve fra kundens hjemmeside, en kundevendt demo med eget login (kun læse), rundvisning første
   gang en kunde logger ind.
 
+## Integrationer (fundament bygget)
+Mads' ønske (november 2026): alle regnskabsprogrammer og systemer som ServiceNow, Salesforce, Salary osv.
+- Tilkøbet "Integrationer og API" (199 kr./md.). Fanen Integrationer på firmaet og huset, og leverandørens egne under
+  Fakturering.
+- Webhooks: gæst tjekket ind/ud, pakke modtaget, booking oprettet/aflyst, nødbesked start/slut, uge godkendt og (for
+  leverandøren) faktura godkendt. Signeret, nye forsøg i 12 timer, log med "Prøv igen", testknap. Virker med
+  Power Automate, Make, Zapier, ServiceNow Flow og Salesforce Flow, og dermed tusindvis af systemer.
+- API v1 med nøgler: besøg, personer (og personsync fra HR/Microsoft 365), bookinger og arbejdstid.
+- Katalog "Forbind med" og guiden "Integrationer og API" i hjælpecentret.
+
+Næste: direkte koblinger, der ikke kræver Make/Zapier:
+1. Regnskab for leverandørens fakturaer: e-conomic, Dinero, Billy (dokumentationen kunne ikke hentes fra dette
+   miljø; kræver adgang til restdocs.e-conomic.com, www.billy.dk og api.dinero.dk samt testkonti).
+2. Løn: Salary og Danløn (timer fra tidsregistreringen).
+3. Microsoft 365/Entra: personliste og Teams.
+4. ServiceNow og Salesforce som færdige apps (OAuth) i stedet for webhooks.
+
 ## Venter på prod / en kunde
 - Automatisk personliste fra Microsoft 365 (kræver kundens samtykke i deres Microsoft-opsætning).
 - Juridisk godkendelse af databehandleraftalens tekst (`DPA_FINAL=1`).

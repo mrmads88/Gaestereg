@@ -647,3 +647,27 @@ table.bl-inv tr.tot td{font:700 1.05rem var(--f-display)}
 .demo-box p{margin:0}
 .tag.demo{background:#ede9fe;color:#5b21b6}
 @media (max-width:560px){.ob-person{grid-template-columns:1fr 1fr}}
+/* Integrationer */
+.int h3{margin:0;font-size:1.05rem}
+.int-hooks,.int-keys{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.int-hook{border:1px solid var(--rule);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.int-hook .grow{display:flex;flex-direction:column;min-width:0}
+.int-url{font:500 .82rem var(--f-mono);color:var(--soft);overflow-wrap:anywhere}
+.int-ev{gap:6px}.int-ev span{font:600 .78rem var(--f-body);background:var(--key);border-radius:999px;padding:3px 9px}
+.int-bad{color:var(--bad)}
+.int-log{min-width:560px;font-size:.85rem}.int-log th{text-align:left;font-size:.75rem;color:var(--soft);padding:6px}.int-log td{padding:6px;border-top:1px solid var(--rule);vertical-align:top}
+.int-log small{display:block}
+.int-row{flex-wrap:wrap;align-items:flex-end;gap:10px}.int-row .fld{min-width:200px}
+.int-evpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 12px}
+.int-keys li{display:flex;gap:10px;align-items:center;border-top:1px solid var(--rule);padding-top:10px}
+.int-keys li:first-child{border-top:0;padding-top:0}
+.int-keys .grow{display:flex;flex-direction:column}.int-keys small{color:var(--soft)}
+.int-revoked{opacity:.55}
+.int-shown{background:#fbf6ea;border-color:#efe2c2}
+.int-shown code{font:600 .95rem var(--f-mono);background:#fff;border:1px solid #efe2c2;border-radius:10px;padding:10px 12px;overflow-wrap:anywhere}
+.int-shown small{color:var(--soft)}
+.int-cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.int-tile{border:1px solid var(--rule);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--ink)}
+.int-tile:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.int-tile span{font:700 .72rem var(--f-body);text-transform:uppercase;letter-spacing:.04em;color:var(--accent)}
+.int-tile small{color:var(--soft);font-size:.82rem}

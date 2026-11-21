@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from . import catering, invitations, modules, presence, ratelimit, rooms
+from . import catering, integrations, invitations, modules, presence, ratelimit, rooms
 from .auth import Principal, current
 from .db import SessionLocal, get_db
 from .media import delete_media, media_url, save_image
@@ -204,6 +204,7 @@ def _create_booking(db: Session, t: Tenant, room: Room, body: BookingIn, source:
     order, event = catering.place(db, b, t, body.catering) if body.catering else (None, "")
     db.commit()
     rooms.clear_cache()
+    integrations.emit(db, "booking.created", integrations.booking_data(b, room), tenant=t)
     return b, order, event
 
 
@@ -262,6 +263,9 @@ def _cancel(db: Session, b: Booking, request: Request, bg: BackgroundTasks) -> N
     order = catering.cancel_for_booking(db, b)
     db.commit()
     rooms.clear_cache()
+    if b.tenant_id:
+        integrations.emit(db, "booking.cancelled", integrations.booking_data(b, db.get(Room, b.room_id)),
+                          tenant=db.get(Tenant, b.tenant_id))
     _notify(bg, request, order, "cancelled")
 
 
@@ -369,4 +373,6 @@ def room_quick_book(token: str, body: QuickBookIn, db: Session = Depends(get_db)
     db.add(b)
     db.commit()
     rooms.clear_cache()
+    if b.tenant_id:
+        integrations.emit(db, "booking.created", integrations.booking_data(b, room), tenant=db.get(Tenant, b.tenant_id))
     return {"ok": True, "start": local_iso(now), "end": local_iso(end)}
